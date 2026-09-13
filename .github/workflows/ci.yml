@@ -100,3 +100,141 @@ jobs:
           else
             ./build-consumer/Release/profiler_consumer.exe
           fi
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_ENABLE_TESTING=ON \
+            -DPROFILER_ENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build-coverage --parallel
+
+      - name: Test
+        run: ctest --test-dir build-coverage --output-on-failure --timeout 180
+
+      - name: Capture coverage
+        run: |
+          IGNORE=inconsistent,unsupported,format,count,unused,corrupt,empty
+          lcov --capture --directory build-coverage --output-file coverage.info \
+            --ignore-errors "${IGNORE}" --quiet
+          lcov --remove coverage.info \
+            '*/third_party/*' '*/_deps/*' '/usr/*' '*/Testing/*' '*/build-coverage/*' \
+            --output-file coverage.filtered.info --ignore-errors "${IGNORE}" --quiet
+          lcov --summary coverage.filtered.info --ignore-errors "${IGNORE}"
+          genhtml coverage.filtered.info --output-directory coverage-html --quiet \
+            --ignore-errors "${IGNORE},category"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html/
+          retention-days: 30
+
+  sanitize-asan-ubsan:
+    name: sanitize-asan-ubsan (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    env:
+      # detect_leaks=1 hangs at exit on macOS: LeakSanitizer's stop-the-world
+      # scan is not reliably supported on Darwin. Kept off on both platforms
+      # so the recipe stays identical; enable it in a Linux-only job if leak
+      # detection is wanted later.
+      ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_ENABLE_TESTING=ON \
+            -DPROFILER_SANITIZER=address,undefined
+
+      - name: Build
+        run: cmake --build build-asan --parallel
+
+      - name: Test
+        run: ctest --test-dir build-asan --output-on-failure --timeout 180
+
+  sanitize-tsan:
+    name: sanitize-tsan
+    # Linux-only: ThreadSanitizer's macOS support has historically been the
+    # least mature of the sanitizers and has shown toolchain-specific crashes
+    # during its own runtime initialization (before any Profiler code runs)
+    # unrelated to this project. Linux/glibc TSan is mature and reliable.
+    runs-on: ubuntu-latest
+    env:
+      TSAN_OPTIONS: halt_on_error=1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_ENABLE_TESTING=ON \
+            -DPROFILER_SANITIZER=thread
+
+      - name: Build
+        run: cmake --build build-tsan --parallel
+
+      - name: Test
+        run: ctest --test-dir build-tsan --output-on-failure --timeout 180
+
+  lint:
+    name: lint (clang-format)
+    runs-on: ubuntu-latest
+    # Checks formatting of changed C++ files only, against .clang-format.
+    # The existing tree predates this config and has not been mass-reformatted
+    # (a repo-wide reformat is a separate, higher-blast-radius change) -- this
+    # keeps the gate green today while enforcing style on new/touched code.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check formatting of changed files
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE="HEAD~1"
+          fi
+          mapfile -t FILES < <(git diff --name-only --diff-filter=ACMR "${BASE}"...HEAD \
+            -- '*.h' '*.cpp' '*.mm' | grep -v '^third_party/' || true)
+          if [[ ${#FILES[@]} -eq 0 ]]; then
+            echo "No changed C++ files to check."
+            exit 0
+          fi
+          printf '%s\n' "${FILES[@]}"
+          clang-format --dry-run -Werror "${FILES[@]}"

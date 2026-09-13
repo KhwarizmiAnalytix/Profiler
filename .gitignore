@@ -13,3 +13,9 @@ consumer_trace.json
 # FetchContent-only checkouts (git submodules fmt/kineto/ittapi are tracked)
 /third_party/googletest/
 /_deps/
+
+# Local coverage runs (see docs/profiler.md#code-coverage)
+*.gcda
+*.gcno
+*.info
+/coverage-html/

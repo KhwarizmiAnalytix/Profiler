@@ -23,6 +23,8 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProfilerDependencies)
+include(ProfilerCoverage)
+include(ProfilerSanitizers)
 
 set(PROFILER_BACKEND "KINETO" CACHE STRING "Instrumentation backend: KINETO or ITT")
 set_property(CACHE PROFILER_BACKEND PROPERTY STRINGS KINETO ITT)
@@ -51,6 +53,10 @@ option(PROFILER_ENABLE_LIBTORCH "Enable LibTorch in ProfilerCxxTests" OFF)
 option(PROFILER_ENABLE_INSTALL "Install headers and CMake package" ${PROFILER_STANDALONE})
 option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found" OFF)
 option(PROFILER_REQUIRE_NVTX "Fail configure if NVTX is missing" OFF)
+option(PROFILER_ENABLE_COVERAGE "Instrument the Profiler library with --coverage (GCC/Clang)" OFF)
+set(PROFILER_SANITIZER "" CACHE STRING
+    "Sanitizer(s) to build with (GCC/Clang), e.g. address, undefined, address,undefined, thread"
+)
 
 set(PROFILER_CXX_STANDARD "20" CACHE STRING "C++ standard")
 set(CMAKE_CXX_STANDARD ${PROFILER_CXX_STANDARD})
@@ -325,6 +331,11 @@ endif()
 if(PROFILER_NEEDS_FMT_HEADER_ONLY)
   target_compile_definitions(Profiler PRIVATE FMT_HEADER_ONLY=1)
 endif()
+
+if(PROFILER_ENABLE_COVERAGE)
+  profiler_enable_coverage(Profiler)
+endif()
+profiler_enable_sanitizer(Profiler)
 
 set_target_properties(
   Profiler PROPERTIES CXX_STANDARD ${PROFILER_CXX_STANDARD} CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS

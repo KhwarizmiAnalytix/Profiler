@@ -1,0 +1,19 @@
+---
+# Local/IDE use. Not yet wired into CI: calibrating this against the full
+# existing tree (compile_commands.json across the KINETO/ITT configurations,
+# triaging pre-existing diagnostics) is a larger follow-up than this config
+# file — see CONTRIBUTING.md.
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-use-override,
+  modernize-use-nullptr,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+  readability-redundant-*,
+  readability-container-size-empty,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+HeaderFilterRegex: '^(common|native|bespoke|util)/'
+FormatStyle: file

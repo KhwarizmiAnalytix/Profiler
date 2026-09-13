@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose a new capability or an improvement to an existing one.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Profiler doesn't currently support?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What API, build option, or behavior would address it? Sketch usage if helpful.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, workarounds, or why existing options (e.g. the other backend) don't work.
+    validations:
+      required: false

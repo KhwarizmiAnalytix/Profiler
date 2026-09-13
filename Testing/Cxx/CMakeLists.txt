@@ -1,18 +1,24 @@
 set(TestFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestCommonContainers.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestHotspotReport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestNativeUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendFunction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendGpuFallback.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMemory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMetadata.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMetal.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendOutput.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerLockAndEnv.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerChromeTraceHierarchical.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerHeavyFunction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerGpuTracer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerNativeHotspot.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestStatisticalAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerPublicApi.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestScopeTreeBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerThreadpoolTracing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerXPlanePipeline.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestXPlaneBuilders.cpp"
 )
 
 profiler_setup_gtest()
@@ -24,6 +30,8 @@ target_compile_definitions(
 )
 
 target_link_libraries(ProfilerCxxTests PRIVATE GTest::gtest_main Profiler::Profiler)
+
+profiler_enable_sanitizer(ProfilerCxxTests)
 
 set(_profiler_torch_found OFF)
 if(PROFILER_ENABLE_LIBTORCH)

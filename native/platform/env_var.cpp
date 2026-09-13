@@ -109,8 +109,16 @@ bool read_int64_from_env_var(std::string_view env_var_name, int64_t default_val,
     }
     str = str.substr(start, end - start + 1);
 
-    size_t        pos = 0;
-    int64_t const val = std::stoll(str, &pos);
+    size_t  pos = 0;
+    int64_t val = 0;
+    try
+    {
+        val = std::stoll(str, &pos);
+    }
+    catch (const std::exception&)
+    {
+        pos = 0;  // str is non-empty here, so this can never match str.length() below.
+    }
     if (pos == str.length())
     {
         *value = val;
@@ -153,8 +161,16 @@ bool read_float_from_env_var(std::string_view env_var_name, float default_val, f
     }
     str = str.substr(start, end - start + 1);
 
-    size_t      pos = 0;
-    float const val = std::stof(str, &pos);
+    size_t pos = 0;
+    float  val = 0.0F;
+    try
+    {
+        val = std::stof(str, &pos);
+    }
+    catch (const std::exception&)
+    {
+        pos = 0;  // str is non-empty here, so this can never match str.length() below.
+    }
     if (pos == str.length())
     {
         *value = val;

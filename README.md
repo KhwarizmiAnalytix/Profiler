@@ -122,11 +122,15 @@ launch statistics, notebooks, and troubleshooting, with
 | `PROFILER_ENABLE_TESTING` | `ON` | Build the C++ test suite |
 | `PROFILER_ENABLE_EXAMPLES` | `OFF` | Build runnable examples |
 | `PROFILER_ENABLE_INSTALL` | `ON` for standalone builds | Install headers, library, and CMake package |
+| `PROFILER_ENABLE_COVERAGE` | `OFF` | Instrument the library with `--coverage` (GCC/Clang) |
+| `PROFILER_SANITIZER` | unset | GCC/Clang sanitizer(s), e.g. `address,undefined` or `thread` |
 
 CI configures, builds, and tests Kineto and ITT on Ubuntu, macOS, and Windows.
 Windows additionally builds both with CUDA and NVTX. Device tests skip when no
 GPU is available. Ubuntu also runs the HTA CPU example through the Python
-analysis script. See [build details and limitations](docs/profiler.md#build-options).
+analysis script, builds a coverage report, and runs the suite under
+ASan/UBSan/TSan. See [build details and limitations](docs/profiler.md#build-options),
+[coverage](docs/profiler.md#code-coverage), and [sanitizers](docs/profiler.md#sanitizers).
 
 Dependencies are Git submodules, with a CMake download fallback. An existing
 checkout can be completed with `git submodule update --init --recursive`.

@@ -234,13 +234,13 @@ public:
 
     BlockedQueue& operator=(BlockedQueue&& src)
     {
-        this->Clear();
+        this->clear();
         std::swap(this->start_block_, src.start_block_);
         std::swap(this->start_, src.start_);
         std::swap(this->end_block_, src.end_block_);
-        auto origin_end = this->End();
-        this->SetEnd(src.End());
-        src.SetEnd(origin_end);
+        auto origin_end = this->get_end();
+        this->set_end(src.get_end());
+        src.set_end(origin_end);
         return *this;
     }
 
@@ -282,7 +282,7 @@ public:
         {
             // PROFILER_CHECK_DEBUG(queue_ != nullptr, "queue_ is nullptr");
             // PROFILER_CHECK_DEBUG(block_ != nullptr, "block_ is nullptr");
-            if (index_ < queue_->End())
+            if (index_ < queue_->get_end())
             {
                 ++index_;
                 auto next_block_start = block_->start + Block::kNumSlots;
@@ -318,7 +318,7 @@ public:
 
     Iterator begin() { return Iterator(this, this->start_block_, this->start_); }
 
-    Iterator end() { return Iterator(this, this->end_block_, this->End()); }
+    Iterator end() { return Iterator(this, this->end_block_, this->get_end()); }
 };
 
 template <typename T, size_t kBlockSize = 1 << 16 /* 64 KiB */>
@@ -337,8 +337,8 @@ public:
         result.start_block_ = result.end_block_ = nullptr;
         result.start_                           = this->start_;
         // Use the end we see now, skip further growing if any in another thread
-        size_t end = this->End();
-        result.SetEnd(end);
+        size_t end = this->get_end();
+        result.set_end(end);
         while (this->start_block_->start + Block::kNumSlots <= end)
         {
             auto* old_block = std::exchange(this->start_block_, this->start_block_->next);

@@ -171,16 +171,10 @@ public:
             return std::numeric_limits<ValueType>::quiet_NaN();
         }
         std::vector<ValueType> values = values_;
-        if (percentile == 100)
-        {
-            return values[values.size() - 1];
-        }
-        else
-        {
-            std::nth_element(
-                values.begin(), values.begin() + values.size() * percentile / 100, values.end());
-            return values[values.size() * percentile / 100];
-        }
+        const size_t index = (percentile == 100) ? (values.size() - 1)
+                                                   : (values.size() * percentile / 100);
+        std::nth_element(values.begin(), values.begin() + index, values.end());
+        return values[index];
     }
 
     void output_to_stream(std::ostream* stream) const

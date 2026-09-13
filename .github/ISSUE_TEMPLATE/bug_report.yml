@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in Profiler doesn't work as documented.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: A clear description of the bug, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Configure/build commands, the smallest code snippet that reproduces it, and the exact output.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Profiler revision
+      description: Commit SHA or tag (e.g. `1.0.1`).
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - KINETO
+        - ITT
+    validations:
+      required: true
+  - type: dropdown
+    id: gpu
+    attributes:
+      label: GPU backend
+      options:
+        - none
+        - cuda
+        - hip
+        - metal
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and compiler
+      placeholder: e.g. Ubuntu 24.04, GCC 13 / Windows 11, MSVC 19.40 / macOS 15, Clang 17
+    validations:
+      required: true

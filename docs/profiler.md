@@ -21,6 +21,8 @@ automatically discover every function call.
 - [ITT, NVTX, and GPU backends](#itt-nvtx-and-gpu-backends)
 - [Architecture](#architecture)
 - [Testing and troubleshooting](#testing-and-troubleshooting)
+- [Code coverage](#code-coverage)
+- [Sanitizers](#sanitizers)
 
 ## Choose a capture pipeline
 
@@ -142,6 +144,8 @@ The CI consumer step demonstrates these settings.
 | `PROFILER_ENABLE_LIBTORCH` | `OFF` | Optional LibTorch comparison tests when Torch is found |
 | `PROFILER_CXX_STANDARD` | `20` | C++ language standard; current dependencies require C++20 |
 | `PROFILER_THIRD_PARTY_DIR` | Repository submodules or downloads | Directory containing `fmt/`, `kineto/`, `ittapi/` |
+| `PROFILER_ENABLE_COVERAGE` | `OFF` | Instrument `Profiler` with `--coverage` (GCC/Clang); see [code coverage](#code-coverage) |
+| `PROFILER_SANITIZER` | unset | GCC/Clang sanitizer(s) for `Profiler` and `ProfilerCxxTests`; see [sanitizers](#sanitizers) |
 
 A parent project's `MEMORY_GPU_BACKEND` supplies the default if
 `PROFILER_GPU_BACKEND` is unset. The native pipeline is always compiled.
@@ -454,3 +458,62 @@ Profile optimized builds, warm up caches and runtime initialization before the
 measurement window, and repeat captures. Name scopes consistently, measure
 instrumentation overhead on the real workload, and compare like-for-like
 hardware, compiler flags, inputs, and thread counts.
+
+## Code coverage
+
+`PROFILER_ENABLE_COVERAGE` instruments the `Profiler` library with `--coverage`
+(GCC/Clang gcov-compatible). Use a Debug-like build type; optimizations skew
+line/branch coverage.
+
+```bash
+cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug \
+  -DPROFILER_BACKEND=KINETO -DPROFILER_ENABLE_TESTING=ON \
+  -DPROFILER_ENABLE_COVERAGE=ON
+cmake --build build-coverage --parallel
+ctest --test-dir build-coverage --output-on-failure
+
+IGNORE=inconsistent,unsupported,format,count,unused,corrupt,empty
+lcov --capture --directory build-coverage --output-file coverage.info \
+  --ignore-errors "${IGNORE}"
+lcov --remove coverage.info \
+  '*/third_party/*' '*/_deps/*' '/usr/*' '*/Testing/*' '*/build-coverage/*' \
+  --output-file coverage.filtered.info --ignore-errors "${IGNORE}"
+genhtml coverage.filtered.info --output-directory coverage-html \
+  --ignore-errors "${IGNORE},category"
+open coverage-html/index.html  # Linux: xdg-open
+```
+
+`--ignore-errors` suppresses lcov's function-end-line warnings from heavily
+templated/inlined code (a known lcov limitation, harmless to line/function hit
+counts) — it does not hide real coverage gaps. Only the `Profiler` target is
+instrumented, so the report reflects library code, not the test suite itself.
+CI runs this on Ubuntu with GCC and uploads the HTML report as a workflow
+artifact; it is not gated on a coverage threshold.
+
+## Sanitizers
+
+`PROFILER_SANITIZER` builds `Profiler` and `ProfilerCxxTests` with GCC/Clang
+sanitizer instrumentation. Not supported on MSVC.
+
+```bash
+cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DPROFILER_BACKEND=KINETO -DPROFILER_ENABLE_TESTING=ON \
+  -DPROFILER_SANITIZER=address,undefined
+cmake --build build-asan --parallel
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+  ctest --test-dir build-asan --output-on-failure
+```
+
+Use `-DPROFILER_SANITIZER=thread` (a separate build directory; ThreadSanitizer
+cannot combine with AddressSanitizer) for data-race detection across the
+lock-free queue, thread-local storage, and RecordFunction callback paths.
+
+`ASAN_OPTIONS=detect_leaks=0` is intentional on every platform: LeakSanitizer's
+exit-time stop-the-world scan is not reliably supported on macOS and has been
+observed to hang there indefinitely with no diagnostic output, after every
+test already passed. CI therefore runs ASan+UBSan on Ubuntu and macOS with
+leak detection off, and restricts ThreadSanitizer to Ubuntu only — TSan's
+macOS support has independently shown toolchain-specific crashes during its
+own runtime initialization (before any Profiler code executes), which Linux's
+mature glibc/TSan integration does not exhibit.
