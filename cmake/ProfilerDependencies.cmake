@@ -45,7 +45,7 @@ function(profiler_setup_fmt)
     add_subdirectory("${_tp}/fmt" "${CMAKE_BINARY_DIR}/_xsigma_profiler_fmt" EXCLUDE_FROM_ALL)
     set(BUILD_SHARED_LIBS "${_profiler_fmt_shared}")
   else()
-    profiler_fetch_git(fmt "https://github.com/fmtlib/fmt.git" "12.1.0" fmt)
+    profiler_fetch_git(fmt "https://github.com/fmtlib/fmt.git" "12.2.0" fmt)
     set(FMT_TEST OFF CACHE BOOL "" FORCE)
     set(FMT_DOC OFF CACHE BOOL "" FORCE)
     set(_profiler_fmt_shared "${BUILD_SHARED_LIBS}")
@@ -79,7 +79,7 @@ function(profiler_setup_kineto)
   else()
     profiler_fetch_git(
       kineto "https://github.com/pytorch/kineto.git"
-      "7739225509b847e7b1ce7638f1ead383d15b077f" kineto
+      "eeaa4244e5f8e5f2690212c7c24e8b08061382d8" kineto
     )
     set(_kineto_src "${CMAKE_CURRENT_SOURCE_DIR}/third_party/kineto/libkineto")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/fmt")
@@ -139,7 +139,7 @@ function(profiler_setup_itt)
   elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ittapi/CMakeLists.txt")
     set(_itt "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ittapi")
   else()
-    profiler_fetch_git(ittapi "https://github.com/intel/ittapi.git" "v3.25.5" ittapi)
+    profiler_fetch_git(ittapi "https://github.com/intel/ittapi.git" "v3.28.4" ittapi)
     set(_itt "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ittapi")
   endif()
   if(EXISTS "${_itt}/CMakeLists.txt")
@@ -174,7 +174,7 @@ function(profiler_setup_gtest)
     FetchContent_Declare(
       googletest
       GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG v1.15.2
+      GIT_TAG v1.18.0
     )
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
