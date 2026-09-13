@@ -1,0 +1,42 @@
+load("//bazel:profiler.bzl", "profiler_copts", "profiler_defines", "profiler_linkopts")
+
+package(default_visibility = ["//visibility:public"])
+
+_PROFILER_COMMON_TESTS = [
+    "TestHotspotReport.cpp",
+    "TestProfilerBackendFunction.cpp",
+    "TestProfilerBackendGpuFallback.cpp",
+    "TestProfilerBackendMemory.cpp",
+    "TestProfilerBackendMetadata.cpp",
+    "TestProfilerBackendMetal.cpp",
+    "TestProfilerBackendOutput.cpp",
+    "TestProfilerChromeTraceHierarchical.cpp",
+    "TestProfilerHeavyFunction.cpp",
+    "TestProfilerGpuTracer.cpp",
+    "TestProfilerNativeHotspot.cpp",
+    "TestProfilerThreadpoolTracing.cpp",
+    "TestProfilerXPlanePipeline.cpp",
+]
+
+cc_test(
+    name = "ProfilerCxxTests",
+    size = "large",
+    timeout = "long",
+    srcs = _PROFILER_COMMON_TESTS,
+    copts = profiler_copts(),
+    defines = profiler_defines() + [
+        "PROFILER_GOOGLE_TEST",
+        "USE_GTEST",
+        "_VARIADIC_MAX=10",
+        "PROFILER_HAS_GTEST=1",
+        "PROFILER_HAS_LIBTORCH=0",
+    ],
+    includes = ["."],
+    linkopts = profiler_linkopts(),
+    deps = [
+        "//Packages/XSigmaProfiler:Profiler",
+        "//Packages/XSigmaProfiler/Testing:profilerTest_header",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

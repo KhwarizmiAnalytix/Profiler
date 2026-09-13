@@ -1,0 +1,12 @@
+XSigmaProfiler
+Copyright (c) XSigma / Khwarizmi Analytix
+
+This package is dual-licensed GPL-3.0-or-later OR Commercial (see LICENSE).
+
+Third-party components that may be built from third_party/ or
+PROFILER_THIRD_PARTY_DIR:
+
+- fmt (https://github.com/fmtlib/fmt) — MIT
+- kineto (https://github.com/pytorch/kineto) — BSD-style, see kineto/LICENSE
+- ittapi (https://github.com/intel/ittapi) — BSD-3-Clause
+- GoogleTest (tests only) — BSD-3-Clause

@@ -1,0 +1,14 @@
+/build/
+/build_*/
+/cmake-build-*/
+/.cache/
+/CMakeUserPresets.json
+*.user
+.DS_Store
+
+# FetchContent / local submodule checkouts (do not commit vendored trees)
+/third_party/fmt/
+/third_party/kineto/
+/third_party/ittapi/
+/third_party/googletest/
+/_deps/

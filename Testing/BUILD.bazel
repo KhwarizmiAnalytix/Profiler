@@ -1,0 +1,16 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "profilerTest_header",
+    hdrs = [
+        "ProfilerTest.h",
+        "ProfilerTest.h.in",
+    ],
+    includes = [
+        ".",
+        "../",
+    ],
+    deps = [
+        "//Packages/XSigmaProfiler:Profiler",
+    ],
+)

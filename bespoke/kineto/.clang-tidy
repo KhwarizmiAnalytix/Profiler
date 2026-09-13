@@ -1,0 +1,8 @@
+---
+# Do not inherit the repo-wide check set here. clang-tidy 21.1.0 crashed on
+# bugprone-* analyzing this directory's fmt usage at -O3, and a full inherit
+# fails the build on a large pre-existing kineto-shim backlog. clang-tidy 22
+# errors if Checks is empty ("no checks enabled"), so one unused check stays
+# enabled to keep the config valid.
+Checks: '-*,misc-unused-using-decls'
+WarningsAsErrors: ''
