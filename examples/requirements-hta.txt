@@ -1,0 +1,2 @@
+# Optional offline analysis; the C++ library does not depend on Python or HTA.
+HolisticTraceAnalysis==0.5.0

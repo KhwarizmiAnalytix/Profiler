@@ -1,0 +1,6 @@
+name,calls,total_us,mean_us
+compute,4,183.0,45.75
+ProfilerStep#0,1,46.0,46.0
+ProfilerStep#1,1,46.0,46.0
+ProfilerStep#3,1,46.0,46.0
+ProfilerStep#2,1,45.0,45.0

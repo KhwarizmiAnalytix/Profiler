@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "deviceProperties": [],
+  "distributedInfo": {
+    "rank": 0,
+    "world_size": 1
+  },
+  "displayTimeUnit": "ms",
+  "baseTimeNanoseconds": 1782967788000000000,
+  "traceEvents": [
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "ts": 6360605645252.0,
+      "pid": 47034,
+      "tid": 189994,
+      "args": {
+        "name": "thread 189994 ()"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_sort_index",
+      "ts": 6360605645252.0,
+      "pid": 47034,
+      "tid": 189994,
+      "args": {
+        "sort_index": 189994
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "ts": 6360605645252.0,
+      "pid": 47034,
+      "tid": 189994,
+      "args": {
+        "name": "thread 189994 ()"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_sort_index",
+      "ts": 6360605645252.0,
+      "pid": 47034,
+      "tid": 189994,
+      "args": {
+        "sort_index": 189994
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "ProfilerStep#0",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645266.451,
+      "dur": 46.958,
+      "args": {
+        "External id": 1,
+        "Record function id": 0,
+        "Ev Idx": 0
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "compute",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645266.826,
+      "dur": 46.417,
+      "args": {
+        "External id": 2,
+        "Record function id": 0,
+        "Ev Idx": 1
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "ProfilerStep#1",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645313.743,
+      "dur": 46.333,
+      "args": {
+        "External id": 3,
+        "Record function id": 0,
+        "Ev Idx": 2
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "compute",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645313.826,
+      "dur": 46.208,
+      "args": {
+        "External id": 4,
+        "Record function id": 0,
+        "Ev Idx": 3
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "ProfilerStep#2",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645360.201,
+      "dur": 46.25,
+      "args": {
+        "External id": 5,
+        "Record function id": 0,
+        "Ev Idx": 4
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "compute",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645360.284,
+      "dur": 46.167,
+      "args": {
+        "External id": 6,
+        "Record function id": 0,
+        "Ev Idx": 5
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "ProfilerStep#3",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645406.576,
+      "dur": 47.375,
+      "args": {
+        "External id": 7,
+        "Record function id": 0,
+        "Ev Idx": 6
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "compute",
+      "pid": 47034,
+      "tid": 189994,
+      "ts": 6360605645406.659,
+      "dur": 47.25,
+      "args": {
+        "External id": 8,
+        "Record function id": 0,
+        "Ev Idx": 7
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "Trace",
+      "name": "Profiler Profiler (0)",
+      "pid": "Spans",
+      "tid": "Profiler Profiler",
+      "ts": 6360605644888.0,
+      "dur": 567.0,
+      "args": {
+        "Op count": 0
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_sort_index",
+      "ts": 6360605644888.0,
+      "pid": "Spans",
+      "tid": 0,
+      "args": {
+        "sort_index": 536870912
+      }
+    },
+    {
+      "ph": "i",
+      "s": "g",
+      "name": "Iteration Start: Profiler Profiler",
+      "pid": "Traces",
+      "tid": "Trace Profiler Profiler",
+      "ts": 6360605644888.0
+    },
+    {
+      "ph": "i",
+      "s": "g",
+      "name": "Record Window End",
+      "pid": "",
+      "tid": "",
+      "ts": 6360605645523.0
+    }
+  ],
+  "traceName": "build/doc-output/hta/rank0.json"
+}

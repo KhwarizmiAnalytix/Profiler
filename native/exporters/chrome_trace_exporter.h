@@ -73,7 +73,8 @@ namespace profiler_impl
  * Converts all planes, lines, and events in the x_space to Chrome Trace
  * Event Format JSON that can be viewed in chrome://tracing or Perfetto UI.
  *
- * **Time Units**: All timestamps are in nanoseconds (ns).
+ * **Time Units**: Timestamps and durations are in microseconds (us), as required
+ * by Chrome Trace. displayTimeUnit is a presentation hint only.
  *
  * **Process/Thread Mapping**:
  * - Each XPlane becomes a process (pid)

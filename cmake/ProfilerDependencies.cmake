@@ -91,6 +91,31 @@ function(profiler_setup_kineto)
   set(KINETO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(KINETO_LIBRARY_TYPE "static" CACHE STRING "" FORCE)
   add_subdirectory("${_kineto_src}" "${CMAKE_BINARY_DIR}/_xsigma_profiler_kineto" EXCLUDE_FROM_ALL)
+  # Kineto defaults to header-only fmt, while Profiler links compiled fmt.
+  # Mixing them produces duplicate fmt symbols under MSVC. Use the same
+  # compiled target for Kineto's object libraries and their final archive.
+  if(TARGET Fmt::fmt)
+    set(_kineto_fmt_target Fmt::fmt)
+  elseif(TARGET fmt::fmt)
+    set(_kineto_fmt_target fmt::fmt)
+  else()
+    set(_kineto_fmt_target fmt)
+  endif()
+  foreach(_kineto_object_target kineto_base kineto_api)
+    if(TARGET ${_kineto_object_target})
+      get_target_property(_kineto_links ${_kineto_object_target} LINK_LIBRARIES)
+      string(REPLACE "fmt::fmt-header-only" "${_kineto_fmt_target}"
+             _kineto_links "${_kineto_links}")
+      set_property(TARGET ${_kineto_object_target} PROPERTY LINK_LIBRARIES "${_kineto_links}")
+    endif()
+  endforeach()
+  # $<TARGET_OBJECTS:...> does not propagate the object libraries' link dependencies.
+  # Append properties directly: upstream uses different target_link_libraries
+  # signatures for CUDA and ROCm, which cannot be mixed with another signature.
+  set_property(TARGET kineto APPEND PROPERTY LINK_LIBRARIES
+               $<BUILD_INTERFACE:${_kineto_fmt_target}>)
+  set_property(TARGET kineto APPEND PROPERTY INTERFACE_LINK_LIBRARIES
+               $<LINK_ONLY:$<BUILD_INTERFACE:${_kineto_fmt_target}>>)
   set(_fmt_kineto_compat "${_PROFILER_CMAKE_DIR}/fmt_kineto_compat.h")
   foreach(_kineto_target kineto kineto_base kineto_api)
     if(TARGET ${_kineto_target})

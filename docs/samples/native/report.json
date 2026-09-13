@@ -1,0 +1,186 @@
+{
+  "header": {
+    "active": false,
+    "scope_count": 10,
+    "max_depth": 3,
+    "duration_ms": 0.172
+  },
+  "scopes": [
+    {
+      "name": "ROOT",
+      "duration_ms": 0.000,
+      "thread": "n/a",
+      "memory": {
+        "delta_mean_bytes": null,
+        "delta_max_bytes": null
+      },
+      "children": [
+        {
+          "name": "workload",
+          "duration_ms": 0.170,
+          "thread": "thread 189992",
+          "memory": {
+            "delta_mean_bytes": 0.000,
+            "delta_max_bytes": 0.000
+          },
+          "children": [
+            {
+              "name": "pass",
+              "duration_ms": 0.053,
+              "thread": "thread 189992",
+              "memory": {
+                "delta_mean_bytes": 0.000,
+                "delta_max_bytes": 0.000
+              },
+              "children": [
+                {
+                  "name": "compute",
+                  "duration_ms": 0.039,
+                  "thread": "thread 189992",
+                  "memory": {
+                    "delta_mean_bytes": 0.000,
+                    "delta_max_bytes": 0.000
+                  }
+                }
+              ]
+            },
+            {
+              "name": "pass",
+              "duration_ms": 0.038,
+              "thread": "thread 189992",
+              "memory": {
+                "delta_mean_bytes": 0.000,
+                "delta_max_bytes": 0.000
+              },
+              "children": [
+                {
+                  "name": "compute",
+                  "duration_ms": 0.037,
+                  "thread": "thread 189992",
+                  "memory": {
+                    "delta_mean_bytes": 0.000,
+                    "delta_max_bytes": 0.000
+                  }
+                }
+              ]
+            },
+            {
+              "name": "pass",
+              "duration_ms": 0.037,
+              "thread": "thread 189992",
+              "memory": {
+                "delta_mean_bytes": 0.000,
+                "delta_max_bytes": 0.000
+              },
+              "children": [
+                {
+                  "name": "compute",
+                  "duration_ms": 0.037,
+                  "thread": "thread 189992",
+                  "memory": {
+                    "delta_mean_bytes": 0.000,
+                    "delta_max_bytes": 0.000
+                  }
+                }
+              ]
+            },
+            {
+              "name": "pass",
+              "duration_ms": 0.037,
+              "thread": "thread 189992",
+              "memory": {
+                "delta_mean_bytes": 0.000,
+                "delta_max_bytes": 0.000
+              },
+              "children": [
+                {
+                  "name": "compute",
+                  "duration_ms": 0.037,
+                  "thread": "thread 189992",
+                  "memory": {
+                    "delta_mean_bytes": 0.000,
+                    "delta_max_bytes": 0.000
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "top_durations": [
+    {
+      "name": "workload",
+      "duration_ms": 0.170,
+      "depth": 1,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "pass",
+      "duration_ms": 0.053,
+      "depth": 2,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "compute",
+      "duration_ms": 0.039,
+      "depth": 3,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "pass",
+      "duration_ms": 0.038,
+      "depth": 2,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "compute",
+      "duration_ms": 0.037,
+      "depth": 3,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "pass",
+      "duration_ms": 0.037,
+      "depth": 2,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "compute",
+      "duration_ms": 0.037,
+      "depth": 3,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "pass",
+      "duration_ms": 0.037,
+      "depth": 2,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "compute",
+      "duration_ms": 0.037,
+      "depth": 3,
+      "thread": "thread 189992"
+    },
+    {
+      "name": "ROOT",
+      "duration_ms": 0.000,
+      "depth": 0,
+      "thread": "n/a"
+    }
+  ],
+  "memory": {
+    "current_bytes": 0,
+    "peak_bytes": 0,
+    "total_allocated_bytes": 0,
+    "total_deallocated_bytes": 0
+  },
+  "threads": [
+    {
+      "thread": "thread 189992",
+      "scope_count": 9
+    }
+  ]
+}

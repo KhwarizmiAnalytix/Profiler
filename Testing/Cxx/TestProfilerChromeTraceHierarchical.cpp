@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "ProfilerTest.h"
+#include "native/exporters/chrome_trace_exporter.h"
 #include "native/session/profiler.h"
 
 using namespace profiler;
@@ -19,6 +20,30 @@ using namespace profiler;
 // ============================================================================
 // Chrome Trace Export with Hierarchical Profiling Tests
 // ============================================================================
+
+PROFILERTEST(Profiler, chrome_trace_uses_microseconds)
+{
+    x_space space;
+    auto*   plane = space.add_planes();
+    (*plane->mutable_event_metadata())[1].set_name("known_interval");
+    auto* line = plane->add_lines();
+    line->set_timestamp_ns(1000000);  // 1 ms
+    auto* event = line->add_events();
+    event->set_metadata_id(1);
+    event->set_offset_ps(250000);     // 0.25 us
+    event->set_duration_ps(2500000);  // 2.5 us
+
+    for (const bool pretty_print : {false, true})
+    {
+        const auto json = profiler_impl::export_to_chrome_trace_json(space, pretty_print);
+        const auto ts   = json.find("\"ts\":");
+        const auto dur  = json.find("\"dur\":");
+        ASSERT_NE(ts, std::string::npos);
+        ASSERT_NE(dur, std::string::npos);
+        EXPECT_DOUBLE_EQ(std::stod(json.substr(ts + 5)), 1000.25);
+        EXPECT_DOUBLE_EQ(std::stod(json.substr(dur + 6)), 2.5);
+    }
+}
 
 PROFILERTEST(Profiler, chrome_trace_hierarchical_single_scope)
 {

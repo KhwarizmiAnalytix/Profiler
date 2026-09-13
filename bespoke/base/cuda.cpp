@@ -14,7 +14,7 @@
 #ifndef ROCM_ON_WINDOWS
 #if PROFILER_HAS_NVTX
 #ifdef PROFILER_CUDA_USE_NVTX3
-#include <nvtx3/nvtx3.hpp>
+#include <nvtx3/nvToolsExt.h>
 #else
 #include <nvToolsExt.h>
 #endif

@@ -2,7 +2,10 @@
 # C++ repo should copy. Enable with -DPROFILER_ENABLE_EXAMPLES=ON.
 cmake_minimum_required(VERSION 3.16)
 
-set(example_sources example_quickstart.cpp example_profiling_basic.cpp)
+set(example_sources example_quickstart.cpp example_reports.cpp example_profiling_basic.cpp)
+if(PROFILER_ENABLE_KINETO)
+  list(APPEND example_sources example_hta.cpp)
+endif()
 
 # =============================================================================
 # Build Examples
@@ -47,6 +50,14 @@ foreach(example_source ${example_sources})
   endif()
 
   message(STATUS "✓ Example configured: ${example_name}")
+
+  if(PROFILER_ENABLE_TESTING AND NOT example_name STREQUAL "example_profiling_basic")
+    set(_example_work_dir "${CMAKE_CURRENT_BINARY_DIR}/${example_name}-output")
+    file(MAKE_DIRECTORY "${_example_work_dir}")
+    add_test(NAME ${example_name} COMMAND ${example_name})
+    set_tests_properties(${example_name} PROPERTIES
+      WORKING_DIRECTORY "${_example_work_dir}" TIMEOUT 30 LABELS "Profiler;Example")
+  endif()
 endforeach()
 
 message(STATUS "✓ Profiling Examples configured successfully")

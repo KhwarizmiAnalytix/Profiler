@@ -2,94 +2,135 @@
 
 [![CI](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml)
 
-C++ CPU/GPU profiler for **any** C++ project. Drop it in with FetchContent
-or `find_package`, annotate scopes, and open the JSON in
-[chrome://tracing](chrome://tracing) or [Perfetto](https://ui.perfetto.dev).
+**C++ instrumentation, timelines, and hotspot reports for standalone applications.**
 
-It does **not** depend on XSigma. XSigma is one consumer of this library.
+Profiler records annotated CPU scopes, reconstructs nested calls, and exports
+reports for performance investigations. A native tracing pipeline is always
+available; Kineto or Intel ITT provides additional instrumentation. CUDA builds
+can collect Kineto device activities through CUPTI.
 
-## Use it in another repo
+Link **`Profiler::Profiler`**, include **`profiler.h`**, and use the **`profiler`**
+namespace. No XSigma, LibTorch, TensorFlow runtime, or Python dependency is required
+for the C++ library. Python is optional for offline Holistic Trace Analysis (HTA).
+
+[User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
+[Output examples](docs/outputs.md) · [Runnable examples](examples/README.md)
+
+## Build and run
+
+Requires CMake 3.22+, a C++20 compiler, and Git. Commands below run from the
+repository root after cloning.
+
+```bash
+git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
+cd Profiler
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPROFILER_ENABLE_EXAMPLES=ON
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+./build/bin/example_quickstart
+./build/bin/example_reports build/reports
+```
+
+With Visual Studio, run `./build/bin/Release/example_quickstart.exe` and
+`./build/bin/Release/example_reports.exe build/reports` in PowerShell.
+The quickstart writes `quickstart_trace.json` in the working directory. Open it
+in [Perfetto](https://ui.perfetto.dev/) using **Open trace file**.
+
+## Add Profiler to your application
 
 ```cmake
+cmake_minimum_required(VERSION 3.22)
+project(MyApp LANGUAGES CXX C)
+
 include(FetchContent)
+set(PROFILER_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(PROFILER_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
   Profiler
   GIT_REPOSITORY https://github.com/KhwarizmiAnalytix/Profiler.git
-  GIT_TAG        main
+  GIT_TAG main
 )
 FetchContent_MakeAvailable(Profiler)
+
+add_executable(my_app main.cpp)
+target_compile_features(my_app PRIVATE cxx_std_20)
 target_link_libraries(my_app PRIVATE Profiler::Profiler)
 ```
+
+For reproducible builds, replace `main` with a reviewed commit SHA.
 
 ```cpp
 #include "profiler.h"
 
 int main() {
     profiler::profiler_session session;
-    session.start();
+    if (!session.start()) return 1;
     {
         PROFILER_PROFILE_SCOPE("work");
-        // your code
-    }
-    session.stop();
-    session.write_chrome_trace("trace.json");
+        // Your workload. Add nested scopes or PROFILER_PROFILE_FUNCTION().
+    } // Finish the scope before stopping collection.
+    if (!session.stop()) return 1;
+    return session.write_chrome_trace("trace.json") ? 0 : 1;
 }
 ```
 
-`PROFILER_PROFILE_FUNCTION()` names the current function. Memory allocators
-in any project can call `profiler::report_memory_usage(...)` (no-op when no
-session is running).
+An installed package is also supported with
+`find_package(Profiler CONFIG REQUIRED)`; see the
+[installation guide](docs/profiler.md#install-and-find-package).
 
-Install prefix alternative:
+## Choose your output
+
+| Need | Capture / export | Read it with |
+| --- | --- | --- |
+| CPU timeline and nested scopes | Native `profiler_session` → `write_chrome_trace()` | Perfetto / Chrome Trace viewer |
+| CPU hotspots, counts, inclusive and self time | `generate_hotspot_report()` | Console tables |
+| Session summary and hierarchy | `generate_report()` | Text, JSON, CSV, XML |
+| Kineto CPU / CUDA activity trace | `prepareProfiler()` + `enableProfiler()` → `ProfilerResult::save()` | Perfetto or HTA |
+| VTune / Nsight ranges | ITT / NVTX state + `PROFILER_RECORD_*` | External profiler |
+
+Native scope macros and Kineto/ITT record macros feed separate captures.
+Use the [backend guide](docs/profiler.md#choose-a-capture-pipeline) to select the
+right one. HTA consumes the Kineto export, not the native session report.
+
+## Holistic Trace Analysis
+
+Generate a Kineto trace and analyze its CPU operators:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
-cmake --install build --prefix /opt/Profiler
+./build/bin/example_hta build/hta-traces
+python3 -m venv build/hta-venv
+source build/hta-venv/bin/activate
+python -m pip install -r examples/requirements-hta.txt
+python examples/analyze_hta.py build/hta-traces --output build/hta-results
 ```
 
-```cmake
-find_package(Profiler REQUIRED)
-target_link_libraries(my_app PRIVATE Profiler::Profiler)
-```
+The example emits four `ProfilerStep#N` annotations and four `compute` calls.
+The [HTA guide](docs/hta.md) covers CUDA capture, multiple ranks, GPU breakdowns,
+launch statistics, notebooks, and troubleshooting, with
+[verified CPU output](docs/outputs.md#hta-analysis).
 
-`find_package(XSigmaProfiler)` still works (alias). Dummy consumers live in
-[`consumer/`](consumer/). Copy [`examples/example_quickstart.cpp`](examples/example_quickstart.cpp).
+## Build configurations
 
-## Build this repo
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `PROFILER_BACKEND` | `KINETO` | Instrumentation backend: `KINETO` or `ITT` |
+| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip`, or `metal` |
+| `PROFILER_REQUIRE_CUDA` | `OFF` | Require the requested CUDA Toolkit |
+| `PROFILER_REQUIRE_NVTX` | `OFF` | Require NVTX for a CUDA configuration |
+| `PROFILER_ENABLE_TESTING` | `ON` | Build the C++ test suite |
+| `PROFILER_ENABLE_EXAMPLES` | `OFF` | Build runnable examples |
+| `PROFILER_ENABLE_INSTALL` | `ON` for standalone builds | Install headers, library, and CMake package |
 
-```bash
-git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-```
+CI configures, builds, and tests Kineto and ITT on Ubuntu, macOS, and Windows.
+Windows additionally builds both with CUDA and NVTX. Device tests skip when no
+GPU is available. Ubuntu also runs the HTA CPU example through the Python
+analysis script. See [build details and limitations](docs/profiler.md#build-options).
 
-GitHub Actions runs the same configure / build / `ctest` path on Ubuntu,
-macOS, and Windows for `PROFILER_BACKEND=KINETO` and `ITT`. Windows also
-builds Kineto and ITT with `PROFILER_GPU_BACKEND=cuda` (CUDA Toolkit + NVTX;
-hosted runners have no GPU, so device tests skip).
-
-If `third_party/fmt` is missing, CMake FetchContent downloads fmt, kineto,
-and ittapi. Or pass `-DPROFILER_THIRD_PARTY_DIR=/path/to/fmt-kineto-ittapi`.
-See [`third_party/README.md`](third_party/README.md).
-
-| Option | Default | Meaning |
-|---|---|---|
-| `PROFILER_BACKEND` | `KINETO` | `KINETO` or `ITT` |
-| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip`, `metal` |
-| `PROFILER_REQUIRE_CUDA` | `OFF` | Fail configure if CUDA was requested but missing |
-| `PROFILER_REQUIRE_NVTX` | `OFF` | Fail configure if NVTX is missing |
-| `PROFILER_ENABLE_TESTING` | `ON` | `ProfilerCxxTests` |
-| `PROFILER_ENABLE_EXAMPLES` | `OFF` | `examples/` |
-| `PROFILER_ENABLE_INSTALL` | `ON` when this is the CMake source root | export the package |
-
-A host project may set `MEMORY_GPU_BACKEND`; it is mapped to
-`PROFILER_GPU_BACKEND` when the latter is unset.
-
-Link target: **`Profiler::Profiler`**. Namespace: **`profiler`**.
+Dependencies are Git submodules, with a CMake download fallback. An existing
+checkout can be completed with `git submodule update --init --recursive`.
+See [third-party dependencies](third_party/README.md).
 
 ## License
 
-GPL-3.0-or-later OR Commercial. Vendored kineto, fmt, and ittapi keep their
-own licenses; see `NOTICE`.
+GPL-3.0-or-later OR Commercial. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Vendored dependencies retain their own licenses.

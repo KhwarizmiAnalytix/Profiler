@@ -70,6 +70,20 @@ jobs:
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure --timeout 180
 
+      - name: Set up Python for HTA example
+        if: matrix.os == 'ubuntu-latest' && matrix.backend == 'KINETO'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate HTA example
+        if: matrix.os == 'ubuntu-latest' && matrix.backend == 'KINETO'
+        shell: bash
+        run: |
+          python -m pip install -r examples/requirements-hta.txt
+          ./build/bin/example_hta build/hta-traces
+          python examples/analyze_hta.py build/hta-traces --output build/hta-results
+
       - name: Install and consume
         if: matrix.backend == 'KINETO' && matrix.gpu == 'none'
         shell: bash

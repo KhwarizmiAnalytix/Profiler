@@ -1,0 +1,11 @@
+Scope,Depth,Thread,Duration(ms),Memory Delta Mean,Memory Delta Max
+ROOT,0,n/a,0.000,n/a,n/a
+  workload,1,thread 189992,0.170,0.000 MB,0.000 MB
+    pass,2,thread 189992,0.053,0.000 MB,0.000 MB
+      compute,3,thread 189992,0.039,0.000 MB,0.000 MB
+    pass,2,thread 189992,0.038,0.000 MB,0.000 MB
+      compute,3,thread 189992,0.037,0.000 MB,0.000 MB
+    pass,2,thread 189992,0.037,0.000 MB,0.000 MB
+      compute,3,thread 189992,0.037,0.000 MB,0.000 MB
+    pass,2,thread 189992,0.037,0.000 MB,0.000 MB
+      compute,3,thread 189992,0.037,0.000 MB,0.000 MB

@@ -1,0 +1,106 @@
+=== Profiler Profiler Report ===
+Session active: no
+Duration: 0.172 ms
+Total scopes: 10
+Max depth: 3
+
+=== Summary ===
+Root scope: ROOT
+Total duration: 0.000 ms
+Threads involved: 1
+Current memory: 0.000 MB
+Peak memory: 0.000 MB
+Total allocated: 0.000 MB
+Total deallocated: 0.000 MB
+
+=== Hierarchical Analysis ===
+- ROOT | duration 0.000 ms | thread n/a | memory n/a
+  - workload | duration 0.170 ms | thread thread 189992 | memory avg 0.000 MB
+    - pass | duration 0.053 ms | thread thread 189992 | memory avg 0.000 MB
+      - compute | duration 0.039 ms | thread thread 189992 | memory avg 0.000 MB
+    - pass | duration 0.038 ms | thread thread 189992 | memory avg 0.000 MB
+      - compute | duration 0.037 ms | thread thread 189992 | memory avg 0.000 MB
+    - pass | duration 0.037 ms | thread thread 189992 | memory avg 0.000 MB
+      - compute | duration 0.037 ms | thread thread 189992 | memory avg 0.000 MB
+    - pass | duration 0.037 ms | thread thread 189992 | memory avg 0.000 MB
+      - compute | duration 0.037 ms | thread thread 189992 | memory avg 0.000 MB
+
+=== Timing Analysis ===
+#1 workload - 0.170 ms (depth 1, thread thread 189992)
+#2 pass - 0.053 ms (depth 2, thread thread 189992)
+#3 compute - 0.039 ms (depth 3, thread thread 189992)
+#4 pass - 0.038 ms (depth 2, thread thread 189992)
+#5 compute - 0.037 ms (depth 3, thread thread 189992)
+#6 pass - 0.037 ms (depth 2, thread thread 189992)
+#7 compute - 0.037 ms (depth 3, thread thread 189992)
+#8 pass - 0.037 ms (depth 2, thread thread 189992)
+#9 compute - 0.037 ms (depth 3, thread thread 189992)
+#10 ROOT - 0.000 ms (depth 0, thread n/a)
+
+=== Memory Analysis ===
+No significant memory deltas observed.
+
+=== Statistical Analysis ===
+compute: mean 0.037 ms, std-dev 0.000 ms, count 4
+pass: mean 0.041 ms, std-dev 0.007 ms, count 4
+workload: mean 0.170 ms, std-dev 0.000 ms, count 1
+
+=== Node Stats (from XSpace) ===
+============================== Run Order ==============================
+	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
+	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
+	                                   Scope	    0.039	    0.037	 30.928%	 65.979%	     0.000	        4	compute
+	                                   Scope	    0.053	    0.041	 34.021%	100.000%	     0.000	        4	pass
+
+============================== Top by Computation Time ==============================
+	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
+	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
+	                                   Scope	    0.053	    0.041	 34.021%	 69.072%	     0.000	        4	pass
+	                                   Scope	    0.039	    0.037	 30.928%	100.000%	     0.000	        4	compute
+
+============================== Top by Memory Use ==============================
+	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
+	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
+	                                   Scope	    0.053	    0.041	 34.021%	 69.072%	     0.000	        4	pass
+	                                   Scope	    0.039	    0.037	 30.928%	100.000%	     0.000	        4	compute
+
+Number of nodes executed: 3
+============================== Summary by node type ==============================
+	                             [Node type]	  [count]	  [avg ms]	    [avg %]	    [cdf %]	  [mem KB]	[times called]
+	                                   Scope	        3	     0.485	   100.000%	   100.000%	     0.000	        9
+
+Timings (microseconds): count=1 curr=485
+Memory (bytes): count=0
+3 nodes observed
+
+
+=== Hotspots ===
+--- Operator table (self CPU) ---
+--------------------  ------------  ------------  ------------  ------------  ------------  ------------
+Name                    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg    # of Calls
+--------------------  ------------  ------------  ------------  ------------  ------------  ------------
+compute                     88.83%     151.832us        88.83%     151.832us      37.958us             4
+pass                         8.90%      15.209us        97.73%     167.041us      41.760us             4
+workload                     2.27%       3.876us       100.00%     170.917us     170.917us             1
+--------------------  ------------  ------------  ------------  ------------  ------------  ------------
+Self CPU time total: 170.917us
+
+--- Top-down call tree ---
+[100.00%] workload  total=170.92us self=3.88us
+  [31.35%] pass  total=53.58us self=13.92us
+    [23.21%] compute  total=39.67us self=39.67us
+  [22.28%] pass  total=38.08us self=417ns
+    [22.04%] compute  total=37.67us self=37.67us
+  [22.14%] pass  total=37.83us self=542ns
+    [21.82%] compute  total=37.29us self=37.29us
+  [21.97%] pass  total=37.54us self=334ns
+    [21.77%] compute  total=37.21us self=37.21us
+
+--- Bottom-up hotspots ---
+self time      total time     calls  name
+151.83us       151.83us       4      compute
+15.21us        167.04us       4      pass
+3.88us         170.92us       1      workload
+
+=== Thread Analysis ===
+#1 thread 189992: 9 scope(s)

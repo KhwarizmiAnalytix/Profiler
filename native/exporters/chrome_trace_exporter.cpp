@@ -21,6 +21,8 @@
 
 #include <cstdio>
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -118,6 +120,7 @@ std::string xstat_value_to_json(const xstat& stat)
 std::string export_to_chrome_trace_json(const x_space& space, bool pretty_print)
 {
     std::ostringstream json;
+    json << std::setprecision(std::numeric_limits<double>::max_digits10);
     std::string const  indent  = pretty_print ? "  " : "";
     std::string const  newline = pretty_print ? "\n" : "";
 
@@ -186,15 +189,15 @@ std::string export_to_chrome_trace_json(const x_space& space, bool pretty_print)
                 json << "\"pid\":" << pid << ",";
                 json << "\"tid\":" << tid << ",";
 
-                // Calculate timestamp in nanoseconds (displayTimeUnit: ns)
+                // Chrome Trace ts/dur are always microseconds. displayTimeUnit
+                // only controls presentation; it does not change the wire units.
                 // XPlane stores: timestamp_ns (line base) + offset_ps (event offset)
-                const auto timestamp_ns = static_cast<double>(line.timestamp_ns()) +
-                                          (static_cast<double>(event.offset_ps()) / 1000.0);
-                json << "\"ts\":" << timestamp_ns << ",";
+                const auto timestamp_us = static_cast<double>(line.timestamp_ns()) / 1000.0 +
+                                          static_cast<double>(event.offset_ps()) / 1000000.0;
+                json << "\"ts\":" << timestamp_us << ",";
 
-                // Duration in nanoseconds
-                const auto duration_ns = static_cast<double>(event.duration_ps()) / 1000.0;
-                json << "\"dur\":" << duration_ns;
+                const auto duration_us = static_cast<double>(event.duration_ps()) / 1000000.0;
+                json << "\"dur\":" << duration_us;
 
                 // Add event stats as args
                 if (!event.stats().empty())
