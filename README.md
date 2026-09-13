@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml)
 
+Version **1.0.1** · [Changelog](CHANGELOG.md)
+
 **C++ instrumentation, timelines, and hotspot reports for standalone applications.**
 
 Profiler records annotated CPU scopes, reconstructs nested calls, and exports
