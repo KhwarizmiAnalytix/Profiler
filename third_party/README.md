@@ -5,9 +5,8 @@ Do not edit vendored checkouts. Populate one of:
 1. **Git submodules** (standalone checkout):
 
    ```bash
-   git submodule add https://github.com/fmtlib/fmt.git third_party/fmt
-   git submodule add https://github.com/pytorch/kineto.git third_party/kineto
-   git submodule add https://github.com/intel/ittapi.git third_party/ittapi
+   git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
+   # or, in an existing clone:
    git submodule update --init --recursive
    ```
 

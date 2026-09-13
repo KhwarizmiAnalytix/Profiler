@@ -1,4 +1,7 @@
 # Prove FetchContent_MakeAvailable(XSigmaProfiler) from an external project.
+# Local SOURCE_DIR keeps this dummy fast. External consumers should use:
+#   GIT_REPOSITORY https://github.com/KhwarizmiAnalytix/Profiler.git
+#   GIT_TAG        main
 cmake_minimum_required(VERSION 3.16)
 project(XSigmaProfilerFetchConsumer LANGUAGES CXX)
 
