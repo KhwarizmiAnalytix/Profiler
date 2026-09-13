@@ -8,6 +8,7 @@ Do not edit vendored checkouts. Populate one of:
    git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
    # or, in an existing clone:
    git submodule update --init --recursive
+   # Nested kineto/dynolog is required for the Kineto backend.
    ```
 
 2. **CMake FetchContent** — if these directories are missing, configure

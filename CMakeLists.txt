@@ -1,6 +1,6 @@
 # Profiler — standalone CMake package. Any C++ project can consume it;
 # XSigma is one consumer, not a required host.
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(
@@ -80,10 +80,15 @@ set(BUILD_BENCHMARKS OFF CACHE BOOL "Disable third-party benchmarks" FORCE)
 
 if(PROFILER_ENABLE_KINETO)
   set(LIBKINETO_NOAIUPTI ON CACHE STRING "" FORCE)
-  if(NOT PROFILER_GPU_BACKEND STREQUAL "cuda")
+  if(PROFILER_GPU_BACKEND STREQUAL "cuda")
+    set(KINETO_BACKEND "cuda" CACHE STRING "libkineto GPU backend" FORCE)
+    set(LIBKINETO_NOCUPTI OFF CACHE STRING "" FORCE)
+  elseif(PROFILER_GPU_BACKEND STREQUAL "hip")
+    set(KINETO_BACKEND "rocm" CACHE STRING "libkineto GPU backend" FORCE)
     set(LIBKINETO_NOCUPTI ON CACHE STRING "" FORCE)
   else()
-    set(LIBKINETO_NOCUPTI OFF CACHE STRING "" FORCE)
+    set(KINETO_BACKEND "cpu" CACHE STRING "libkineto GPU backend" FORCE)
+    set(LIBKINETO_NOCUPTI ON CACHE STRING "" FORCE)
   endif()
 
   set(PROFILER_HAS_CUDA 0)
@@ -143,8 +148,10 @@ if(PROFILER_ENABLE_KINETO)
       OFF
     )
     if(_tpdir)
-      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/kineto/libkineto/include")
-      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS "${_tpdir}/fmt/include")
+      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS
+           "${_tpdir}/kineto/libkineto/include" "${_tpdir}/kineto/libkineto/src"
+           "${_tpdir}/fmt/include"
+      )
     endif()
     if(NOT TARGET Kineto::kineto)
       message(STATUS "Kineto not found — disabling PROFILER_ENABLE_KINETO")
@@ -152,6 +159,13 @@ if(PROFILER_ENABLE_KINETO)
     endif()
   else()
     profiler_setup_kineto()
+    _profiler_third_party_root(_tpdir)
+    if(_tpdir)
+      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS
+           "${_tpdir}/kineto/libkineto/include" "${_tpdir}/kineto/libkineto/src"
+           "${_tpdir}/fmt/include"
+      )
+    endif()
     if(NOT TARGET Kineto::kineto)
       message(STATUS "Kineto not found — disabling PROFILER_ENABLE_KINETO")
       set(PROFILER_ENABLE_KINETO OFF)
@@ -168,6 +182,10 @@ if(PROFILER_ENABLE_ITT)
   endif()
   if(TARGET Itt::itt)
     list(APPEND PROFILER_DEPENDENCY_LIBS Itt::itt)
+    _profiler_third_party_root(_itt_tp)
+    if(_itt_tp AND EXISTS "${_itt_tp}/ittapi/include")
+      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS "${_itt_tp}/ittapi/include")
+    endif()
   else()
     message(STATUS "ITT API not found — disabling PROFILER_ENABLE_ITT")
     set(PROFILER_ENABLE_ITT OFF)
@@ -317,8 +335,11 @@ if(PROFILER_STANDALONE)
 else()
   set(_profiler_dep_vis PUBLIC)
 endif()
+# Headers from fmt / Kineto / ITT are included by Profiler sources and by
+# in-tree tests/examples. Keep the libraries PRIVATE in standalone builds so
+# install consumers only link Profiler::Profiler.
 if(PROFILER_DEPENDENCY_INCLUDE_DIRS)
-  target_include_directories(Profiler ${_profiler_dep_vis} ${PROFILER_DEPENDENCY_INCLUDE_DIRS})
+  target_include_directories(Profiler PUBLIC ${PROFILER_DEPENDENCY_INCLUDE_DIRS})
 endif()
 if(PROFILER_DEPENDENCY_LIBS)
   target_link_libraries(Profiler ${_profiler_dep_vis} ${PROFILER_DEPENDENCY_LIBS})

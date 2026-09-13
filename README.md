@@ -1,5 +1,7 @@
 # Profiler
 
+[![CI](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml)
+
 C++ CPU/GPU profiler for **any** C++ project. Drop it in with FetchContent
 or `find_package`, annotate scopes, and open the JSON in
 [chrome://tracing](chrome://tracing) or [Perfetto](https://ui.perfetto.dev).
@@ -62,6 +64,9 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
+
+GitHub Actions runs the same configure / build / `ctest` path on Ubuntu and
+macOS for `PROFILER_BACKEND=KINETO` and `ITT`.
 
 If `third_party/fmt` is missing, CMake FetchContent downloads fmt, kineto,
 and ittapi. Or pass `-DPROFILER_THIRD_PARTY_DIR=/path/to/fmt-kineto-ittapi`.

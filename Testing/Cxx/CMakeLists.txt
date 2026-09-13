@@ -23,11 +23,7 @@ target_compile_definitions(
   ProfilerCxxTests PRIVATE PROFILER_HAS_GTEST=1 PROFILER_GOOGLE_TEST USE_GTEST _VARIADIC_MAX=10
 )
 
-if(TARGET Gtest::gtest_main)
-  target_link_libraries(ProfilerCxxTests PRIVATE Gtest::gtest_main Profiler::Profiler)
-else()
-  target_link_libraries(ProfilerCxxTests PRIVATE GTest::gtest_main Profiler::Profiler)
-endif()
+target_link_libraries(ProfilerCxxTests PRIVATE GTest::gtest_main Profiler::Profiler)
 
 set(_profiler_torch_found OFF)
 if(PROFILER_ENABLE_LIBTORCH)

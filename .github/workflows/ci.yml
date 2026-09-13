@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} ${{ matrix.backend }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        backend: [KINETO, ITT]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show toolchain
+        run: |
+          cmake --version
+          python3 --version
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=${{ matrix.backend }} \
+            -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON \
+            -DPROFILER_ENABLE_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --timeout 180
+
+      - name: Install and consume
+        if: matrix.backend == 'KINETO'
+        run: |
+          cmake --install build --prefix "${{ github.workspace }}/install"
+          cmake -S consumer -B build-consumer \
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install"
+          cmake --build build-consumer --parallel
+          export DYLD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${DYLD_LIBRARY_PATH:-}"
+          export LD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${LD_LIBRARY_PATH:-}"
+          ./build-consumer/profiler_consumer
