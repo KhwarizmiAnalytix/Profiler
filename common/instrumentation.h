@@ -29,9 +29,10 @@
 // (bespoke/common/record_function.h) and MemoryReportingInfoBase::reportMemoryUsage
 // (bespoke/common/orchestration/observer.h) exist when PROFILER_HAS_KINETO or
 // PROFILER_HAS_ITT is 1. Native (traceme/xplane) always compiles alongside that
-// backend. This header is what other libraries (Vectorization, Memory, Parallel,
-// ...) should include: real PROFILER_RECORD_* under Kineto/ITT, no-op macros
-// only if both HAS flags are 0 (not a supported CMake configuration).
+// backend. Prefer #include "profiler.h" from application code. This header
+// is the instrumentation surface any library can include: real
+// PROFILER_RECORD_* under Kineto/ITT, no-op macros only if both HAS flags
+// are 0 (not a supported CMake configuration).
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
 #include "bespoke/common/record_function.h"
 #define PROFILER_HAS_INSTRUMENTATION 1

@@ -303,6 +303,7 @@ public:
      * @brief Construct a new enhanced profiler session
      * @param options Configuration options for the profiler
      */
+    PROFILER_API profiler_session();
     PROFILER_API explicit profiler_session(profiler::profiler_options options);
 
     /**

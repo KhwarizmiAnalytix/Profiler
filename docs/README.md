@@ -1,7 +1,7 @@
-# XSigma Profiler
+# Profiler
 
-The complete profiler guide (native and Kineto pipelines, GPU correlation,
-hotspots, tests, APIs) is **[profiler.md](profiler.md)**.
+Product entry: [README.md](../README.md). Full guide:
+[profiler.md](profiler.md).
 
-Sources: [`Library/Profiler/`](../../Library/Profiler/). Runnable examples:
-[`Examples/Profiling/`](../../Examples/Profiling/).
+Runnable examples: [examples/](../examples/) (`example_quickstart.cpp` is
+the copy-paste integration).

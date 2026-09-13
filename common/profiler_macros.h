@@ -74,14 +74,14 @@
 #endif
 
 //----------------------------------------------------------------------------
-#define PROFILER_CONCATENATE(s1, s2) s1##s2
+#define PROFILER_CONCATENATE_IMPL(s1, s2) s1##s2
+#define PROFILER_CONCATENATE(s1, s2) PROFILER_CONCATENATE_IMPL(s1, s2)
 #ifdef __COUNTER__
 #define PROFILER_UID __COUNTER__
-#define PROFILER_ANONYMOUS_VARIABLE(str) PROFILER_CONCATENATE(str, __COUNTER__)
 #else
 #define PROFILER_UID __LINE__
-#define PROFILER_ANONYMOUS_VARIABLE(str) PROFILER_CONCATENATE(str, __LINE__)
 #endif
+#define PROFILER_ANONYMOUS_VARIABLE(str) PROFILER_CONCATENATE(str, PROFILER_UID)
 
 //----------------------------------------------------------------------------
 #include <stdexcept>

@@ -1,25 +1,8 @@
-# =============================================================================
-# XSigma
-# Profiling Examples CMakeLists.txt
-# =============================================================================
-# This CMakeLists.txt configures and builds the XSigma Profiling example programs that
-# demonstrate the usage of profiling APIs.
-#
-# Examples included: - example_profiling_basic: Comprehensive profiling example with XSigma,
-# Kineto, and ITT
-#
-# Build these examples with: python setup.py config.build.examples.ninja.clang python setup.py
-# config.build.examples.vs22
-#
-# Or manually: cmake -DXSIGMA_ENABLE_EXAMPLES=ON .. cmake --build .
-# =============================================================================
+# Standalone examples. example_quickstart.cpp is the integration any other
+# C++ repo should copy. Enable with -DPROFILER_ENABLE_EXAMPLES=ON.
 cmake_minimum_required(VERSION 3.16)
 
-# =============================================================================
-# Example Source
-# Files
-# =============================================================================
-set(example_sources example_profiling_basic.cpp)
+set(example_sources example_quickstart.cpp example_profiling_basic.cpp)
 
 # =============================================================================
 # Build Examples
@@ -44,8 +27,6 @@ foreach(example_source ${example_sources})
                                CXX_EXTENSIONS OFF
   )
 
-  # Profiling example uses APIs from Profiler; link Core as well for static builds (PRIVATE Core on
-  # Profiler).
   target_link_libraries(${example_name} PRIVATE Profiler::Profiler)
 
   # Set output directory

@@ -10,6 +10,7 @@ set(TestFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerHeavyFunction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerGpuTracer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerNativeHotspot.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerPublicApi.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerThreadpoolTracing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerXPlanePipeline.cpp"
 )

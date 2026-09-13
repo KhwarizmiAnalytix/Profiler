@@ -1,32 +1,71 @@
-# XSigmaProfiler
+# Profiler
 
-Standalone C++ profiler (native XPlane/TraceMe plus Kineto or ITT).
-This package has **no dependency on the rest of XSigma**. Other projects
-consume it as a third-party library.
+C++ CPU/GPU profiler for **any** C++ project. Drop it in with FetchContent
+or `find_package`, annotate scopes, and open the JSON in
+[chrome://tracing](chrome://tracing) or [Perfetto](https://ui.perfetto.dev).
 
-Include root is the package root (same paths as the former `Library/Profiler`):
+It does **not** depend on XSigma. XSigma is one consumer of this library.
 
-```cpp
-#include "common/instrumentation.h"
-#include "native/session/profiler.h"
+## Use it in another repo
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  Profiler
+  GIT_REPOSITORY https://github.com/KhwarizmiAnalytix/Profiler.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(Profiler)
+target_link_libraries(my_app PRIVATE Profiler::Profiler)
 ```
 
-Link target: **`Profiler::Profiler`**.
+```cpp
+#include "profiler.h"
 
-## Build (standalone)
+int main() {
+    profiler::profiler_session session;
+    session.start();
+    {
+        PROFILER_PROFILE_SCOPE("work");
+        // your code
+    }
+    session.stop();
+    session.write_chrome_trace("trace.json");
+}
+```
+
+`PROFILER_PROFILE_FUNCTION()` names the current function. Memory allocators
+in any project can call `profiler::report_memory_usage(...)` (no-op when no
+session is running).
+
+Install prefix alternative:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  -DPROFILER_THIRD_PARTY_DIR=/path/to/fmt-kineto-ittapi
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+cmake --install build --prefix /opt/Profiler
+```
+
+```cmake
+find_package(Profiler REQUIRED)
+target_link_libraries(my_app PRIVATE Profiler::Profiler)
+```
+
+`find_package(XSigmaProfiler)` still works (alias). Dummy consumers live in
+[`consumer/`](consumer/). Copy [`examples/example_quickstart.cpp`](examples/example_quickstart.cpp).
+
+## Build this repo
+
+```bash
+git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-If `PROFILER_THIRD_PARTY_DIR` is unset and `third_party/fmt` is missing,
-CMake FetchContent downloads fmt, kineto, and ittapi. See
-[`third_party/README.md`](third_party/README.md).
-
-Options:
+If `third_party/fmt` is missing, CMake FetchContent downloads fmt, kineto,
+and ittapi. Or pass `-DPROFILER_THIRD_PARTY_DIR=/path/to/fmt-kineto-ittapi`.
+See [`third_party/README.md`](third_party/README.md).
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -36,42 +75,12 @@ Options:
 | `PROFILER_ENABLE_EXAMPLES` | `OFF` | `examples/` |
 | `PROFILER_ENABLE_INSTALL` | `ON` when this is the CMake source root | export the package |
 
-## Install and `find_package`
+A host project may set `MEMORY_GPU_BACKEND`; it is mapped to
+`PROFILER_GPU_BACKEND` when the latter is unset.
 
-```bash
-cmake --install build --prefix /opt/XSigmaProfiler
-```
-
-Consumer:
-
-```cmake
-find_package(XSigmaProfiler REQUIRED)
-target_link_libraries(my_app PRIVATE Profiler::Profiler)
-```
-
-A dummy consumer is in [`consumer/`](consumer/).
-
-## FetchContent
-
-```cmake
-include(FetchContent)
-FetchContent_Declare(
-  XSigmaProfiler
-  GIT_REPOSITORY https://github.com/KhwarizmiAnalytix/Profiler.git
-  GIT_TAG        main
-)
-FetchContent_MakeAvailable(XSigmaProfiler)
-target_link_libraries(my_app PRIVATE Profiler::Profiler)
-```
-
-## XSigma
-
-This repository is the source of truth. XSigma consumes it as the git
-submodule `Packages/XSigmaProfiler` and `add_subdirectory`s it, passing
-`PROFILER_THIRD_PARTY_DIR` so fmt/kineto are not built twice.
-`MEMORY_GPU_BACKEND` is mapped to `PROFILER_GPU_BACKEND`.
+Link target: **`Profiler::Profiler`**. Namespace: **`profiler`**.
 
 ## License
 
-GPL-3.0-or-later OR Commercial (same dual license as XSigma).
-Vendored kineto, fmt, and ittapi keep their own licenses; see `NOTICE`.
+GPL-3.0-or-later OR Commercial. Vendored kineto, fmt, and ittapi keep their
+own licenses; see `NOTICE`.

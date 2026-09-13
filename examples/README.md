@@ -1,5 +1,11 @@
-# Profiling examples (sources)
+# Examples
 
-This folder contains **runnable** profiling examples (for example `example_profiling_basic.cpp`) and the example `CMakeLists.txt`.
+- [`example_quickstart.cpp`](example_quickstart.cpp) — profile any C++
+  program and write `quickstart_trace.json` for Chrome / Perfetto.
+- [`example_profiling_basic.cpp`](example_profiling_basic.cpp) — native,
+  Kineto, and ITT backends.
 
-**Documentation** (how to build, run, and visualize output) is in **[`Docs/profiler/profiler.md`](../../Docs/profiler/profiler.md)** (section *Runnable examples*).
+```bash
+cmake -S . -B build -DPROFILER_ENABLE_EXAMPLES=ON
+cmake --build build --target example_quickstart
+```

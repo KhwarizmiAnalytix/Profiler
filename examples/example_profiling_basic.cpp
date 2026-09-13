@@ -1,6 +1,6 @@
 /**
  * @file example_profiling_basic.cpp
- * @brief Comprehensive example demonstrating XSigma's profiling systems.
+ * @brief Comprehensive example of native, Kineto, and ITT profiling.
  *
  * This example shows:
  * - XSigma native profiler with hierarchical CPU profiling
@@ -32,7 +32,7 @@
 #include "bespoke/itt/itt_wrapper.h"
 #endif
 
-namespace xsigma::examples::profiling
+namespace profiler::examples
 {
 using profiler::profiler_options;
 using profiler::profiler_session;
@@ -377,7 +377,7 @@ void example_itt_profiler()
 
 #endif  // PROFILER_HAS_ITT
 
-}  // namespace xsigma::examples::profiling
+}  // namespace profiler::examples
 
 // ============================================================================
 // Main Function
@@ -386,15 +386,15 @@ void example_itt_profiler()
 int main()
 {
     std::cout << "============================================" << std::endl;
-    std::cout << "XSigma Profiling Examples" << std::endl;
+    std::cout << "Profiler examples" << std::endl;
     std::cout << "============================================" << std::endl;
 
     // Example 1: XSigma Native Profiler
-    xsigma::examples::profiling::example_xsigma_native_profiler();
+    profiler::examples::example_xsigma_native_profiler();
 
 #if PROFILER_HAS_KINETO
     // Example 2: Kineto Profiler
-    xsigma::examples::profiling::example_kineto_profiler();
+    profiler::examples::example_kineto_profiler();
 #else
     std::cout << "\n=== Example 2: Kineto Profiler ===" << std::endl;
     std::cout << "✗ Kineto not available (PROFILER_HAS_KINETO=0)" << std::endl;
@@ -402,7 +402,7 @@ int main()
 
 #if PROFILER_HAS_ITT
     // Example 3: ITT Profiler
-    xsigma::examples::profiling::example_itt_profiler();
+    profiler::examples::example_itt_profiler();
 #else
     std::cout << "\n=== Example 3: ITT Profiler ===" << std::endl;
     std::cout << "✗ ITT not available (PROFILER_HAS_ITT=0)" << std::endl;

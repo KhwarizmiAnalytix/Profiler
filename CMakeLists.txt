@@ -1,11 +1,13 @@
-# XSigmaProfiler — standalone CMake package (no XSigma tree required).
+# Profiler — standalone CMake package. Any C++ project can consume it;
+# XSigma is one consumer, not a required host.
 cmake_minimum_required(VERSION 3.16)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   project(
-    XSigmaProfiler
+    Profiler
     VERSION 1.0.0
-    DESCRIPTION "Standalone XSigma Profiler"
+    DESCRIPTION "Standalone C++ CPU/GPU profiler"
+    HOMEPAGE_URL "https://github.com/KhwarizmiAnalytix/Profiler"
     LANGUAGES CXX C
   )
   set(PROFILER_STANDALONE ON)
@@ -372,9 +374,10 @@ if(PROFILER_ENABLE_INSTALL)
     RUNTIME DESTINATION bin
   )
   install(DIRECTORY common native bespoke util DESTINATION include FILES_MATCHING PATTERN "*.h")
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/profiler.h" DESTINATION include)
   file(
     GENERATE
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/XSigmaProfilerConfig.cmake"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
     CONTENT
       "get_filename_component(PACKAGE_PREFIX_DIR \"\${CMAKE_CURRENT_LIST_DIR}/../../..\" ABSOLUTE)
 if(NOT TARGET Profiler::Profiler)
@@ -388,11 +391,20 @@ if(NOT TARGET XSigmaProfiler::Profiler)
 endif()
 "
   )
+  file(
+    GENERATE
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/XSigmaProfilerConfig.cmake"
+    CONTENT
+      "include(\"\${CMAKE_CURRENT_LIST_DIR}/../Profiler/ProfilerConfig.cmake\")\n"
+  )
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
+          DESTINATION lib/cmake/Profiler
+  )
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/XSigmaProfilerConfig.cmake"
           DESTINATION lib/cmake/XSigmaProfiler
   )
 endif()
 
-message(STATUS "XSigmaProfiler: backend=${PROFILER_BACKEND} gpu=${PROFILER_GPU_BACKEND} "
+message(STATUS "Profiler: backend=${PROFILER_BACKEND} gpu=${PROFILER_GPU_BACKEND} "
                "standalone=${PROFILER_STANDALONE}"
 )

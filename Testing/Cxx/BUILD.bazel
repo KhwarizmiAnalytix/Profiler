@@ -14,6 +14,7 @@ _PROFILER_COMMON_TESTS = [
     "TestProfilerHeavyFunction.cpp",
     "TestProfilerGpuTracer.cpp",
     "TestProfilerNativeHotspot.cpp",
+    "TestProfilerPublicApi.cpp",
     "TestProfilerThreadpoolTracing.cpp",
     "TestProfilerXPlanePipeline.cpp",
 ]

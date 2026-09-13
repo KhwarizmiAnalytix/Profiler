@@ -173,6 +173,8 @@ double profiler_scope_data::get_duration_ns() const
 // profiler_session Implementation
 //=============================================================================
 
+profiler_session::profiler_session() : profiler_session(profiler::profiler_options{}) {}
+
 profiler_session::profiler_session(profiler::profiler_options options)
     : options_(std::move(options))
 {
