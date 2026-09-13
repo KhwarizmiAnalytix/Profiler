@@ -9,13 +9,21 @@ on:
 
 jobs:
   build-test:
-    name: ${{ matrix.os }} ${{ matrix.backend }}
+    name: ${{ matrix.os }} ${{ matrix.backend }} ${{ matrix.gpu }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         backend: [KINETO, ITT]
+        gpu: [none]
+        include:
+          - os: windows-latest
+            backend: KINETO
+            gpu: cuda
+          - os: windows-latest
+            backend: ITT
+            gpu: cuda
 
     steps:
       - name: Checkout
@@ -24,31 +32,57 @@ jobs:
           submodules: recursive
 
       - name: Show toolchain
+        shell: bash
         run: |
           cmake --version
           python3 --version
 
+      - name: Install CUDA Toolkit
+        if: matrix.gpu == 'cuda'
+        uses: Jimver/cuda-toolkit@v0.2.35
+        with:
+          cuda: '12.8.1'
+          method: network
+          sub-packages: '["nvcc","cudart","cupti","nvtx"]'
+          use-github-cache: false
+
       - name: Configure
+        shell: bash
         run: |
+          extra=()
+          if [[ "${{ matrix.gpu }}" == "cuda" ]]; then
+            extra+=(-DPROFILER_REQUIRE_CUDA=ON -DPROFILER_REQUIRE_NVTX=ON)
+            if [[ -n "${CUDA_PATH:-}" ]]; then
+              extra+=(-DCUDAToolkit_ROOT="${CUDA_PATH}")
+              export PATH="${CUDA_PATH}/bin:${CUDA_PATH}/extras/CUPTI/lib64:${PATH}"
+            fi
+          fi
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
             -DPROFILER_BACKEND=${{ matrix.backend }} \
-            -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_GPU_BACKEND=${{ matrix.gpu }} \
             -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_ENABLE_EXAMPLES=ON
+            -DPROFILER_ENABLE_EXAMPLES=ON \
+            "${extra[@]}"
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure --timeout 180
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 180
 
       - name: Install and consume
-        if: matrix.backend == 'KINETO'
+        if: matrix.backend == 'KINETO' && matrix.gpu == 'none'
+        shell: bash
         run: |
-          cmake --install build --prefix "${{ github.workspace }}/install"
+          cmake --install build --config Release --prefix "${GITHUB_WORKSPACE}/install"
           cmake -S consumer -B build-consumer \
-            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install"
-          cmake --build build-consumer --parallel
-          export DYLD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${DYLD_LIBRARY_PATH:-}"
-          export LD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${LD_LIBRARY_PATH:-}"
-          ./build-consumer/profiler_consumer
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install"
+          cmake --build build-consumer --config Release --parallel
+          export PATH="${GITHUB_WORKSPACE}/install/bin:${GITHUB_WORKSPACE}/install/lib:${PATH}"
+          export DYLD_LIBRARY_PATH="${GITHUB_WORKSPACE}/install/lib:${DYLD_LIBRARY_PATH:-}"
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/install/lib:${LD_LIBRARY_PATH:-}"
+          if [[ -x ./build-consumer/profiler_consumer ]]; then
+            ./build-consumer/profiler_consumer
+          else
+            ./build-consumer/Release/profiler_consumer.exe
+          fi

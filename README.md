@@ -65,8 +65,10 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-GitHub Actions runs the same configure / build / `ctest` path on Ubuntu and
-macOS for `PROFILER_BACKEND=KINETO` and `ITT`.
+GitHub Actions runs the same configure / build / `ctest` path on Ubuntu,
+macOS, and Windows for `PROFILER_BACKEND=KINETO` and `ITT`. Windows also
+builds Kineto and ITT with `PROFILER_GPU_BACKEND=cuda` (CUDA Toolkit + NVTX;
+hosted runners have no GPU, so device tests skip).
 
 If `third_party/fmt` is missing, CMake FetchContent downloads fmt, kineto,
 and ittapi. Or pass `-DPROFILER_THIRD_PARTY_DIR=/path/to/fmt-kineto-ittapi`.
@@ -76,6 +78,8 @@ See [`third_party/README.md`](third_party/README.md).
 |---|---|---|
 | `PROFILER_BACKEND` | `KINETO` | `KINETO` or `ITT` |
 | `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip`, `metal` |
+| `PROFILER_REQUIRE_CUDA` | `OFF` | Fail configure if CUDA was requested but missing |
+| `PROFILER_REQUIRE_NVTX` | `OFF` | Fail configure if NVTX is missing |
 | `PROFILER_ENABLE_TESTING` | `ON` | `ProfilerCxxTests` |
 | `PROFILER_ENABLE_EXAMPLES` | `OFF` | `examples/` |
 | `PROFILER_ENABLE_INSTALL` | `ON` when this is the CMake source root | export the package |
