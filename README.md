@@ -134,5 +134,10 @@ See [third-party dependencies](third_party/README.md).
 
 ## License
 
-GPL-3.0-or-later OR Commercial. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
-Vendored dependencies retain their own licenses.
+Profiler is licensed under the **Apache License, Version 2.0**.
+The code is delivered **AS IS**, without warranties or conditions of any kind,
+either express or implied. See [LICENSE](LICENSE) for the full terms and
+[NOTICE](NOTICE) for attribution.
+
+Third-party components and source files with separate license notices retain
+their respective licenses.

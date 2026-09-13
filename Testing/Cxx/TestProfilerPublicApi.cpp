@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: GPL-3.0-or-later OR Commercial
+ * SPDX-License-Identifier: Apache-2.0
  *
  * The public product API is profiler.h only. Any external repo should be
  * able to compile against that header and produce a Chrome / Perfetto trace.

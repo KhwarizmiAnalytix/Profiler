@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- License Profiler under Apache 2.0, with the standard AS IS warranty disclaimer.
+  Update project headers and documentation while retaining upstream notices.
+- Include LICENSE and NOTICE in installed packages.
+
 ## 1.0.1 — 2026-09-13
 
 - Fix Windows CUDA builds by including the NVTX3 C API header.

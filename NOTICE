@@ -1,7 +1,27 @@
 Profiler
 Copyright (c) Khwarizmi Analytix
+Copyright (c) 2025 XSigmaAnalyitix
 
-This package is dual-licensed GPL-3.0-or-later OR Commercial (see LICENSE).
+Profiler is licensed under the Apache License, Version 2.0 (see LICENSE).
+Unless required by applicable law or agreed to in writing, the software is
+delivered on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+either express or implied. The full disclaimer and limitation of liability
+are set out in LICENSE.
+
+Third-party components and source files carrying separate copyright or license
+notices retain their respective terms. The project license does not replace
+those notices, including:
+
+- TensorFlow and OpenXLA-derived source files — Apache License 2.0; original
+  author notices remain in the applicable source files.
+- common/small_vector.h and common/small_vector.cpp — Apache License 2.0 with
+  LLVM Exceptions; see https://llvm.org/LICENSE.txt.
+- common/align_of.h and common/array_ref.h — University of Illinois/NCSA
+  Open Source License; original LLVM notices remain in these files.
+- common/strong_type.h — Boost Software License 1.0; copyright Björn Fahller
+  (as identified in the source file); see https://www.boost.org/LICENSE_1_0.txt.
+- PyTorch/Meta-derived source files carrying BSD-style notices retain those
+  terms; see https://github.com/pytorch/pytorch/blob/main/LICENSE.
 
 Third-party components that may be built from third_party/ or
 PROFILER_THIRD_PARTY_DIR:
