@@ -146,54 +146,17 @@ if(PROFILER_ENABLE_KINETO)
   endif()
 
   profiler_setup_fmt()
-  if(COMMAND add_third_party_library)
-    # add_third_party_library() is not defined in this repo; a host build may
-    # optionally provide it. XSIGMA_TARGETS below is that external function's
-    # fixed keyword argument name, not a naming choice made by Profiler.
-    _profiler_third_party_root(_tpdir)
-    set(FMT_SOURCE_DIR "${_tpdir}/fmt" CACHE STRING "Use host fmt" FORCE)
-    add_third_party_library(
-      kineto
-      CONDITION
-      PROFILER_ENABLE_KINETO
-      LIBRARY_TYPE
-      STATIC
-      SOURCE_DIR
-      "${_tpdir}/kineto/libkineto"
-      DISABLE_WARNINGS
-      FILTER_FLAGS
-      "-flto=thin"
-      "-flto=full"
-      XSIGMA_TARGETS
-      "Kineto::kineto=kineto"
-      INCLUDE_DIR
-      "${_tpdir}/kineto/libkineto/include"
-      AUTO_ADD_TO_DEPENDENCIES
-      OFF
+  profiler_setup_kineto()
+  _profiler_third_party_root(_tpdir)
+  if(_tpdir)
+    list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS
+         "${_tpdir}/kineto/libkineto/include" "${_tpdir}/kineto/libkineto/src"
+         "${_tpdir}/fmt/include"
     )
-    if(_tpdir)
-      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS
-           "${_tpdir}/kineto/libkineto/include" "${_tpdir}/kineto/libkineto/src"
-           "${_tpdir}/fmt/include"
-      )
-    endif()
-    if(NOT TARGET Kineto::kineto)
-      message(STATUS "Kineto not found — disabling PROFILER_ENABLE_KINETO")
-      set(PROFILER_ENABLE_KINETO OFF)
-    endif()
-  else()
-    profiler_setup_kineto()
-    _profiler_third_party_root(_tpdir)
-    if(_tpdir)
-      list(APPEND PROFILER_DEPENDENCY_INCLUDE_DIRS
-           "${_tpdir}/kineto/libkineto/include" "${_tpdir}/kineto/libkineto/src"
-           "${_tpdir}/fmt/include"
-      )
-    endif()
-    if(NOT TARGET Kineto::kineto)
-      message(STATUS "Kineto not found — disabling PROFILER_ENABLE_KINETO")
-      set(PROFILER_ENABLE_KINETO OFF)
-    endif()
+  endif()
+  if(NOT TARGET Kineto::kineto)
+    message(STATUS "Kineto not found — disabling PROFILER_ENABLE_KINETO")
+    set(PROFILER_ENABLE_KINETO OFF)
   endif()
 endif()
 
@@ -236,16 +199,19 @@ if(PROFILER_ENABLE_KINETO AND TARGET Kineto::kineto)
   list(APPEND PROFILER_DEPENDENCY_LIBS Kineto::kineto)
 endif()
 
-set(profiler_headers "")
+set(PROFILER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Profiler")
+
+set(profiler_headers "${PROFILER_SRC_DIR}/profiler.h")
 set(profiler_sources "")
 
-file(GLOB common_util_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/common/*.h")
-file(GLOB common_util_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp")
-list(APPEND profiler_headers ${common_util_headers})
+file(GLOB common_util_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/common/*.h")
+file(GLOB common_util_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/common/*.cpp")
+file(GLOB util_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/util/*.h")
+list(APPEND profiler_headers ${common_util_headers} ${util_headers})
 list(APPEND profiler_sources ${common_util_sources})
 
-file(GLOB_RECURSE native_headers LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/native/*.h")
-file(GLOB_RECURSE native_sources LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/native/*.cpp")
+file(GLOB_RECURSE native_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.h")
+file(GLOB_RECURSE native_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.cpp")
 list(APPEND profiler_headers ${native_headers})
 list(APPEND profiler_sources ${native_sources})
 
@@ -255,14 +221,14 @@ if(PROFILER_HAS_METAL)
   set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
   find_library(PROFILER_METAL_FRAMEWORK Metal REQUIRED)
   find_library(PROFILER_FOUNDATION_FRAMEWORK Foundation REQUIRED)
-  file(GLOB_RECURSE profiler_mm LIST_DIRECTORIES false "${CMAKE_CURRENT_SOURCE_DIR}/native/*.mm")
+  file(GLOB_RECURSE profiler_mm LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.mm")
   list(APPEND profiler_sources ${profiler_mm})
   set_source_files_properties(
     ${profiler_mm} PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
   )
   list(APPEND PROFILER_DEPENDENCY_LIBS ${PROFILER_METAL_FRAMEWORK} ${PROFILER_FOUNDATION_FRAMEWORK})
   file(GLOB_RECURSE profiler_kineto_mm LIST_DIRECTORIES false
-       "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/base/*.mm"
+       "${PROFILER_SRC_DIR}/bespoke/base/*.mm"
   )
   list(APPEND profiler_sources ${profiler_kineto_mm})
   set_source_files_properties(
@@ -273,16 +239,16 @@ endif()
 if(PROFILER_ENABLE_KINETO)
   file(
     GLOB_RECURSE kineto_headers LIST_DIRECTORIES false
-    "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/base/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/common/*.h"
+    "${PROFILER_SRC_DIR}/bespoke/base/*.h" "${PROFILER_SRC_DIR}/bespoke/kineto/*.h"
+    "${PROFILER_SRC_DIR}/bespoke/common/*.h"
   )
   file(
     GLOB_RECURSE kineto_sources LIST_DIRECTORIES false
-    "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/base/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/common/*.cpp"
+    "${PROFILER_SRC_DIR}/bespoke/base/*.cpp"
+    "${PROFILER_SRC_DIR}/bespoke/kineto/*.cpp"
+    "${PROFILER_SRC_DIR}/bespoke/common/*.cpp"
   )
-  file(GLOB_RECURSE KINETO_UNWIND_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/common/unwind/*.cpp")
+  file(GLOB_RECURSE KINETO_UNWIND_SOURCES "${PROFILER_SRC_DIR}/bespoke/common/unwind/*.cpp")
   list(REMOVE_ITEM kineto_sources ${KINETO_UNWIND_SOURCES})
   list(APPEND profiler_headers ${kineto_headers})
   list(APPEND profiler_sources ${kineto_sources})
@@ -293,30 +259,26 @@ if(PROFILER_ENABLE_ITT)
   if(NOT PROFILER_ENABLE_KINETO)
     file(
       GLOB_RECURSE itt_base_headers LIST_DIRECTORIES false
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/base/*.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/common/*.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/kineto_shim.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/profiler_kineto.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/kineto_client_interface.h"
+      "${PROFILER_SRC_DIR}/bespoke/base/*.h"
+      "${PROFILER_SRC_DIR}/bespoke/common/*.h"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_shim.h"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/profiler_kineto.h"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_client_interface.h"
     )
     file(
       GLOB_RECURSE itt_base_sources LIST_DIRECTORIES false
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/base/*.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/common/*.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/kineto_shim.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/profiler_kineto.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/kineto/kineto_client_interface.cpp"
+      "${PROFILER_SRC_DIR}/bespoke/base/*.cpp"
+      "${PROFILER_SRC_DIR}/bespoke/common/*.cpp"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_shim.cpp"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/profiler_kineto.cpp"
+      "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_client_interface.cpp"
     )
     list(APPEND profiler_headers ${itt_base_headers})
     list(APPEND profiler_sources ${itt_base_sources})
     set(PROFILER_NEEDS_FMT_HEADER_ONLY ON)
   endif()
-  file(GLOB_RECURSE itt_headers LIST_DIRECTORIES false
-       "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/itt/*.h"
-  )
-  file(GLOB_RECURSE itt_sources LIST_DIRECTORIES false
-       "${CMAKE_CURRENT_SOURCE_DIR}/bespoke/itt/*.cpp"
-  )
+  file(GLOB_RECURSE itt_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/bespoke/itt/*.h")
+  file(GLOB_RECURSE itt_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/bespoke/itt/*.cpp")
   list(APPEND profiler_headers ${itt_headers})
   list(APPEND profiler_sources ${itt_sources})
 endif()
@@ -351,7 +313,7 @@ endif()
 
 target_include_directories(
   Profiler
-  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  PUBLIC $<BUILD_INTERFACE:${PROFILER_SRC_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
@@ -425,8 +387,12 @@ if(PROFILER_ENABLE_INSTALL)
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
   )
-  install(DIRECTORY common native bespoke util DESTINATION include FILES_MATCHING PATTERN "*.h")
-  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/profiler.h" DESTINATION include)
+  install(
+    DIRECTORY "${PROFILER_SRC_DIR}/"
+    DESTINATION include
+    FILES_MATCHING
+    PATTERN "*.h"
+  )
   file(
     GENERATE
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"

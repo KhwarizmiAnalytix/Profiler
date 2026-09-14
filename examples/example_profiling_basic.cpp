@@ -18,19 +18,7 @@
 #include <random>
 #include <vector>
 
-#include "native/session/profiler.h"
-
-#if PROFILER_HAS_KINETO
-#include <set>
-#include <unordered_set>
-
-#include "bespoke/common/record_function.h"
-#include "bespoke/kineto/profiler_kineto.h"
-#endif
-
-#if PROFILER_HAS_ITT
-#include "bespoke/itt/itt_wrapper.h"
-#endif
+#include "profiler.h"
 
 namespace profiler::examples
 {
@@ -234,20 +222,15 @@ void example_kineto_profiler()
 {
     std::cout << "\n=== Example 2: Kineto Profiler ===" << std::endl;
 
-    profiler::profiler_impl::ProfilerConfig const config(
-        profiler::profiler_impl::ProfilerState::KINETO,
-        /*report_input_shapes=*/false,
-        /*profile_memory=*/false,
-        /*with_stack=*/false,
-        /*with_flops=*/false,
-        /*with_modules=*/false);
-
-    const std::set<profiler::profiler_impl::ActivityType> activities{
-        profiler::profiler_impl::ActivityType::CPU};
-    const std::unordered_set<profiler::RecordScope> scopes{profiler::RecordScope::USER_SCOPE};
-
-    profiler::profiler_impl::prepareProfiler(config, activities);
-    profiler::profiler_impl::enableProfiler(config, activities, scopes);
+    profiler::capture_config config;
+    config.backend    = profiler::capture_backend::kineto;
+    config.activities = {profiler::activity::cpu};
+    profiler::capture cap(config);
+    if (!cap.prepare() || !cap.start())
+    {
+        std::cout << "✗ Kineto capture did not start" << std::endl;
+        return;
+    }
 
     std::cout << "✓ Kineto profiler started" << std::endl;
 
@@ -264,11 +247,10 @@ void example_kineto_profiler()
         std::cout << "  Workload completed" << std::endl;
     }
 
-    auto              kineto_result = profiler::profiler_impl::disableProfiler();
+    auto              kineto_result = cap.stop();
     std::string const kineto_file   = "kineto_only_trace.json";
-    if (kineto_result)
+    if (kineto_result && kineto_result->save(kineto_file))
     {
-        kineto_result->save(kineto_file);
         std::cout << "✓ Kineto trace saved to: " << kineto_file << std::endl;
     }
     else
@@ -295,20 +277,19 @@ void example_itt_profiler()
 {
     std::cout << "\n=== Example 3: ITT Profiler ===" << std::endl;
 
-    // Initialize ITT profiler
-    profiler::profiler_impl::itt_init();
-
-    // Check if ITT is available
-    bool const itt_available = (profiler::profiler_impl::itt_get_domain() != nullptr);
-
-    if (!itt_available)
+    profiler::capture_config cap_config;
+    cap_config.backend    = profiler::capture_backend::itt;
+    cap_config.activities = {profiler::activity::cpu};
+    profiler::capture cap(cap_config);
+    const bool        itt_started = cap.start();
+    if (!itt_started)
     {
-        std::cout << "✗ ITT not available (VTune not installed)" << std::endl;
+        std::cout << "✗ ITT capture did not start" << std::endl;
         std::cout << "  Falling back to the native profiler only" << std::endl;
     }
     else
     {
-        std::cout << "✓ ITT profiler initialized (domain: Profiler)" << std::endl;
+        std::cout << "✓ ITT profiler started" << std::endl;
     }
 
     // Start the native profiler for JSON export
@@ -323,10 +304,7 @@ void example_itt_profiler()
 
     // Profile with both ITT and the native profiler
     {
-        if (itt_available)
-        {
-            profiler::profiler_impl::itt_range_push("itt_workload");
-        }
+        PROFILER_RECORD_USER_SCOPE("itt_workload");
         PROFILER_PROFILE_SCOPE("itt_workload");
 
         const size_t matrix_size = 60;
@@ -334,30 +312,22 @@ void example_itt_profiler()
         auto         matrix_b    = generate_matrix(matrix_size, matrix_size);
 
         {
-            if (itt_available)
-            {
-                profiler::profiler_impl::itt_range_push("matrix_computation");
-            }
+            PROFILER_RECORD_FUNCTION("matrix_computation");
             PROFILER_PROFILE_SCOPE("matrix_computation");
 
             auto result = matrix_multiply(matrix_a, matrix_b);
-
-            if (itt_available)
-            {
-                profiler::profiler_impl::itt_range_pop();
-            }
+            (void)result;
         }
 
         std::cout << "  Workload completed" << std::endl;
-
-        if (itt_available)
-        {
-            profiler::profiler_impl::itt_range_pop();
-        }
     }
 
     // Stop profiling
     session.stop();
+    if (itt_started)
+    {
+        (void)cap.stop();
+    }
 
     // Export native trace
     std::string const output_file = "itt_trace.json";
@@ -366,7 +336,7 @@ void example_itt_profiler()
     std::cout << "✓ Profiling stopped" << std::endl;
     std::cout << "✓ Native trace saved to: " << output_file << std::endl;
 
-    if (itt_available)
+    if (itt_started)
     {
         std::cout << "\nVTune Integration:" << std::endl;
         std::cout << "  Run with VTune: vtune -collect hotspots -app ./example_profiling_basic"

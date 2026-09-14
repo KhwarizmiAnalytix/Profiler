@@ -21,8 +21,8 @@
  * stub in bespoke/base/cuda.cpp, generalized via bespoke/base/gpu_runtime.h
  * to also serve HIP. CUDA and HIP are mutually exclusive builds
  * (MEMORY_GPU_BACKEND selects one vendor) and share this exact code path
- * and cudaStubs()/cudaElapsedUs() naming by design -- see Docs/profiler/
- * profiler.md, GPU section -- so one test file covers whichever of the two
+ * and cudaStubs()/cudaElapsedUs() naming by design -- see docs/profiler.md,
+ * GPU section -- so one test file covers whichever of the two
  * is compiled in. Requires a real CUDA or ROCm/HIP runtime to produce a
  * non-trivial elapsed time; skips cleanly when neither device is present.
  */

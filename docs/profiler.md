@@ -27,15 +27,20 @@ automatically discover every function call.
 ## Choose a capture pipeline
 
 Every supported build includes the native pipeline and one instrumentation
-backend: Kineto or ITT. Selecting `PROFILER_BACKEND=ITT` does not remove native
-sessions or their reports.
+backend: Kineto or ITT. **Clients use one API.** `profiler::session` starts both
+collectors. `PROFILER_SCOPE` / `PROFILER_FUNCTION` annotate both. The compiled
+backend is not selected in application code.
 
-| Pipeline | Instrumentation | Lifecycle | Output |
-| --- | --- | --- | --- |
-| Native | `PROFILER_PROFILE_SCOPE`, `PROFILER_PROFILE_FUNCTION`, TraceMe | `profiler_session::start()` / `stop()` | XSpace, timeline JSON, reports, native hotspots |
-| Kineto | `PROFILER_RECORD_FUNCTION`, `PROFILER_RECORD_USER_SCOPE` | `prepareProfiler()`, `enableProfiler()`, `disableProfiler()` | `ProfilerResult`, Kineto JSON, event tree |
-| ITT | `PROFILER_RECORD_*` | Enable `ProfilerState::ITT`, then disable | Ranges consumed by Intel VTune |
-| NVTX | `PROFILER_RECORD_*` | Enable `ProfilerState::NVTX`, then disable | Ranges consumed by NVIDIA Nsight |
+| Pipeline | How the library uses it | Output |
+| --- | --- | --- |
+| Native | Always started with `session.start()` | Chrome Trace, reports, hotspots |
+| Kineto | Compiled backend when `PROFILER_BACKEND=KINETO` | `write_trace()` JSON for Perfetto / HTA |
+| ITT / NVTX | Compiled ITT backend, or `activity` + NVTX | Ranges for VTune / Nsight; `write_trace()` falls back to native Chrome Trace |
+
+`write_trace()` prefers a Kineto file when that backend produced one; otherwise
+it writes the native Chrome Trace. `write_chrome_trace()` always writes the
+native timeline. Native and Kineto events are still stored separately inside
+the library; the client does not merge them.
 
 Native and Kineto can run alongside each other, but their events are not merged.
 A native scope does not create a Kineto CPU correlation ID. A Kineto scope does
@@ -90,8 +95,9 @@ target_compile_features(my_app PRIVATE cxx_std_20)
 ```
 
 Use the CMake target so the build's backend definitions and dependencies reach
-consumers. Avoid copying internal include paths or defining `PROFILER_HAS_*`
-manually.
+consumers. Application code includes `profiler.h` only. Do not copy internal
+include paths, include `native/` or `bespoke/` headers, or define
+`PROFILER_HAS_*` manually.
 
 ## Install and find package
 
@@ -117,10 +123,12 @@ target_link_libraries(my_app PRIVATE Profiler::Profiler)
 On Windows use an absolute prefix, for example
 `-DCMAKE_PREFIX_PATH=C:/dev/Profiler/install`.
 
-The installed package supports the public native entry point used by
-[consumer/main.cpp](../consumer/main.cpp). For backend-specific Kineto/ITT headers
-and their transitive dependencies, use FetchContent or `add_subdirectory`.
-The installed configuration does not currently export the full backend SDK.
+The installed package exports **`profiler.h`**. Use `profiler::session` for
+native collection and the compiled Kineto or ITT backend together. Reports,
+hotspots, memory tracking, and the lower-level `profiler::capture` type are
+also available through that header. Kineto, ITT, and native implementation
+headers are not part of the client API; link `Profiler::Profiler` and include
+`profiler.h` only. See [consumer/main.cpp](../consumer/main.cpp).
 
 The shared library must also be discoverable at runtime. On Windows, put the
 installed `bin` directory on `PATH` or deploy `Profiler.dll` alongside the
@@ -153,40 +161,54 @@ check the configure summary and validate a trace on the target hardware.
 
 ## Native sessions
 
+Prefer `profiler::session`. It starts the native collector together with the
+compiled Kineto or ITT backend. `PROFILER_SCOPE` / `PROFILER_FUNCTION` /
+`PROFILER_OP` annotate both. `PROFILER_PROFILE_SCOPE` and
+`PROFILER_RECORD_USER_SCOPE` are aliases of `PROFILER_SCOPE`.
+
 ```cpp
 #include "profiler.h"
 
 int main() {
-    auto session = profiler::profiler_session_builder()
-        .with_timing(true)
-        .with_hierarchical_profiling(true)
-        .with_memory_tracking(false)
-        .with_statistical_analysis(true)
-        .build();
-
-    if (!session->start()) return 1;
+    profiler::session session;
+    if (!session.start()) return 1;
     {
-        PROFILER_PROFILE_SCOPE("request");
+        PROFILER_SCOPE("request");
         {
-            PROFILER_PROFILE_SCOPE("decode");
+            PROFILER_SCOPE("decode");
             // Decode input.
         }
         {
-            PROFILER_PROFILE_SCOPE("execute");
+            PROFILER_OP("execute");
             // Run computation.
         }
     }
-    if (!session->stop()) return 1;
-    return session->write_chrome_trace("request_trace.json") ? 0 : 1;
+    if (!session.stop()) return 1;
+    return session.write_trace("request_trace.json") ? 0 : 1;
 }
 ```
 
-`PROFILER_PROFILE_FUNCTION()` uses the current function name. An explicit
-`profiler::profiler_scope scope("name", session.get())` can target a session.
-Capture a bounded workload and check the return values of `start()`, `stop()`,
-and file writes. Only one native recording session may hold the profiler lock
-at a time. Export after `stop()`; a subsequent capture replaces the previous
-session's collected XSpace.
+`write_trace()` writes Kineto JSON when that backend produced a file; otherwise
+it writes the native Chrome Trace. `write_chrome_trace()` always writes the
+native timeline. `PROFILER_FUNCTION()` uses the current function name.
+
+The native-only builder remains for reports, memory tracking, and GPU tracing
+options that are not on `session_options`:
+
+```cpp
+auto native = profiler::profiler_session_builder()
+    .with_timing(true)
+    .with_hierarchical_profiling(true)
+    .with_memory_tracking(false)
+    .with_statistical_analysis(true)
+    .build();
+```
+
+An explicit `profiler::profiler_scope scope("name", native.get())` can target
+that session. Capture a bounded workload and check the return values of
+`start()`, `stop()`, and file writes. Only one native recording session may hold
+the profiler lock at a time. Export after `stop()`; a subsequent capture
+replaces the previous session's collected XSpace.
 
 | Builder method | Purpose |
 | --- | --- |
@@ -202,9 +224,9 @@ session's collected XSpace.
 | `with_output_format(format)` / `with_output_file(path)` | Configure session report export |
 | `build()` | Return a `std::unique_ptr<profiler_session>` |
 
-Lower-level native tracing is available through `native/tracing/traceme.h`.
-XSpace visitors and builders live under `native/exporters/xplane/`. Most
-applications can use the session API without depending on these internals.
+Lower-level native tracing is implemented under `Profiler/native/tracing/` and
+`Profiler/native/exporters/xplane/`. Those headers are library internals. Applications
+use the session API from `profiler.h`.
 
 ## Threads and scope lifetime
 
@@ -233,24 +255,26 @@ when collection stops may be omitted. Keep the session alive while using reports
 and hotspot objects derived from it. Join worker threads before shutdown even
 when an application operation fails.
 
-Kineto workers need explicit enrollment while the parent capture is active:
+Kineto workers need explicit enrollment while the parent session is active:
 
 ```cpp
-profiler::profiler_impl::enableProfilerInChildThread();
-{
-    PROFILER_RECORD_USER_SCOPE("worker");
+profiler::session session;
+session.start();
+std::thread worker([] {
+    profiler::child_thread_capture enroll;
+    PROFILER_SCOPE("worker");
     // Work inside the enrolled thread.
-}
-profiler::profiler_impl::disableProfilerInChildThread();
+});
+worker.join();
+session.stop();
 ```
 
-Pair enrollment and removal on the same worker and use a scope guard if its
-workload can throw.
+`profiler::child_thread_capture` enrolls on construction and removes the
+worker on destruction. Pair enrollment and removal on the same worker.
 
 ## Reports and hotspots
 
-Include `native/session/profiler_report.h` when calling methods on the report
-object. The umbrella header forward-declares that type.
+Include `profiler.h`. Report and hotspot types are part of that public header.
 
 ```cpp
 // After session.stop(), while session remains alive:
@@ -288,7 +312,7 @@ memory tracking does not automatically instrument arbitrary `malloc`, `new`,
 or every allocation inside a container.
 
 For allocations you own, use the native session tracker while memory tracking
-is enabled (`native/memory/memory_tracker.h`):
+is enabled:
 
 ```cpp
 void* ptr = std::malloc(1024);
@@ -300,8 +324,8 @@ if (ptr) {
 }
 ```
 
-For Kineto allocator events, set `config.profile_memory = true` before enabling
-collection and report the allocator's actual accounting:
+For Kineto allocator events, set `config.profile_memory = true` before starting
+the capture and report the allocator's actual accounting:
 
 ```cpp
 profiler::report_memory_usage(
@@ -317,34 +341,36 @@ prove the process allocated no memory.
 
 ## Kineto capture
 
-Build with `PROFILER_BACKEND=KINETO`. Use the backend API for CPU operators,
-user annotations, event trees, and CUDA correlation:
+Build with `PROFILER_BACKEND=KINETO`. Use the same `profiler::session` and
+`PROFILER_SCOPE` / `PROFILER_OP` as the native pipeline. Do not include Kineto
+headers from application code, and do not name the backend in application code.
 
 ```cpp
 #include "profiler.h"
-#include "bespoke/kineto/profiler_kineto.h"
 
 int main() {
-    using namespace profiler::profiler_impl;
-    const ProfilerConfig config(ProfilerState::KINETO);
-    const std::set<ActivityType> activities{ActivityType::CPU};
-    prepareProfiler(config, activities);
-    enableProfiler(config, activities);
+    profiler::session session;
+    if (!session.start()) return 1;
     {
-        PROFILER_RECORD_USER_SCOPE("request");
+        PROFILER_SCOPE("request");
         {
-            PROFILER_RECORD_FUNCTION("compute");
+            PROFILER_OP("compute");
             // Application work.
         }
     }
-    auto result = disableProfiler();
-    return result && result->save("kineto_trace.json") ? 0 : 1;
+    if (!session.stop()) return 1;
+    return session.write_trace("kineto_trace.json") ? 0 : 1;
 }
 ```
 
-The function macro above produces a `cpu_op`; the user scope produces a
-`user_annotation`. `events()` exposes recorded events, `event_tree()` exposes
-the hierarchy, and `save()` exports Kineto JSON. A trace should be saved once.
+`profiler::capture` remains for backend-only captures (skip native collection).
+`PROFILER_RECORD_USER_SCOPE` / `PROFILER_RECORD_FUNCTION` are aliases of
+`PROFILER_SCOPE` / `PROFILER_OP`.
+
+The function macro above produces a Kineto `cpu_op`; the user scope produces a
+`user_annotation`. Both also record native scopes. `session.events()` exposes
+recorded instrumentation events after `stop()`. Request CUDA device activities
+with `session_options::activities = {profiler::activity::cpu, profiler::activity::cuda}`.
 For arbitrary scalar metadata:
 
 ```cpp
@@ -358,23 +384,24 @@ The builder starts the guard after attaching metadata. Keep the guard alive
 through the operation. This records application metadata, not automatic tensor
 shapes or Python stack frames. C++ and Python language bindings to PyTorch are
 not required. The [HTA guide](hta.md) extends this capture with iteration/rank
-metadata and offline analysis.
+metadata and offline analysis. Attach rank metadata with
+`profiler::add_metadata_json("distributedInfo", R"({"rank": 0, "world_size": 1})")`.
 
 ## ITT, NVTX, and GPU backends
 
-**ITT:** Build with `PROFILER_BACKEND=ITT`, enable `ProfilerState::ITT` through
-the backend session API, and annotate with `PROFILER_RECORD_*`. Launch the
-application under Intel VTune to collect the ranges. Native sessions remain
-available for file exports.
+**ITT:** Build with `PROFILER_BACKEND=ITT`. Use `profiler::session` and the same
+annotation macros. Launch the application under Intel VTune to collect the
+ranges. `write_trace()` falls back to native Chrome Trace because ITT does not
+export a Kineto JSON file.
 
-**NVTX:** In a CUDA/NVTX build, enable `ProfilerState::NVTX`. Ranges become
-visible when running under NVIDIA Nsight. NVTX is a runtime instrumentation
-state, not another value for `PROFILER_BACKEND`. Profiler uses the NVTX C API,
-including the NVTX3 C header when selected by CMake.
+**NVTX:** In a CUDA/NVTX build, start a capture with `capture_backend::nvtx`.
+Ranges become visible when running under NVIDIA Nsight. NVTX is a runtime
+instrumentation state, not another value for `PROFILER_BACKEND`. Profiler uses
+the NVTX C API, including the NVTX3 C header when selected by CMake.
 
-ITT/NVTX `disableProfiler()` returns a result without a Kineto trace;
-`result->save()` returns `false`. Use the external tool's result or a separate
-native capture. For more background, see the [NVTX documentation](https://nvidia.github.io/NVTX/).
+ITT/NVTX `capture_result::save()` returns `false`. Use the external tool's
+result or a separate native capture. For more background, see the
+[NVTX documentation](https://nvidia.github.io/NVTX/).
 
 **CUDA / CUPTI:**
 
@@ -388,9 +415,9 @@ cmake --build build-cuda --config Release --parallel
 
 Use `-DCUDAToolkit_ROOT=/path/to/cuda` if discovery needs help. A toolkit is
 sufficient to compile; a compatible NVIDIA GPU and driver are needed to collect
-real device events. Request both `ActivityType::CPU` and `ActivityType::CUDA`,
+real device events. Request both `profiler::activity::cpu` and `profiler::activity::cuda`,
 annotate the launching CPU operation with `PROFILER_RECORD_FUNCTION`, and
-complete outstanding GPU work before disabling capture. See
+complete outstanding GPU work before stopping capture. See
 [the HTA CUDA workflow](hta.md#capture-cuda-activities).
 
 `KINETO_GPU_FALLBACK` provides event-based timings when available; it is not a
@@ -417,14 +444,16 @@ flowchart LR
 
 | Directory | Responsibility |
 | --- | --- |
-| `common/` | Shared types, public instrumentation, platform utilities |
-| `native/session/` | Session lifecycle, scopes, reports, hierarchy reconstruction |
-| `native/tracing/`, `native/cpu/` | TraceMe recording and host/thread-pool collection |
-| `native/gpu/` | Native GPU collection |
-| `native/exporters/` | XSpace model and timeline serialization |
-| `native/analysis/` | Statistics and native hotspots |
-| `bespoke/common/`, `bespoke/base/` | RecordFunction orchestration and backend observers |
-| `bespoke/kineto/` | Kineto adapter, result/event APIs, export |
+| `Profiler/profiler.h` | Public client API (sessions, reports, capture, macros) |
+| `Profiler/common/` | Shared types, public instrumentation, capture wrapper, platform utilities |
+| `Profiler/native/session/` | Session lifecycle, scopes, reports, hierarchy reconstruction |
+| `Profiler/native/tracing/`, `Profiler/native/cpu/` | TraceMe recording and host/thread-pool collection |
+| `Profiler/native/gpu/` | Native GPU collection |
+| `Profiler/native/exporters/` | XSpace model and timeline serialization |
+| `Profiler/native/analysis/` | Statistics and native hotspots |
+| `Profiler/bespoke/common/`, `Profiler/bespoke/base/` | RecordFunction orchestration and backend observers |
+| `Profiler/bespoke/kineto/` | Kineto adapter (library-internal) |
+| `Profiler/bespoke/itt/` | ITT adapter (library-internal) |
 
 ## Testing and troubleshooting
 
@@ -443,8 +472,8 @@ GPU runtime behavior on GitHub's hosted runners.
 | --- | --- |
 | Missing dependency files | Initialize recursive submodules; check `PROFILER_THIRD_PARTY_DIR` |
 | Empty native trace | Check `start()`; use native scope macros; end scopes and join workers before `stop()` |
-| Empty Kineto trace | Prepare/enable Kineto; use `PROFILER_RECORD_*`; disable before saving |
-| Missing worker events in Kineto | Enroll each child thread while the main capture is active |
+| Empty Kineto trace | Start `profiler::session` on a Kineto build; use `PROFILER_SCOPE` / `PROFILER_OP`; `stop()` before `write_trace()` |
+| Missing worker events in Kineto | Enroll each child thread with `profiler::child_thread_capture` while the main capture is active |
 | No GPU events | Check toolkit, driver/device, requested activities, and whether GPU work ran during collection |
 | HTA parser errors | Use Kineto JSON; see [HTA troubleshooting](hta.md#troubleshooting) |
 | No memory events | Enable memory tracking and supply allocation hooks for the selected pipeline |
@@ -473,18 +502,20 @@ ctest --test-dir build-coverage --output-on-failure
 IGNORE=inconsistent,unsupported,format,count,unused,corrupt,empty
 lcov --capture --directory build-coverage --output-file coverage.info \
   --ignore-errors "${IGNORE}"
-lcov --remove coverage.info \
-  '*/third_party/*' '*/_deps/*' '/usr/*' '*/Testing/*' '*/build-coverage/*' \
+lcov --extract coverage.info '*/Profiler/Profiler/*' \
   --output-file coverage.filtered.info --ignore-errors "${IGNORE}"
 genhtml coverage.filtered.info --output-directory coverage-html \
   --ignore-errors "${IGNORE},category"
 open coverage-html/index.html  # Linux: xdg-open
 ```
 
-`--ignore-errors` suppresses lcov's function-end-line warnings from heavily
-templated/inlined code (a known lcov limitation, harmless to line/function hit
-counts) — it does not hide real coverage gaps. Only the `Profiler` target is
-instrumented, so the report reflects library code, not the test suite itself.
+`--extract` keeps only first-party sources under `Profiler/`. Toolchain headers
+(LLVM libc++, libstdc++, Apple SDK) and `third_party/` are omitted even when
+gcov records them from inlined templates. `--ignore-errors` suppresses lcov's
+function-end-line warnings from heavily templated/inlined code (a known lcov
+limitation, harmless to line/function hit counts) — it does not hide real
+coverage gaps. Only the `Profiler` target is instrumented, so the report
+reflects library code, not the test suite itself.
 CI runs this on Ubuntu with GCC and uploads the HTML report as a workflow
 artifact; it is not gated on a coverage threshold.
 

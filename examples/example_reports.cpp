@@ -5,13 +5,12 @@
 #include <iostream>
 
 #include "profiler.h"
-#include "native/session/profiler_report.h"
 
 namespace
 {
 double compute()
 {
-    PROFILER_PROFILE_FUNCTION();
+    PROFILER_FUNCTION();
     double sum = 0.0;
     for (int i = 0; i < 20000; ++i)
     {
@@ -25,7 +24,7 @@ int main(int argc, char** argv)
 {
     const std::filesystem::path output = argc > 1 ? argv[1] : "reports";
     std::filesystem::create_directories(output);
-    profiler::profiler_session session;
+    profiler::session session;
     if (!session.start())
     {
         std::cerr << "Could not start the profiling session\n";
@@ -33,10 +32,10 @@ int main(int argc, char** argv)
     }
     double checksum = 0.0;
     {
-        PROFILER_PROFILE_SCOPE("workload");
+        PROFILER_SCOPE("workload");
         for (int i = 0; i < 4; ++i)
         {
-            PROFILER_PROFILE_SCOPE("pass");
+            PROFILER_SCOPE("pass");
             checksum += compute();
         }
     }
@@ -56,7 +55,7 @@ int main(int argc, char** argv)
         std::cerr << "Could not write a report to " << output << '\n';
         return 1;
     }
-    auto hotspots = session.generate_hotspot_report();
+    auto          hotspots = session.generate_hotspot_report();
     std::ofstream hotspot_file(output / "hotspots.txt");
     hotspot_file << hotspots->table();
     hotspot_file.close();
@@ -67,6 +66,7 @@ int main(int argc, char** argv)
     }
     std::cout << "checksum=" << checksum << '\n' << hotspots->table();
     std::cout << "Wrote native_trace.json, report.txt, report.json, report.csv, "
-                 "report.xml and hotspots.txt to " << output.string() << '\n';
+                 "report.xml and hotspots.txt to "
+              << output.string() << '\n';
     return 0;
 }

@@ -358,6 +358,7 @@ PROFILER_API std::optional<StepCallbacks> getStepCallbacksUnlessEmpty(RecordScop
 
 // PROFILER_RECORD_* (not RECORD_*) so these do not collide with LibTorch's
 // ATen/record_function.h macros of the same unprefixed names.
+#ifndef PROFILER_RECORD_FUNCTION_WITH_SCOPE
 #define PROFILER_RECORD_FUNCTION_WITH_SCOPE(scope, fn) \
     profiler::RecordFunction guard(scope);             \
     guard.setSourceLocation(__FILE__, __LINE__);       \
@@ -365,12 +366,17 @@ PROFILER_API std::optional<StepCallbacks> getStepCallbacksUnlessEmpty(RecordScop
     {                                                  \
         guard.before(fn);                              \
     }
+#endif
 
+#ifndef PROFILER_RECORD_FUNCTION
 #define PROFILER_RECORD_FUNCTION(fn) \
     PROFILER_RECORD_FUNCTION_WITH_SCOPE(profiler::RecordScope::FUNCTION, fn)
+#endif
 
+#ifndef PROFILER_RECORD_USER_SCOPE
 #define PROFILER_RECORD_USER_SCOPE(fn) \
     PROFILER_RECORD_FUNCTION_WITH_SCOPE(profiler::RecordScope::USER_SCOPE, fn)
+#endif
 
 /**
  * @brief Fluent builder for attaching structured metadata to a RecordFunction

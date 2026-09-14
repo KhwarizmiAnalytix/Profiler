@@ -15,5 +15,5 @@ Checks: >
   readability-container-size-empty,
   -bugprone-easily-swappable-parameters,
   -bugprone-implicit-widening-of-multiplication-result,
-HeaderFilterRegex: '^(common|native|bespoke|util)/'
+HeaderFilterRegex: '^Profiler/(common|native|bespoke|util)/'
 FormatStyle: file

@@ -850,7 +850,7 @@ FORWARD_FROM_RESULT(activityType, kinetoType())
 // materialized from real Kineto activity data, so this is never meaningfully
 // called -- provide a default rather than omitting the symbol, since
 // activityType() is part of KinetoEvent's unconditionally-declared public API.
-// Mirrors libkineto::ActivityType::ENUM_COUNT (ThirdParty/kineto/libkineto/
+// Mirrors libkineto::ActivityType::ENUM_COUNT (third_party/kineto/libkineto/
 // include/ActivityType.h), documented there as "not used for any profiling
 // logic" -- an explicit out-of-band sentinel, not 0, since 0 is the real,
 // commonly-matched ActivityType::CPU_OP and would be indistinguishable from a

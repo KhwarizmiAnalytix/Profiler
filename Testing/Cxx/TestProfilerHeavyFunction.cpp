@@ -21,7 +21,7 @@
  * ranges, and (when LibTorch is on) torch::autograd::profiler over the same
  * computational workloads (matrix, Monte Carlo, FFT).
  *
- * API and pipeline docs: Docs/profiler/profiler.md
+ * API and pipeline docs: docs/profiler.md
  */
 
 #include <algorithm>

@@ -1,6 +1,6 @@
 /**
- * Minimal standalone app: profile a loop and write a Chrome / Perfetto trace.
- * This is the integration shape any other repository should copy.
+ * Minimal standalone app: one session, one set of macros, one trace file.
+ * Native collection and the compiled Kineto/ITT backend run together.
  */
 
 #include <cmath>
@@ -13,7 +13,7 @@ namespace
 
 double busy_work(int n)
 {
-    PROFILER_PROFILE_FUNCTION();
+    PROFILER_FUNCTION();
     double acc = 0.0;
     for (int i = 0; i < n; ++i)
     {
@@ -26,33 +26,33 @@ double busy_work(int n)
 
 int main()
 {
-    profiler::profiler_session session;
+    profiler::session session;
     if (!session.start())
     {
-        std::cerr << "profiler_session::start failed\n";
+        std::cerr << "profiler::session::start failed\n";
         return 1;
     }
 
     double total = 0.0;
     {
-        PROFILER_PROFILE_SCOPE("workload");
+        PROFILER_SCOPE("workload");
         for (int pass = 0; pass < 4; ++pass)
         {
-            PROFILER_PROFILE_SCOPE("pass");
+            PROFILER_SCOPE("pass");
             total += busy_work(20000);
         }
     }
 
     if (!session.stop())
     {
-        std::cerr << "profiler_session::stop failed\n";
+        std::cerr << "profiler::session::stop failed\n";
         return 1;
     }
 
     const char* path = "quickstart_trace.json";
-    if (!session.write_chrome_trace(path))
+    if (!session.write_trace(path))
     {
-        std::cerr << "write_chrome_trace failed\n";
+        std::cerr << "write_trace failed\n";
         return 1;
     }
 

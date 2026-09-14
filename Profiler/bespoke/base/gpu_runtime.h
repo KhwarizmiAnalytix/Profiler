@@ -2,8 +2,8 @@
 
 // CUDA / HIP runtime portability for the profiler's device-event fallback
 // stub (bespoke/base/cuda.cpp). Call sites keep CUDA API spellings; HIP
-// builds map them to hip*. Mirrors Library/Memory/gpu/gpu_runtime.h's
-// technique so the two libraries stay consistent.
+// builds map them to hip*. Uses the usual CUDA-vs-HIP typedef/macro
+// spelling so call sites keep CUDA API names.
 //
 // Include only when PROFILER_HAS_CUDA || PROFILER_HAS_HIP.
 

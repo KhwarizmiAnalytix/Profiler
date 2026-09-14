@@ -38,8 +38,8 @@ existing GoogleTest target or checkout is available.
 
 To reuse existing sources, pass
 `-DPROFILER_THIRD_PARTY_DIR=/path/to/dependencies`, where the directory contains
-`fmt/`, `kineto/`, and `ittapi/`. A parent XSigma build can provide its own
-third-party directory and targets.
+`fmt/`, `kineto/`, and `ittapi/`. A parent project that `add_subdirectory`s
+this tree can pass `PROFILER_THIRD_PARTY_DIR` to reuse its own copies.
 
 ## Update dependency pins
 

@@ -9,6 +9,7 @@
 *.user
 .DS_Store
 consumer_trace.json
+quickstart_trace.json
 
 # FetchContent-only checkouts (git submodules fmt/kineto/ittapi are tracked)
 /third_party/googletest/

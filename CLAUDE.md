@@ -1,7 +1,7 @@
 # Profiler
 
-Standalone C++ profiler for any repository. Public header: `profiler.h`.
-CMake target: `Profiler::Profiler`. Repo:
+Standalone C++ profiler for any repository. Public header: `profiler.h`
+(in `Profiler/`). CMake target: `Profiler::Profiler`. Repo:
 https://github.com/KhwarizmiAnalytix/Profiler
 
 External projects use `find_package(Profiler)` or FetchContent. Do not add a

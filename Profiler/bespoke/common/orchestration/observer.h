@@ -5,34 +5,8 @@
 
 #include "bespoke/base/thread_local_debug_info.h"
 #include "bespoke/common/record_function.h"
+#include "common/device.h"
 #include "common/profiler_export.h"
-//#include "common/device.h"
-
-namespace profiler
-{
-enum class device_enum : int16_t
-{
-    CPU         = 0,
-    CUDA        = 1,
-    HIP         = 2,
-    PrivateUse1 = 3
-};
-
-struct device_option
-{
-    using int_t        = int16_t;
-    int_t       index_ = -1;
-    device_enum type_{};
-
-    device_enum type() const noexcept { return type_; }
-    int_t       index() const noexcept { return index_; }
-
-    bool operator==(const device_option& other) const noexcept
-    {
-        return type_ == other.type_ && index_ == other.index_;
-    }
-};
-}  // namespace profiler
 
 namespace profiler::profiler_impl::impl
 {
@@ -84,98 +58,96 @@ enum class PROFILER_VISIBILITY_ENUM ActiveProfilerType
 
 struct PROFILER_VISIBILITY ExperimentalConfig
 {
-    PROFILER_API ExperimentalConfig(
-        std::vector<std::string> profiler_metrics             = {},
-        bool                     profiler_measure_per_kernel  = false,
-        bool                     verbose                      = false,
-        std::vector<std::string> performance_events           = {},
-        bool                     enable_cuda_sync_events      = false,
-        bool                     adjust_profiler_step         = false,
-        bool                     disable_external_correlation = false,
-        bool                     profile_all_threads          = false,
-        bool                     capture_overload_names       = false,
-        bool                     record_python_gc_info        = false,
-        bool                     expose_kineto_event_metadata = false,
-        std::string              custom_profiler_config       = "",
-        bool                     adjust_timestamps            = false);
+    PROFILER_API          ExperimentalConfig(std::vector<std::string> profiler_metrics    = {},
+        bool                                                 profiler_measure_per_kernel  = false,
+        bool                                                 verbose                      = false,
+        std::vector<std::string>                             performance_events           = {},
+        bool                                                 enable_cuda_sync_events      = false,
+        bool                                                 adjust_profiler_step         = false,
+        bool                                                 disable_external_correlation = false,
+        bool                                                 profile_all_threads          = false,
+        bool                                                 capture_overload_names       = false,
+        bool                                                 record_python_gc_info        = false,
+        bool                                                 expose_kineto_event_metadata = false,
+        std::string                                          custom_profiler_config       = "",
+        bool                                                 adjust_timestamps            = false);
     PROFILER_API explicit operator bool() const;
 
     std::vector<std::string> profiler_metrics;
     bool                     profiler_measure_per_kernel;
     bool                     verbose;
     /*
-   * List of performance events to be profiled.
-   * An empty list will disable performance event based profiling altogether.
-   */
+     * List of performance events to be profiled.
+     * An empty list will disable performance event based profiling altogether.
+     */
     std::vector<std::string> performance_events;
     /*
-   * For CUDA profiling mode, enable adding CUDA synchronization events
-   * that expose CUDA device, stream and event synchronization activities.
-   * This feature is new and currently disabled by default.
-   */
+     * For CUDA profiling mode, enable adding CUDA synchronization events
+     * that expose CUDA device, stream and event synchronization activities.
+     * This feature is new and currently disabled by default.
+     */
     bool enable_cuda_sync_events;
     /*
-   * Controls whether or not timestamp adjustment for ProfilerStep and parent
-   * Python events occurs after profiling. This occurs at an O(n) cost and
-   * affects only the start of profiler step events.
-   */
+     * Controls whether or not timestamp adjustment for ProfilerStep and parent
+     * Python events occurs after profiling. This occurs at an O(n) cost and
+     * affects only the start of profiler step events.
+     */
     bool adjust_profiler_step;
     /*
-   * Controls whether or not external correlation is disabled. This is used to
-   * lower the amount of events received by CUPTI as correlation events are
-   * paired with runtime/gpu events for each kind of correlation
-   */
+     * Controls whether or not external correlation is disabled. This is used to
+     * lower the amount of events received by CUPTI as correlation events are
+     * paired with runtime/gpu events for each kind of correlation
+     */
     bool disable_external_correlation;
 
     /* controls whether profiler records cpu events on threads
-   * that are not spawned from the main thread on which the
-   * profiler was enabled, similar to on_demand mode */
+     * that are not spawned from the main thread on which the
+     * profiler was enabled, similar to on_demand mode */
     bool profile_all_threads;
 
     /* controls whether overload names are queried from an Profiler
-   * function schema and stored in the profile  */
+     * function schema and stored in the profile  */
     bool capture_overload_names;
 
     /*
-   * Controls whether or not python gc info is recorded. This is used to
-   * determine if gc collect is slowing down your profile.
-   */
+     * Controls whether or not python gc info is recorded. This is used to
+     * determine if gc collect is slowing down your profile.
+     */
     bool record_python_gc_info;
 
     /* controls whether KinetoEvent metadata is exposed to FunctionEvent
-   * in the Profiler Profiler as a JSON string */
+     * in the Profiler Profiler as a JSON string */
     bool expose_kineto_event_metadata;
 
     /*
-   * A custom_profiler_config option is introduced to allow custom backends
-   * to apply custom configurations as needed.
-   */
+     * A custom_profiler_config option is introduced to allow custom backends
+     * to apply custom configurations as needed.
+     */
     std::string custom_profiler_config;
 
     /*
-   * Controls whether or not timestamp adjustment occurs after profiling.
-   * The purpose of this is to adjust Vulkan event timelines to align with those
-   * of their parent CPU events.
-   * This sometimes requires increasing CPU event durations (to fully contain
-   * their child events) and delaying CPU event start times (to
-   * prevent overlaps), so this should not be used unless Vulkan events are
-   * being profiled and it is ok to use this modified timestamp/duration
-   * information instead of the original information.
-   */
+     * Controls whether or not timestamp adjustment occurs after profiling.
+     * The purpose of this is to adjust Vulkan event timelines to align with those
+     * of their parent CPU events.
+     * This sometimes requires increasing CPU event durations (to fully contain
+     * their child events) and delaying CPU event start times (to
+     * prevent overlaps), so this should not be used unless Vulkan events are
+     * being profiled and it is ok to use this modified timestamp/duration
+     * information instead of the original information.
+     */
     bool adjust_timestamps;
 };
 
 struct PROFILER_VISIBILITY ProfilerConfig
 {
-    PROFILER_API explicit ProfilerConfig(
-        ProfilerState      state,
-        bool               report_input_shapes = false,
-        bool               profile_memory      = false,
-        bool               with_stack          = false,
-        bool               with_flops          = false,
-        bool               with_modules        = false,
-        ExperimentalConfig experimental_config = ExperimentalConfig(),
-        std::string        trace_id            = "");
+    PROFILER_API explicit ProfilerConfig(ProfilerState state,
+        bool                                           report_input_shapes = false,
+        bool                                           profile_memory      = false,
+        bool                                           with_stack          = false,
+        bool                                           with_flops          = false,
+        bool                                           with_modules        = false,
+        ExperimentalConfig                             experimental_config = ExperimentalConfig(),
+        std::string                                    trace_id            = "");
 
     PROFILER_API bool disabled() const;
     PROFILER_API bool global() const;
@@ -194,19 +166,18 @@ struct PROFILER_VISIBILITY ProfilerConfig
 struct PROFILER_VISIBILITY MemoryReportingInfoBase : public DebugInfoBase
 {
     /**
-   * alloc_size corresponds to the size of the ptr.
-   *
-   * total_allocated corresponds to total allocated memory.
-   *
-   * total_reserved corresponds to total size of memory pool, both used and
-   * unused, if applicable.
-   */
-    virtual void reportMemoryUsage(
-        void*                   ptr,
-        int64_t                 alloc_size,
-        size_t                  total_allocated,
-        size_t                  total_reserved,
-        profiler::device_option device) = 0;
+     * alloc_size corresponds to the size of the ptr.
+     *
+     * total_allocated corresponds to total allocated memory.
+     *
+     * total_reserved corresponds to total size of memory pool, both used and
+     * unused, if applicable.
+     */
+    virtual void reportMemoryUsage(void* ptr,
+        int64_t                          alloc_size,
+        size_t                           total_allocated,
+        size_t                           total_reserved,
+        profiler::device_option          device) = 0;
 
     virtual void reportOutOfMemory(
         int64_t alloc_size, size_t total_allocated, size_t total_reserved, device_option device) {};

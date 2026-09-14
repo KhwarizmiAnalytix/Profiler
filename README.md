@@ -12,7 +12,10 @@ available; Kineto or Intel ITT provides additional instrumentation. CUDA builds
 can collect Kineto device activities through CUPTI.
 
 Link **`Profiler::Profiler`**, include **`profiler.h`**, and use the **`profiler`**
-namespace. No LibTorch, TensorFlow runtime, or Python dependency is required
+namespace. Start `profiler::session` and annotate with `PROFILER_SCOPE` /
+`PROFILER_FUNCTION`. Native collection and the compiled Kineto or ITT backend
+run together; do not include `native/`, `bespoke/kineto/`, or `bespoke/itt/`
+headers. No LibTorch, TensorFlow runtime, or Python dependency is required
 for the C++ library. Python is optional for offline Holistic Trace Analysis (HTA).
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
@@ -65,14 +68,14 @@ For reproducible builds, replace `main` with a reviewed commit SHA.
 #include "profiler.h"
 
 int main() {
-    profiler::profiler_session session;
+    profiler::session session;
     if (!session.start()) return 1;
     {
-        PROFILER_PROFILE_SCOPE("work");
-        // Your workload. Add nested scopes or PROFILER_PROFILE_FUNCTION().
-    } // Finish the scope before stopping collection.
+        PROFILER_SCOPE("work");
+        // Your workload. Add nested scopes or PROFILER_FUNCTION().
+    }
     if (!session.stop()) return 1;
-    return session.write_chrome_trace("trace.json") ? 0 : 1;
+    return session.write_trace("trace.json") ? 0 : 1;
 }
 ```
 
@@ -84,15 +87,9 @@ An installed package is also supported with
 
 | Need | Capture / export | Read it with |
 | --- | --- | --- |
-| CPU timeline and nested scopes | Native `profiler_session` → `write_chrome_trace()` | Perfetto / Chrome Trace viewer |
-| CPU hotspots, counts, inclusive and self time | `generate_hotspot_report()` | Console tables |
-| Session summary and hierarchy | `generate_report()` | Text, JSON, CSV, XML |
-| Kineto CPU / CUDA activity trace | `prepareProfiler()` + `enableProfiler()` → `ProfilerResult::save()` | Perfetto or HTA |
-| VTune / Nsight ranges | ITT / NVTX state + `PROFILER_RECORD_*` | External profiler |
-
-Native scope macros and Kineto/ITT record macros feed separate captures.
-Use the [backend guide](docs/profiler.md#choose-a-capture-pipeline) to select the
-right one. HTA consumes the Kineto export, not the native session report.
+| CPU timeline, nested scopes, hotspots, reports | `profiler::session` + `PROFILER_SCOPE` | Perfetto, console, JSON/CSV/XML |
+| Kineto / HTA operator trace | Same session; `write_trace()` on a Kineto build | Perfetto or HTA |
+| VTune / Nsight ranges | Same session on an ITT or NVTX build | External profiler |
 
 ## Holistic Trace Analysis
 

@@ -2,37 +2,42 @@
 # https://github.com/KhwarizmiAnalytix/coverage-tool
 
 [coverage]
-filter = "."
-source_folder = "."
+filter = "Profiler"
+source_folder = "Profiler"
 output_format = "html-and-json"
 coverage_report_dir = "coverage_report"
 # Profiler builds one flat library (libProfiler.*) + one test executable
-# (ProfilerCxxTests) rather than XSigma's per-directory Library/<Module>
-# layout. Without this override, discover_modules() treats each top-level
-# source subdirectory (bespoke, common, consumer, native, util, ...) as its
-# own "module" and looks for a matching lib<dir>.* + <dir>CxxTests, none of
-# which exist. The GCC/lcov backend ignores `modules` (it captures the whole
-# build directory) so that path doesn't need this, but the Clang/LLVM backend
-# (the default for local dev) needs the explicit override to find the real
-# library and test binary.
+# (ProfilerCxxTests). Source lives under Profiler/. The Clang/LLVM backend
+# (the default for local dev) needs `modules` to find the real library and
+# test binary. The GCC/lcov backend ignores `modules` (it captures the whole
+# build directory).
 modules = ["Profiler"]
 
 [coverage.exclude]
 patterns = [
-    # Profiler's vendored-code directory is "third_party" (lowercase, as
-    # used by this repo); it has no "ThirdParty" (XSigma-style) directory.
-    # lcov treats an exclude pattern that matches nothing in coverage.info as
-    # a hard error ("'exclude' pattern '...' is unused") rather than a no-op,
-    # so an XSigma-style "*ThirdParty*" pattern here breaks `lcov --remove`
-    # on every run instead of silently doing nothing.
+    # Keep the lcov/gcov report on first-party library sources under
+    # Profiler/. Toolchain and vendored trees are captured by gcov because
+    # they are inlined into instrumented TUs; they are not Profiler code.
     "*third_party*",
     "*Testing*",
     "/usr/*",
     "*_deps*",
+    "/opt/homebrew/*",
+    "/opt/llvm/*",
+    "/Library/Developer/*",
+    "/Applications/Xcode*",
+    "*/Cellar/llvm/*",
+    "*/include/c++/*",
+    "*/c++/v1/*",
 ]
 llvm_ignore_regex = [
     ".*Testing[/\\\\].*",
     ".*third_party[/\\\\].*",
+    ".*/opt/homebrew/.*",
+    ".*/llvm/.*",
+    ".*/c\\+\\+/v1/.*",
+    ".*/include/c\\+\\+/.*",
+    ".*/Library/Developer/.*",
 ]
 
 [coverage.gcc]
@@ -42,8 +47,9 @@ llvm_ignore_regex = [
 # lcov+gcov combination (confirmed with LCOV version 2.5-0) even for a
 # Clang-built --coverage binary processed through the lcov/gcov backend.
 # docs/profiler.md's own manual lcov recipe already documents this exact
-# ignore-list; mirrored here so `coverage-tool`/Scripts/setup.py's coverage
-# step doesn't hard-fail on the same known-harmless lcov limitation.
+# ignore-list. Scripts/setup.py applies it to every lcov invocation, including
+# `lcov --remove` (coverage-tool 2026.9.14 only passes --ignore-errors on
+# capture).
 lcov_ignore_errors = [
     "inconsistent",
     "unsupported",

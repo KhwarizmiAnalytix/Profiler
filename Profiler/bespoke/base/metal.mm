@@ -31,7 +31,7 @@ struct MetalMethods : public ProfilerStubs
     {
         if (device != nullptr)
         {
-            *device = 0;  // XSigma's Metal support targets a single GPU.
+            *device = 0;  // Metal support currently targets a single GPU.
         }
         auto now = std::make_shared<metal_clock::time_point>(metal_clock::now());
         if (cpu_ns != nullptr)
@@ -62,7 +62,7 @@ struct MetalMethods : public ProfilerStubs
 
     void onEachDevice(std::function<void(int)> op) const override
     {
-        op(0);  // Single Metal device, matching the rest of XSigma's Metal support.
+        op(0);  // Single Metal device.
     }
 
     void synchronize() const override
@@ -82,7 +82,7 @@ struct RegisterMetalMethods
         // Metal is a generic vendor-agnostic fallback like any other
         // PrivateUse1-style backend -- reuses that slot rather than adding a
         // first-class device_enum/ActivityType/ProfilerState member (see
-        // Docs/profiler/profiler.md, GPU section).
+        // docs/profiler.md, GPU section).
         registerPrivateUse1Methods(&methods);
     }
 };

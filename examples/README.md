@@ -13,7 +13,7 @@ For Visual Studio builds, executables are in `build/bin/Release/` and end in
 
 | Example | Purpose | Files written |
 | --- | --- | --- |
-| [example_quickstart.cpp](example_quickstart.cpp) | Minimal native integration | `quickstart_trace.json` in the working directory |
+| [example_quickstart.cpp](example_quickstart.cpp) | Minimal native integration; include `profiler.h` only | `quickstart_trace.json` in the working directory |
 | [example_reports.cpp](example_reports.cpp) | One native capture, all report formats and hotspots | `native_trace.json`, `report.txt`, `report.json`, `report.csv`, `report.xml`, `hotspots.txt` in the selected directory |
 | [example_hta.cpp](example_hta.cpp) | Kineto CPU capture with rank metadata and iteration markers; requires the Kineto build | `rank0.json` in the selected directory |
 | [example_profiling_basic.cpp](example_profiling_basic.cpp) | Larger matrix, FFT, and Monte Carlo demonstrations for compiled backends | Native / backend demonstration traces in the working directory |

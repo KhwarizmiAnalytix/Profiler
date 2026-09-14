@@ -1,5 +1,5 @@
 # =============================================================================
-# Profiler Profiler Library (matches Library/Profiler/CMakeLists.txt backend splits)
+# Profiler library (matches CMakeLists.txt backend splits)
 # =============================================================================
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("//bazel:profiler.bzl", "profiler_copts", "profiler_defines", "profiler_linkopts")
@@ -9,23 +9,23 @@ package(default_visibility = ["//visibility:public"])
 # KINETO backend: bespoke/base, bespoke/kineto, bespoke/common (no unwind)
 _KINETO_BACKEND_SRCS = glob(
     [
-        "kineto_*.cpp",
-        "kineto/**/*.cpp",
-        "bespoke/kineto/**/*.cpp",
-        "bespoke/common/**/*.cpp",
-        "bespoke/base/**/*.cpp",
+        "Profiler/kineto_*.cpp",
+        "Profiler/kineto/**/*.cpp",
+        "Profiler/bespoke/kineto/**/*.cpp",
+        "Profiler/bespoke/common/**/*.cpp",
+        "Profiler/bespoke/base/**/*.cpp",
     ],
     exclude = [
-        "bespoke/common/unwind/**/*.cpp",
+        "Profiler/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
 )
 
 # ITT backend (when PROFILER_ENABLE_ITT and not KINETO): base + common + itt.
-# bespoke/kineto/kineto_shim.{h,cpp} is included even though this isn't the Kineto backend:
-# bespoke/common/collection.{h,cpp} #include "bespoke/kineto/kineto_shim.h" unconditionally
-# (matches CMakeLists.txt:337-349).
+# Profiler/bespoke/kineto/kineto_shim.{h,cpp} is included even though this isn't the Kineto backend:
+# Profiler/bespoke/common/collection.{h,cpp} #include "bespoke/kineto/kineto_shim.h" unconditionally
+# (matches CMakeLists.txt).
 # profiler_kineto.{h,cpp} is also included: it is the shared enableProfiler/
 # disableProfiler orchestration layer for every backend (Kineto, ITT, NVTX,
 # PRIVATEUSE1), not just Kineto -- its ITT dispatch branch is internally
@@ -34,15 +34,15 @@ _KINETO_BACKEND_SRCS = glob(
 # `#if PROFILER_HAS_KINETO`) but is harmlessly inert without it.
 _ITT_BACKEND_SRCS = glob(
     [
-        "bespoke/base/**/*.cpp",
-        "bespoke/common/**/*.cpp",
-        "bespoke/itt/**/*.cpp",
-        "bespoke/kineto/kineto_shim.cpp",
-        "bespoke/kineto/profiler_kineto.cpp",
-        "bespoke/kineto/kineto_client_interface.cpp",
+        "Profiler/bespoke/base/**/*.cpp",
+        "Profiler/bespoke/common/**/*.cpp",
+        "Profiler/bespoke/itt/**/*.cpp",
+        "Profiler/bespoke/kineto/kineto_shim.cpp",
+        "Profiler/bespoke/kineto/profiler_kineto.cpp",
+        "Profiler/bespoke/kineto/kineto_client_interface.cpp",
     ],
     exclude = [
-        "bespoke/common/unwind/**/*.cpp",
+        "Profiler/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
@@ -50,11 +50,11 @@ _ITT_BACKEND_SRCS = glob(
 
 _KINETO_BACKEND_HDRS = glob(
     [
-        "kineto_*.h",
-        "kineto/**/*.h",
-        "bespoke/kineto/**/*.h",
-        "bespoke/common/**/*.h",
-        "bespoke/base/**/*.h",
+        "Profiler/kineto_*.h",
+        "Profiler/kineto/**/*.h",
+        "Profiler/bespoke/kineto/**/*.h",
+        "Profiler/bespoke/common/**/*.h",
+        "Profiler/bespoke/base/**/*.h",
     ],
     exclude = ["Testing/**"],
     allow_empty = True,
@@ -62,12 +62,12 @@ _KINETO_BACKEND_HDRS = glob(
 
 _ITT_BACKEND_HDRS = glob(
     [
-        "bespoke/base/**/*.h",
-        "bespoke/common/**/*.h",
-        "bespoke/itt/**/*.h",
-        "bespoke/kineto/kineto_shim.h",
-        "bespoke/kineto/profiler_kineto.h",
-        "bespoke/kineto/kineto_client_interface.h",
+        "Profiler/bespoke/base/**/*.h",
+        "Profiler/bespoke/common/**/*.h",
+        "Profiler/bespoke/itt/**/*.h",
+        "Profiler/bespoke/kineto/kineto_shim.h",
+        "Profiler/bespoke/kineto/profiler_kineto.h",
+        "Profiler/bespoke/kineto/kineto_client_interface.h",
     ],
     exclude = ["Testing/**"],
     allow_empty = True,
@@ -77,13 +77,13 @@ filegroup(
     name = "profiler_hdrs",
     srcs = glob(
         [
-            "*.h",
-            "**/*.h",
+            "Profiler/*.h",
+            "Profiler/**/*.h",
         ],
         exclude = [
             "Testing/**",
-            "native/**",
-            "bespoke/**",
+            "Profiler/native/**",
+            "Profiler/bespoke/**",
         ],
         allow_empty = True,
     ),
@@ -93,14 +93,14 @@ filegroup(
     name = "profiler_srcs",
     srcs = glob(
         [
-            "*.cpp",
-            "**/*.cpp",
+            "Profiler/*.cpp",
+            "Profiler/**/*.cpp",
         ],
         exclude = [
-            "native/**/*.cpp",
-            "bespoke/**",
-            "kineto_*.cpp",
-            "kineto/**/*.cpp",
+            "Profiler/native/**/*.cpp",
+            "Profiler/bespoke/**",
+            "Profiler/kineto_*.cpp",
+            "Profiler/kineto/**/*.cpp",
             "Testing/**",
         ],
         allow_empty = True,
@@ -108,12 +108,11 @@ filegroup(
 )
 
 # cc_library srcs don't accept .mm without rules_apple. Copy to a .cc suffix and compile
-# as Objective-C++ in a dedicated target so ARC copts don't leak onto plain C++ TUs
-# (same split as //Library/Memory:memory_metal_objcxx).
+# as Objective-C++ in a dedicated target so ARC copts don't leak onto plain C++ TUs.
 copy_file(
     name = "metal_gpu_probe_objcxx",
-    src = "native/gpu/metal_gpu_probe.mm",
-    out = "native/gpu/metal_gpu_probe_mm.cc",
+    src = "Profiler/native/gpu/metal_gpu_probe.mm",
+    out = "Profiler/native/gpu/metal_gpu_probe_mm.cc",
 )
 
 cc_library(
@@ -124,7 +123,7 @@ cc_library(
     }),
     hdrs = [
         ":profiler_hdrs",
-    ] + glob(["native/**/*.h", "native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True),
+    ] + glob(["Profiler/native/**/*.h", "Profiler/native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True),
     copts = profiler_copts() + select({
         "//bazel:enable_metal": [
             "-x",
@@ -138,7 +137,7 @@ cc_library(
         "//bazel:shared_libs": ["PROFILER_SHARED_DEFINE", "PROFILER_BUILDING_DLL"],
         "//conditions:default": ["PROFILER_STATIC_DEFINE"],
     }),
-    includes = ["."],
+    includes = ["Profiler"],
     linkopts = profiler_linkopts(),
     visibility = ["//visibility:public"],
     alwayslink = True,
@@ -152,8 +151,8 @@ cc_library(
 # copy_file .mm→.cc technique as metal_gpu_probe_objcxx.
 copy_file(
     name = "metal_stub_objcxx",
-    src = "bespoke/base/metal.mm",
-    out = "bespoke/base/metal_mm.cc",
+    src = "Profiler/bespoke/base/metal.mm",
+    out = "Profiler/bespoke/base/metal_mm.cc",
 )
 
 cc_library(
@@ -164,7 +163,7 @@ cc_library(
     }),
     hdrs = [
         ":profiler_hdrs",
-    ] + glob(["bespoke/base/*.h"], allow_empty = True),
+    ] + glob(["Profiler/bespoke/base/*.h"], allow_empty = True),
     copts = profiler_copts() + select({
         "//bazel:enable_metal": [
             "-x",
@@ -178,7 +177,7 @@ cc_library(
         "//bazel:shared_libs": ["PROFILER_SHARED_DEFINE", "PROFILER_BUILDING_DLL"],
         "//conditions:default": ["PROFILER_STATIC_DEFINE"],
     }),
-    includes = ["."],
+    includes = ["Profiler"],
     linkopts = profiler_linkopts(),
     visibility = ["//visibility:public"],
     alwayslink = True,
@@ -188,13 +187,13 @@ cc_library(
     name = "Profiler",
     srcs = [
         ":profiler_srcs",
-    ] + glob(["native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
+    ] + glob(["Profiler/native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
         "//bazel:enable_itt": _ITT_BACKEND_SRCS,
         "//conditions:default": _KINETO_BACKEND_SRCS,
     }),
     hdrs = [
         ":profiler_hdrs",
-    ] + glob(["native/**/*.h", "native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True) + select({
+    ] + glob(["Profiler/native/**/*.h", "Profiler/native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True) + select({
         "//bazel:enable_itt": _ITT_BACKEND_HDRS,
         "//conditions:default": _KINETO_BACKEND_HDRS,
     }),
@@ -204,7 +203,7 @@ cc_library(
         "//conditions:default": ["PROFILER_STATIC_DEFINE"],
     }),
     includes = [
-        ".",
+        "Profiler",
     ],
     linkopts = profiler_linkopts(),
     linkstatic = select({
@@ -212,12 +211,6 @@ cc_library(
         "//conditions:default": True,
     }),
     deps = [
-        # No //Library/Core dependency: nothing under bespoke/ or native/ actually
-        # includes a Core header (verified by grep and a Core-less build); CMake's
-        # CMakeLists.txt never linked Core either. A prior Core dep here was
-        # vestigial and, left in place, would create a Memory -> Profiler -> Core
-        # -> Memory cycle once Memory takes a Profiler dependency (see
-        # Docs/profiler/profiler.md, Instrumentation).
         "@fmt//:fmt",
     ] + select({
         "//bazel:enable_itt": ["@ittapi//:ittnotify"],

@@ -22,7 +22,7 @@
  * checks that KinetoEvent::extraMeta() round-trips the key-value pairs.
  * This is the generic replacement for PyTorch's tensor/IValue-shaped
  * op-argument recording (deleted as part of the tensor-independence pass --
- * see Docs/profiler/profiler.md, "PyTorch types removed").
+ * see docs/profiler.md, "PyTorch types removed").
  */
 
 #include <exception>

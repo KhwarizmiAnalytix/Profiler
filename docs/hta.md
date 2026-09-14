@@ -58,32 +58,31 @@ sample files and the actual table, see [HTA output](outputs.md#hta-analysis).
 [example_hta.cpp](../examples/example_hta.cpp) uses this lifecycle:
 
 ```cpp
-using namespace profiler::profiler_impl;
-const ProfilerConfig config(ProfilerState::KINETO);
-const std::set<ActivityType> activities{ActivityType::CPU};
-prepareProfiler(config, activities);
-enableProfiler(config, activities);
-addMetadataJson("distributedInfo", R"({"rank": 0, "world_size": 1})");
+profiler::session_options options;
+options.activities = {profiler::activity::cpu};
+profiler::session session(options);
+if (!session.start()) return 1;
+profiler::add_metadata_json("distributedInfo", R"({"rank": 0, "world_size": 1})");
 
 for (int i = 0; i < 4; ++i) {
     const std::string step = "ProfilerStep#" + std::to_string(i);
-    PROFILER_RECORD_USER_SCOPE(step);
-    compute(); // Contains PROFILER_RECORD_FUNCTION("compute").
+    PROFILER_SCOPE(step);
+    compute(); // Contains PROFILER_OP("compute").
 }
 
-auto result = disableProfiler();
-if (!result || !result->save("rank0.json")) return 1;
+if (!session.stop()) return 1;
+if (!session.write_trace("rank0.json")) return 1;
 ```
 
-Include `profiler.h`, `bespoke/kineto/profiler_kineto.h`, and
-`bespoke/kineto/kineto_shim.h` for these calls. The complete executable creates
-its output directory and checks the file export.
+Include `profiler.h` only. The complete executable creates its output directory
+and checks the file export.
 
-`ProfilerStep#N` gives HTA an iteration boundary. `PROFILER_RECORD_FUNCTION`
-emits a `cpu_op`; `PROFILER_RECORD_USER_SCOPE` emits a `user_annotation`.
-`distributedInfo.rank` identifies the process in a multi-file capture. This
-metadata describes the application; it does not launch processes or synchronize
-ranks. Native `PROFILER_PROFILE_SCOPE` is not a substitute for these Kineto calls.
+`ProfilerStep#N` gives HTA an iteration boundary. `PROFILER_OP` emits a Kineto
+`cpu_op` and a native scope; `PROFILER_SCOPE` emits a `user_annotation` and a
+native scope. `distributedInfo.rank` identifies the process in a multi-file
+capture. This metadata describes the application; it does not launch processes
+or synchronize ranks. HTA still requires a Kineto JSON file from
+`write_trace()` on a `PROFILER_BACKEND=KINETO` build.
 
 ## Load the trace in Python
 
@@ -103,7 +102,7 @@ print(events[["s_name", "s_cat", "dur", "iteration"]].to_string(index=False))
 ```
 
 HTA normally excludes the final profiler step when filtering captures with
-multiple steps. This example completes all work before disabling collection,
+multiple steps. This example completes all work before stopping collection,
 so `include_last_profiler_step=True` retains all four steps. For an incomplete
 capture, leave the default filtering in place. HTA may round fractional
 microseconds during parsing; its table can therefore differ slightly from raw
@@ -129,14 +128,16 @@ target_link_libraries(my_app PRIVATE Profiler::Profiler CUDA::cudart)
 Adapt the CPU capture to request device activities:
 
 ```cpp
-const std::set<ActivityType> activities{ActivityType::CPU, ActivityType::CUDA};
+profiler::session_options options;
+options.activities = {profiler::activity::cpu, profiler::activity::cuda};
+profiler::session session(options);
 ```
 
 Instrument the application's real launching function:
 
 ```cpp
 void run_iteration() {
-    PROFILER_RECORD_FUNCTION("simulation::advance");
+    PROFILER_OP("simulation::advance");
     // Launch your CUDA kernels / copies on the application's CUDA streams.
 }
 ```
@@ -145,7 +146,7 @@ Before profiling, initialize CUDA, allocate buffers, and warm up the workload.
 During capture, use `ProfilerStep#N` around each measured iteration and call the
 instrumented launching function. Keep external correlation enabled. Finish all
 GPU work using the application's stream synchronization, or a checked
-`cudaDeviceSynchronize()`, before closing the final step and disabling capture.
+`cudaDeviceSynchronize()`, before closing the final step and stopping capture.
 Synchronizing every iteration changes overlap, so do that only if it matches the
 measurement you intend to make. Check CUDA errors through the application's
 normal error handling and always close the profiling session.

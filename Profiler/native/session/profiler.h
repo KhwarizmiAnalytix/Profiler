@@ -765,37 +765,6 @@ private:
     bool pushed_gpu_annotation_ = false;
 };
 
-/**
- * @brief Convenience macro for creating a named profiling scope
- * @param name String literal name for the profiling scope
- *
- * Creates a profiler_scope object that will automatically profile
- * the current code block until the scope ends.
- */
-#define PROFILER_PROFILE_SCOPE(name)                                      \
-    PROFILER_UNUSED profiler::profiler_scope PROFILER_ANONYMOUS_VARIABLE( \
-        _profiler_profile_scope_)(name)
-
-/**
- * @brief Convenience macro for profiling the current function
- *
- * Creates a profiler_scope object using the current function name
- * as the scope name. Profiles the entire function execution.
- */
-#define PROFILER_PROFILE_FUNCTION() \
-    PROFILER_UNUSED                 \
-    profiler::profiler_scope PROFILER_ANONYMOUS_VARIABLE(_profiler_profile_scope_)(__FUNCTION__)
-
-/**
- * @brief Convenience macro for profiling a specific code block
- * @param name String literal name for the profiling scope
- *
- * Creates a profiler_scope that profiles only the code within
- * the immediately following block or statement.
- */
-#define PROFILER_PROFILE_BLOCK(name)                                          \
-    if (PROFILER_UNUSED profiler::profiler_scope PROFILER_ANONYMOUS_VARIABLE( \
-            _profiler_profile_scope_)(name);                                  \
-        true)
-
 }  // namespace profiler
+
+#include "common/annotation.h"

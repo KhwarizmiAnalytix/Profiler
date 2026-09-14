@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "common/device.h"
 #include "common/profiler_export.h"
 #include "common/profiler_macros.h"
 
@@ -28,25 +29,29 @@
 // (bespoke/common/record_function.h) and MemoryReportingInfoBase::reportMemoryUsage
 // (bespoke/common/orchestration/observer.h) exist when PROFILER_HAS_KINETO or
 // PROFILER_HAS_ITT is 1. Native (traceme/xplane) always compiles alongside that
-// backend. Prefer #include "profiler.h" from application code. This header
-// is the instrumentation surface any library can include: real
-// PROFILER_RECORD_* under Kineto/ITT, no-op macros only if both HAS flags
+// backend. Application code includes "profiler.h" and uses profiler::capture
+// for Kineto/ITT/NVTX sessions. This header is the instrumentation surface:
+// real PROFILER_RECORD_* under Kineto/ITT, no-op macros only if both HAS flags
 // are 0 (not a supported CMake configuration).
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
 #include "bespoke/common/record_function.h"
 #define PROFILER_HAS_INSTRUMENTATION 1
 #else
 #define PROFILER_HAS_INSTRUMENTATION 0
-#define PROFILER_RECORD_FUNCTION(fn) \
-    do                               \
-    {                                \
-        (void)(fn);                  \
+#ifndef PROFILER_RECORD_FUNCTION
+#define PROFILER_RECORD_FUNCTION(fn)                                                               \
+    do                                                                                             \
+    {                                                                                              \
+        (void)(fn);                                                                                \
     } while (0)
-#define PROFILER_RECORD_USER_SCOPE(fn) \
-    do                                 \
-    {                                  \
-        (void)(fn);                    \
+#endif
+#ifndef PROFILER_RECORD_USER_SCOPE
+#define PROFILER_RECORD_USER_SCOPE(fn)                                                             \
+    do                                                                                             \
+    {                                                                                              \
+        (void)(fn);                                                                                \
     } while (0)
+#endif
 #endif
 
 namespace profiler
@@ -68,13 +73,12 @@ namespace profiler
  *        CUDA, HIP, PrivateUse1).
  * @param device_index Device ordinal, or -1 if not applicable.
  */
-PROFILER_API void report_memory_usage(
-    void*   ptr,
-    int64_t alloc_size,
-    size_t  total_allocated,
-    size_t  total_reserved,
-    int16_t device_type,
-    int16_t device_index);
+PROFILER_API void report_memory_usage(void* ptr,
+    int64_t                                 alloc_size,
+    size_t                                  total_allocated,
+    size_t                                  total_reserved,
+    int16_t                                 device_type,
+    int16_t                                 device_index);
 
 /**
  * @brief Reports an allocator OOM to the active profiling session, mirroring
@@ -82,12 +86,11 @@ PROFILER_API void report_memory_usage(
  * active or memory profiling was not requested. Kineto emits an
  * `[OutOfMemory]` instant event; ITT/NVTX currently drop it.
  */
-PROFILER_API void report_out_of_memory(
-    int64_t alloc_size,
-    size_t  total_allocated,
-    size_t  total_reserved,
-    int16_t device_type,
-    int16_t device_index);
+PROFILER_API void report_out_of_memory(int64_t alloc_size,
+    size_t                                     total_allocated,
+    size_t                                     total_reserved,
+    int16_t                                    device_type,
+    int16_t                                    device_index);
 
 /**
  * @brief Cheap check for whether the active session wants memory events,
@@ -101,3 +104,5 @@ PROFILER_API void report_out_of_memory(
 PROFILER_API bool memory_profiling_active();
 
 }  // namespace profiler
+
+#include "common/annotation.h"

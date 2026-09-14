@@ -20,7 +20,7 @@
  * Exercises the Kineto/ITT-side Metal fallback stub (bespoke/base/metal.mm,
  * MetalMethods) via ProfilerState::KINETO_PRIVATEUSE1_FALLBACK -- Metal
  * reuses the generic PrivateUse1 slot rather than a first-class device_enum
- * value (see Docs/profiler/profiler.md, GPU section). This is a CPU
+ * value (see docs/profiler.md, GPU section). This is a CPU
  * monotonic-clock fallback tier, not a merged device-activity trace: it
  * proves the ProfilerStubs plumbing round-trips a start/end pair, not that
  * a real MTLCommandBuffer was timed.

@@ -19,6 +19,17 @@
 - Add `PROFILER_ENABLE_COVERAGE` (gcov/lcov) and `PROFILER_SANITIZER`
   (ASan/UBSan/TSan) CMake options, plus CI jobs that build a coverage report
   artifact and run the suite under sanitizers on Ubuntu and macOS.
+- Expose `profiler::capture` so applications include only `profiler.h`. Native,
+  Kineto, and ITT headers stay on the library side; reports, hotspots, memory
+  tracking, and backend capture are available through the public header.
+- Move first-party library C++ sources under `Profiler/` (`common/`, `native/`,
+  `bespoke/`, `util/`, `profiler.h`). Client includes are unchanged.
+- Expose `profiler::session` so native and Kineto/ITT share one client API:
+  `start` / `PROFILER_SCOPE` / `stop` / `write_trace`. The compiled backend is
+  not selected in application code.
+- Restrict coverage reports to first-party sources under `Profiler/`.
+- Remove remaining XSigma host CMake hooks and documentation paths so the
+  repository is self-contained.
 
 ## 1.0.1 — 2026-09-13
 

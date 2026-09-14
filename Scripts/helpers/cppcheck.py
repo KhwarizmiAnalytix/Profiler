@@ -9,10 +9,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 # Source directories that make up the Profiler library (mirrors
-# CMakeLists.txt's file(GLOB[_RECURSE] ...) roots: common/*.{h,cpp},
-# native/**, the bespoke/{base,common,itt,kineto} backend tree, and
-# util/env.h -- minus Testing/, third_party/, examples/, consumer/, docs/).
-_SOURCE_DIRS = ["common", "native", "bespoke", "util"]
+# CMakeLists.txt's file(GLOB[_RECURSE] ...) roots under Profiler/:
+# common/*.{h,cpp}, native/**, the bespoke/{base,common,itt,kineto}
+# backend tree, and util/env.h -- minus Testing/, third_party/,
+# examples/, consumer/, docs/).
+_SOURCE_DIRS = ["Profiler"]
 
 
 @dataclass
@@ -121,7 +122,7 @@ def build_cppcheck_command(
         # Note: -j (parallel) is intentionally omitted -- cppcheck does not support
         # --output-file when -j > 1 (output goes to stdout only in parallel mode).
         "-I",
-        ".",
+        "Profiler",
         f"--output-file={output_file}",
     ]
 

@@ -2,7 +2,7 @@
  * Profiler DLL export/import header
  *
  * Defines PROFILER_API, PROFILER_VISIBILITY, etc. for the Profiler library.
- * Build flags (set in Library/Profiler/CMakeLists.txt):
+ * Build flags (set in CMakeLists.txt):
  * - PROFILER_STATIC_DEFINE — static library
  * - PROFILER_SHARED_DEFINE — shared library
  * - PROFILER_BUILDING_DLL — building the shared library (Windows)
