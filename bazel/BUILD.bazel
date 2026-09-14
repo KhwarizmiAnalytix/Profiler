@@ -1,0 +1,42 @@
+# =============================================================================
+# Profiler — Bazel Configuration Settings (standalone)
+# =============================================================================
+# Starlark --define keys mirror this repo's CMake cache names: enable_cuda,
+# enable_hip, enable_metal, build_shared_libs.
+# =============================================================================
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "common.bzl",
+    "profiler.bzl",
+    "repository.bzl",
+])
+
+# =============================================================================
+# Library Type Configuration
+# =============================================================================
+
+config_setting(
+    name = "shared_libs",
+    define_values = {"build_shared_libs": "true"},
+)
+
+# =============================================================================
+# GPU Backend Configuration (mirrors find_package(CUDAToolkit) / find_package(hip))
+# =============================================================================
+
+config_setting(
+    name = "enable_cuda",
+    define_values = {"enable_cuda": "true"},
+)
+
+config_setting(
+    name = "enable_hip",
+    define_values = {"enable_hip": "true"},
+)
+
+config_setting(
+    name = "enable_metal",
+    define_values = {"enable_metal": "true"},
+)

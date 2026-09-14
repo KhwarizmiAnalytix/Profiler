@@ -33,7 +33,7 @@ using namespace profiler::profiler_impl;
 class LibKinetoClient : public libkineto::ClientInterface
 {
 public:
-    void init() override { /* XSigma has no MTIA backend */ }
+    void init() override { /* No MTIA backend */ }
 
     void prepare(
         bool report_input_shapes = false,

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Profiler CMake Build Configuration Script.
 
-Design follows KhwarizmiAnalytix/XSigma's Scripts/setup.py (dotted-token CLI,
-XSigmaFlags/XSigmaConfiguration split, coverage-tool integration) and the
-already-trimmed adaptation done for the sibling KhwarizmiAnalytix/Parallel
-repo -- scaled down to the CMake options this standalone repo actually
+Design follows the shared setup.py convention used across this org's
+repos (dotted-token CLI, Flags/Configuration split, coverage-tool
+integration), scaled down to the CMake options this standalone repo actually
 defines (PROFILER_ENABLE_*/PROFILER_* in CMakeLists.txt). There is no
 multi-module Library/* tree or --project.* scoping here: Profiler builds one
 flat `Profiler` library and one `ProfilerCxxTests` binary. Unlike Parallel,
@@ -312,8 +311,8 @@ def debug_print(message):
 class ProfilerFlags:
     """Maps setup.py dotted tokens to Profiler's PROFILER_* CMake cache variables.
 
-    Scoped 1:1 to the options CMakeLists.txt actually defines -- unlike
-    XSigma's XSigmaFlags there is no multi-module fan-out (Profiler is a
+    Scoped 1:1 to the options CMakeLists.txt actually defines -- there is no
+    multi-module fan-out (Profiler is a
     single flat CMake target), no MKL/vectorization/magic_enum/torch
     backends, and no --project.* scoping. Two independent selectors ARE real
     here though: PROFILER_BACKEND (Kineto vs. Intel ITT instrumentation) and

@@ -1,5 +1,5 @@
-# Profiler — standalone CMake package. Any C++ project can consume it;
-# XSigma is one consumer, not a required host.
+# Profiler — standalone CMake package. Any C++ project can consume it, either
+# via find_package(Profiler) or by embedding this tree as a subdirectory.
 cmake_minimum_required(VERSION 3.22)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -147,6 +147,9 @@ if(PROFILER_ENABLE_KINETO)
 
   profiler_setup_fmt()
   if(COMMAND add_third_party_library)
+    # add_third_party_library() is not defined in this repo; a host build may
+    # optionally provide it. XSIGMA_TARGETS below is that external function's
+    # fixed keyword argument name, not a naming choice made by Profiler.
     _profiler_third_party_root(_tpdir)
     set(FMT_SOURCE_DIR "${_tpdir}/fmt" CACHE STRING "Use host fmt" FORCE)
     add_third_party_library(
@@ -320,7 +323,6 @@ endif()
 
 add_library(Profiler ${profiler_sources} ${profiler_headers})
 add_library(Profiler::Profiler ALIAS Profiler)
-add_library(XSigmaProfiler::Profiler ALIAS Profiler)
 
 if(BUILD_SHARED_LIBS)
   target_compile_definitions(Profiler PUBLIC PROFILER_SHARED_DEFINE PRIVATE PROFILER_BUILDING_DLL)
@@ -443,22 +445,10 @@ if(NOT TARGET Profiler::Profiler)
       INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\")
   endif()
 endif()
-if(NOT TARGET XSigmaProfiler::Profiler)
-  add_library(XSigmaProfiler::Profiler ALIAS Profiler::Profiler)
-endif()
 "
-  )
-  file(
-    GENERATE
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/XSigmaProfilerConfig.cmake"
-    CONTENT
-      "include(\"\${CMAKE_CURRENT_LIST_DIR}/../Profiler/ProfilerConfig.cmake\")\n"
   )
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
           DESTINATION lib/cmake/Profiler
-  )
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/XSigmaProfilerConfig.cmake"
-          DESTINATION lib/cmake/XSigmaProfiler
   )
 endif()
 

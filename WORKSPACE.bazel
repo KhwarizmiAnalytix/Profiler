@@ -1,1 +1,1 @@
-workspace(name = "xsigma_profiler")
+workspace(name = "profiler")

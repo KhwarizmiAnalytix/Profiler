@@ -17,9 +17,8 @@ foreach(example_source ${example_sources})
   # Create executable
   add_executable(${example_name} ${example_source})
 
-  # XSIGMA_CXX_STANDARD is optional (root may only set CMAKE_CXX_STANDARD).
-  if(XSIGMA_CXX_STANDARD)
-    set(_example_cxx_std "${XSIGMA_CXX_STANDARD}")
+  if(PROFILER_CXX_STANDARD)
+    set(_example_cxx_std "${PROFILER_CXX_STANDARD}")
   elseif(CMAKE_CXX_STANDARD)
     set(_example_cxx_std "${CMAKE_CXX_STANDARD}")
   else()
@@ -33,8 +32,8 @@ foreach(example_source ${example_sources})
   target_link_libraries(${example_name} PRIVATE Profiler::Profiler)
 
   # Set output directory
-  if(COMMAND xsigma_set_target_output_directories)
-    xsigma_set_target_output_directories(${example_name})
+  if(COMMAND profiler_set_target_output_directories)
+    profiler_set_target_output_directories(${example_name})
   else()
     set_target_properties(
       ${example_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

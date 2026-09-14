@@ -146,7 +146,7 @@ std::string stacksToStr(const std::vector<std::string>& stacks, const char* deli
     return "\"" + rc + "\"";
 }
 
-// XSigma has no tensor type; this always returns empty.
+// No tensor type is tracked here; this always returns empty.
 std::vector<std::vector<int64_t>> inputSizes(
     const profiler::RecordFunction& /*fn*/, bool /*flatten_list_enabled*/)
 {

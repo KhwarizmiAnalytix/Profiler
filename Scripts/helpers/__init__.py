@@ -2,9 +2,8 @@
 Profiler Build System Helper Modules
 
 Modular helper functions for Scripts/setup.py, split out for readability and
-reuse (mirrors the KhwarizmiAnalytix/XSigma Scripts/helpers/ package this
-standalone Profiler repo is built alongside, and the trimmed-down adaptation
-already done for the sibling KhwarizmiAnalytix/Parallel repo).
+reuse (follows the same Scripts/helpers/ convention as the sibling
+KhwarizmiAnalytix/Parallel repo).
 
 Modules:
     - config: CMake configure-step invocation

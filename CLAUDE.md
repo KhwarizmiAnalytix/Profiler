@@ -4,9 +4,9 @@ Standalone C++ profiler for any repository. Public header: `profiler.h`.
 CMake target: `Profiler::Profiler`. Repo:
 https://github.com/KhwarizmiAnalytix/Profiler
 
-External projects use `find_package(Profiler)` or FetchContent. Do not add
-a dependency on XSigma (Core, Memory, Graph, …). XSigma may `add_subdirectory`
-this tree and pass `PROFILER_THIRD_PARTY_DIR`.
+External projects use `find_package(Profiler)` or FetchContent. Do not add a
+dependency on any private host project (its Core, Memory, Graph, … modules). A
+host project may `add_subdirectory` this tree and pass `PROFILER_THIRD_PARTY_DIR`.
 
 See [README.md](README.md) and [docs/profiler.md](docs/profiler.md).
 

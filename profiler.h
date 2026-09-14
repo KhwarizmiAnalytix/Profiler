@@ -18,8 +18,8 @@
  *     session.write_chrome_trace("trace.json");  // chrome://tracing or Perfetto
  *   }
  *
- * Link CMake target Profiler::Profiler. No XSigma headers or libraries
- * are required.
+ * Link CMake target Profiler::Profiler. No other project's headers or
+ * libraries are required.
  */
 
 #include "common/instrumentation.h"

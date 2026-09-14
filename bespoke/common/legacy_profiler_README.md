@@ -47,8 +47,8 @@ profiler/
 │       ├── util.h                         # util definitions
 │       └── README.md                      # This file
 │   └── autograd/            # Autograd C++ source code
-│       ├── profiler_python.cpp          # Main python stack collection logic (removed in XSigma's port -- no Python tracer)
-│       ├── profiler_python.h            # Python stack collection definitions (removed in XSigma's port -- no Python tracer)
+│       ├── profiler_python.cpp          # Main python stack collection logic (removed in this port -- no Python tracer)
+│       ├── profiler_python.h            # Python stack collection definitions (removed in this port -- no Python tracer)
 │       ├── profiler_kineto.cpp          # Profiler backend logic for starting collection/kineto
 │       └── profiler_kineto.h            # Profiler backend definitions for starting collection/kineto
 │   └── Profiler/                # Profiler C++ source code
@@ -102,7 +102,7 @@ The final step in integration is file export. After all events have been collect
 
 ## Python Tracing ##
 
-*(XSigma ships a pluggable `PythonTracerBase` in
+*(This repo ships a pluggable `PythonTracerBase` in
 `bespoke/common/orchestration/python_tracer.{h,cpp}`. The default is a no-op;
 a real CPython tracer registers via `registerTracer`. Native backend has a
 matching stub factory in `native/cpu/python_tracer*`.)*

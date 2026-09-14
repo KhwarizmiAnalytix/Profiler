@@ -66,8 +66,8 @@ void cudaCheck(cudaError_t result, const char* file, int line)
 #define PROFILER_CUDA_CHECK(result) cudaCheck(result, __FILE__, __LINE__);
 
 // Minimal RAII device guard: saves the current CUDA device on construction
-// and restores it on destruction. XSigma has no cross-library "current
-// stream" pool (unlike PyTorch's `at::cuda::CUDAGuard`/`getCurrentCUDAStream`,
+// and restores it on destruction. There is no cross-library "current
+// stream" pool here (unlike PyTorch's `at::cuda::CUDAGuard`/`getCurrentCUDAStream`,
 // which this file mirrors), so `record()` below deliberately records on the
 // default per-thread stream rather than a pooled one.
 class ScopedCUDADeviceGuard

@@ -1,8 +1,7 @@
 /*
- * XSigma ITT API Wrapper Implementation
+ * Profiler ITT API Wrapper Implementation
  *
- * Provides C++ wrapper functions for Intel ITT API, aligned with XSigma's
- * implementation for feature parity.
+ * Provides C++ wrapper functions for Intel ITT API.
  */
 
 #include "itt_wrapper.h"

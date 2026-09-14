@@ -12,7 +12,7 @@ available; Kineto or Intel ITT provides additional instrumentation. CUDA builds
 can collect Kineto device activities through CUPTI.
 
 Link **`Profiler::Profiler`**, include **`profiler.h`**, and use the **`profiler`**
-namespace. No XSigma, LibTorch, TensorFlow runtime, or Python dependency is required
+namespace. No LibTorch, TensorFlow runtime, or Python dependency is required
 for the C++ library. Python is optional for offline Holistic Trace Analysis (HTA).
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·

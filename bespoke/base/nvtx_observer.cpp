@@ -42,7 +42,7 @@ struct NVTXThreadLocalState : ProfilerStateBase
 
 }  // anonymous namespace
 
-// XSigma has no tensor type, so there is no way to correlate an op's inputs
+// No tensor type is tracked here, so there is no way to correlate an op's inputs
 // back to a producing op's output identity -- this always returns an empty
 // producer-op list.
 static std::list<std::pair<profiler::RecordFunctionHandle, int>> getInputTensorOpIds()

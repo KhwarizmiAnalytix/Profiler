@@ -91,8 +91,7 @@ target_compile_features(my_app PRIVATE cxx_std_20)
 
 Use the CMake target so the build's backend definitions and dependencies reach
 consumers. Avoid copying internal include paths or defining `PROFILER_HAS_*`
-manually. Compatibility target `XSigmaProfiler::Profiler` remains available;
-new integrations should use `Profiler::Profiler`.
+manually.
 
 ## Install and find package
 
@@ -115,7 +114,6 @@ target_compile_features(my_app PRIVATE cxx_std_20)
 target_link_libraries(my_app PRIVATE Profiler::Profiler)
 ```
 
-`find_package(XSigmaProfiler CONFIG REQUIRED)` is a compatibility entry point.
 On Windows use an absolute prefix, for example
 `-DCMAKE_PREFIX_PATH=C:/dev/Profiler/install`.
 

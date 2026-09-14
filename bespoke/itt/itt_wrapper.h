@@ -1,11 +1,11 @@
 /*
- * XSigma ITT API Wrapper
+ * Profiler ITT API Wrapper
  *
  * This header provides C++ wrapper functions for Intel Instrumentation and
- * Tracing Technology (ITT) API, aligned with XSigma's implementation.
+ * Tracing Technology (ITT) API.
  *
  * Features:
- * - Global ITT domain for XSigma
+ * - Global ITT domain for Profiler
  * - Task range annotations (push/pop)
  * - Event markers
  * - Thread-safe operations

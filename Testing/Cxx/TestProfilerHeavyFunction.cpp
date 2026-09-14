@@ -557,7 +557,7 @@ PROFILERTEST(Profiler, kineto_heavy_function_profiling)
     EXPECT_GT(outer->durationNs(), 0U);
     EXPECT_GE(outer->durationNs(), matrix->durationNs());
 
-    std::cout << "\n=== XSigma Kineto events (" << events.size() << ") ===\n";
+    std::cout << "\n=== Kineto events (" << events.size() << ") ===\n";
     for (const auto& event : events)
     {
         std::cout << event.name() << "\t" << event.durationNs() << " ns\tscope="
@@ -590,7 +590,7 @@ PROFILERTEST(Profiler, kineto_heavy_function_profiling)
         << "JSON file missing traceEvents array";
     EXPECT_GT(json_content.size(), 100U) << "JSON should contain meaningful content";
 
-    std::cout << "XSigma Kineto Chrome trace saved: " << trace_filename << " ("
+    std::cout << "Kineto Chrome trace saved: " << trace_filename << " ("
               << json_content.size() << " bytes)\n";
 }
 
@@ -869,7 +869,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
 // ============================================================================
 // Same heavy workloads, captured by torch::autograd::profiler when the setup.py
 // `torch` token finds a LibTorch install (PROFILER_HAS_LIBTORCH). Uses ATen
-// RECORD_USER_SCOPE so events land in the PyTorch Kineto trace, not XSigma's
+// RECORD_USER_SCOPE so events land in the PyTorch Kineto trace, not the native
 // PROFILER_RECORD_* macros.
 // ============================================================================
 

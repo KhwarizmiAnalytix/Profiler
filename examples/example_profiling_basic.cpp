@@ -3,7 +3,7 @@
  * @brief Comprehensive example of native, Kineto, and ITT profiling.
  *
  * This example shows:
- * - XSigma native profiler with hierarchical CPU profiling
+ * - Native profiler with hierarchical CPU profiling
  * - Kineto profiler for GPU-related CPU operations
  * - ITT profiler for Intel VTune integration
  * - Combined profiling with multiple systems
@@ -140,20 +140,20 @@ void merge_sort(std::vector<double>& arr, size_t left, size_t right)
 }
 
 // ============================================================================
-// Example 1: XSigma Native Profiler
+// Example 1: Native Profiler
 // ============================================================================
 
 /**
- * @brief Demonstrates XSigma's native profiler with hierarchical CPU profiling.
+ * @brief Demonstrates the native profiler with hierarchical CPU profiling.
  *
  * The native profiler provides:
  * - Hierarchical scope tracking with PROFILER_PROFILE_SCOPE()
  * - Chrome Trace JSON export for visualization
  * - Full drill-down capability in Chrome DevTools and Perfetto UI
  */
-void example_xsigma_native_profiler()
+void example_native_profiler()
 {
-    std::cout << "\n=== Example 1: XSigma Native Profiler ===" << std::endl;
+    std::cout << "\n=== Example 1: Native Profiler ===" << std::endl;
 
     // Configure profiler options
     profiler_options opts;
@@ -167,7 +167,7 @@ void example_xsigma_native_profiler()
     profiler_session session(opts);
     session.start();
 
-    std::cout << "✓ XSigma profiler started" << std::endl;
+    std::cout << "✓ Native profiler started" << std::endl;
 
     // Profile matrix operations
     {
@@ -208,10 +208,10 @@ void example_xsigma_native_profiler()
     session.stop();
 
     // Export Chrome Trace JSON
-    std::string const output_file = "xsigma_native_profile.json";
+    std::string const output_file = "native_profile.json";
     session.write_chrome_trace(output_file);
 
-    std::cout << "✓ XSigma profiler stopped" << std::endl;
+    std::cout << "✓ Native profiler stopped" << std::endl;
     std::cout << "✓ Trace saved to: " << output_file << std::endl;
     std::cout << "\nVisualization:" << std::endl;
     std::cout << "  1. Chrome DevTools: chrome://tracing" << std::endl;
@@ -225,10 +225,10 @@ void example_xsigma_native_profiler()
 #if PROFILER_HAS_KINETO
 
 /**
- * @brief Demonstrates Kineto profiler combined with XSigma profiler.
+ * @brief Demonstrates Kineto profiler combined with the native profiler.
  *
  * Kineto captures GPU-related CPU operations. For hierarchical CPU profiling,
- * we combine it with XSigma's native profiler.
+ * we combine it with the native profiler.
  */
 void example_kineto_profiler()
 {
@@ -286,10 +286,10 @@ void example_kineto_profiler()
 #if PROFILER_HAS_ITT
 
 /**
- * @brief Demonstrates ITT profiler combined with XSigma profiler.
+ * @brief Demonstrates ITT profiler combined with the native profiler.
  *
  * ITT provides annotations for Intel VTune Profiler. We combine it with
- * XSigma's profiler for JSON export and graceful degradation.
+ * the native profiler for JSON export and graceful degradation.
  */
 void example_itt_profiler()
 {
@@ -304,14 +304,14 @@ void example_itt_profiler()
     if (!itt_available)
     {
         std::cout << "✗ ITT not available (VTune not installed)" << std::endl;
-        std::cout << "  Falling back to XSigma profiler only" << std::endl;
+        std::cout << "  Falling back to the native profiler only" << std::endl;
     }
     else
     {
-        std::cout << "✓ ITT profiler initialized (domain: XSigma)" << std::endl;
+        std::cout << "✓ ITT profiler initialized (domain: Profiler)" << std::endl;
     }
 
-    // Start XSigma profiler for JSON export
+    // Start the native profiler for JSON export
     profiler_options opts;
     opts.enable_timing_ = true;
     opts.output_format_ = profiler_options::output_format_enum::JSON;
@@ -321,7 +321,7 @@ void example_itt_profiler()
 
     std::cout << "✓ Profiling started" << std::endl;
 
-    // Profile with both ITT and XSigma
+    // Profile with both ITT and the native profiler
     {
         if (itt_available)
         {
@@ -359,12 +359,12 @@ void example_itt_profiler()
     // Stop profiling
     session.stop();
 
-    // Export XSigma trace
-    std::string const output_file = "itt_xsigma_trace.json";
+    // Export native trace
+    std::string const output_file = "itt_trace.json";
     session.write_chrome_trace(output_file);
 
     std::cout << "✓ Profiling stopped" << std::endl;
-    std::cout << "✓ XSigma trace saved to: " << output_file << std::endl;
+    std::cout << "✓ Native trace saved to: " << output_file << std::endl;
 
     if (itt_available)
     {
@@ -389,8 +389,8 @@ int main()
     std::cout << "Profiler examples" << std::endl;
     std::cout << "============================================" << std::endl;
 
-    // Example 1: XSigma Native Profiler
-    profiler::examples::example_xsigma_native_profiler();
+    // Example 1: Native Profiler
+    profiler::examples::example_native_profiler();
 
 #if PROFILER_HAS_KINETO
     // Example 2: Kineto Profiler

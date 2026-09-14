@@ -2,10 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(ProfilerConsumer LANGUAGES CXX)
 
-find_package(Profiler QUIET)
-if(NOT Profiler_FOUND)
-  find_package(XSigmaProfiler REQUIRED)
-endif()
+find_package(Profiler REQUIRED)
 
 add_executable(profiler_consumer main.cpp)
 target_link_libraries(profiler_consumer PRIVATE Profiler::Profiler)
