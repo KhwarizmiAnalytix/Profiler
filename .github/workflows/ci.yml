@@ -113,6 +113,13 @@ jobs:
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install coverage-tool
+        run: pip install "git+https://github.com/KhwarizmiAnalytix/coverage-tool.git"
+
       - name: Configure
         run: |
           cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug \
@@ -128,22 +135,13 @@ jobs:
         run: ctest --test-dir build-coverage --output-on-failure --timeout 180
 
       - name: Capture coverage
-        run: |
-          IGNORE=inconsistent,unsupported,format,count,unused,corrupt,empty
-          lcov --capture --directory build-coverage --output-file coverage.info \
-            --ignore-errors "${IGNORE}" --quiet
-          lcov --remove coverage.info \
-            '*/third_party/*' '*/_deps/*' '/usr/*' '*/Testing/*' '*/build-coverage/*' \
-            --output-file coverage.filtered.info --ignore-errors "${IGNORE}" --quiet
-          lcov --summary coverage.filtered.info --ignore-errors "${IGNORE}"
-          genhtml coverage.filtered.info --output-directory coverage-html --quiet \
-            --ignore-errors "${IGNORE},category"
+        run: coverage-tool --build=build-coverage
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: coverage-html/
+          path: build-coverage/coverage_report/html/
           retention-days: 30
 
   sanitize-asan-ubsan:

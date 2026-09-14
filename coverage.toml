@@ -1,0 +1,22 @@
+# Host config for coverage-tool
+# https://github.com/KhwarizmiAnalytix/coverage-tool
+
+[coverage]
+filter = "."
+source_folder = "."
+output_format = "html-and-json"
+coverage_report_dir = "coverage_report"
+
+[coverage.exclude]
+patterns = [
+    "*third_party*",
+    "*ThirdParty*",
+    "*Testing*",
+    "/usr/*",
+    "*_deps*",
+]
+llvm_ignore_regex = [
+    ".*Testing[/\\\\].*",
+    ".*third_party[/\\\\].*",
+    ".*ThirdParty[/\\\\].*",
+]
