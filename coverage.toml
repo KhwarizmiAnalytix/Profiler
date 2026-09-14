@@ -6,11 +6,26 @@ filter = "."
 source_folder = "."
 output_format = "html-and-json"
 coverage_report_dir = "coverage_report"
+# Profiler builds one flat library (libProfiler.*) + one test executable
+# (ProfilerCxxTests) rather than XSigma's per-directory Library/<Module>
+# layout. Without this override, discover_modules() treats each top-level
+# source subdirectory (bespoke, common, consumer, native, util, ...) as its
+# own "module" and looks for a matching lib<dir>.* + <dir>CxxTests, none of
+# which exist. The GCC/lcov backend ignores `modules` (it captures the whole
+# build directory) so that path doesn't need this, but the Clang/LLVM backend
+# (the default for local dev) needs the explicit override to find the real
+# library and test binary.
+modules = ["Profiler"]
 
 [coverage.exclude]
 patterns = [
+    # Profiler's vendored-code directory is "third_party" (lowercase, as
+    # used by this repo); it has no "ThirdParty" (XSigma-style) directory.
+    # lcov treats an exclude pattern that matches nothing in coverage.info as
+    # a hard error ("'exclude' pattern '...' is unused") rather than a no-op,
+    # so an XSigma-style "*ThirdParty*" pattern here breaks `lcov --remove`
+    # on every run instead of silently doing nothing.
     "*third_party*",
-    "*ThirdParty*",
     "*Testing*",
     "/usr/*",
     "*_deps*",
@@ -18,5 +33,26 @@ patterns = [
 llvm_ignore_regex = [
     ".*Testing[/\\\\].*",
     ".*third_party[/\\\\].*",
-    ".*ThirdParty[/\\\\].*",
+]
+
+[coverage.gcc]
+# coverage-tool's built-in default (mismatch,negative,gcov) is too narrow for
+# this codebase's heavily templated/inlined headers: lcov's function-end-line
+# derivation hits "inconsistent" errors and "unsupported" warnings on macOS's
+# lcov+gcov combination (confirmed with LCOV version 2.5-0) even for a
+# Clang-built --coverage binary processed through the lcov/gcov backend.
+# docs/profiler.md's own manual lcov recipe already documents this exact
+# ignore-list; mirrored here so `coverage-tool`/Scripts/setup.py's coverage
+# step doesn't hard-fail on the same known-harmless lcov limitation.
+lcov_ignore_errors = [
+    "inconsistent",
+    "unsupported",
+    "format",
+    "count",
+    "unused",
+    "corrupt",
+    "empty",
+    "mismatch",
+    "negative",
+    "gcov",
 ]
