@@ -14,4 +14,4 @@
 
 - [ ] `CHANGELOG.md` updated under `## Unreleased` (if user-visible)
 - [ ] `docs/` updated (if behavior, build options, or public API changed)
-- [ ] `clang-format -i` run on changed files
+- [ ] `lintrunner init && lintrunner` clean on changed files

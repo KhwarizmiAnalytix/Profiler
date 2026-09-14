@@ -56,14 +56,19 @@ See [Sanitizers](docs/profiler.md#sanitizers) for platform caveats.
 ## Code style
 
 Formatting follows [.clang-format](.clang-format) (4-space indent, Allman
-braces, 100-column limit). Run before sending a PR:
+braces, 100-column limit). Lint locally with lintrunner before sending a PR:
 
 ```bash
-clang-format -i <files you changed>
+pip install lintrunner lint-tool
+lintrunner init
+lintrunner -a          # apply formatters (clang-format, cmake-format, newlines)
+lintrunner             # check remaining linters
 ```
 
-CI's `lint` job checks formatting of changed files against `main`; it does not
-require the pre-existing tree to already conform. `.clang-tidy` documents the
+CI's `lint` job (`.github/workflows/lint.yml`) runs CLANGFORMAT, CMAKE,
+CMAKEFORMAT, EDITORCONFIG, NEWLINE, and CODESPELL on files changed against
+`main`. It does not require the pre-existing tree to already conform. Vendored
+`third_party/` and `bespoke/` trees are excluded. `.clang-tidy` documents the
 intended check set for local/IDE use; it is not yet wired into CI (see the
 comment at the top of that file).
 

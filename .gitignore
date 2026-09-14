@@ -25,3 +25,5 @@ quickstart_trace.json
 __pycache__/
 *.pyc
 /Scripts/logs/
+
+.lintbin/

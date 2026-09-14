@@ -1,0 +1,4 @@
+[codespell]
+ignore-words-list = ThirdParty,Kineto,kineto
+skip = .git,.github,.vscode,third_party,ThirdParty,build,build_*,**/bespoke/**
+check-hidden = no
