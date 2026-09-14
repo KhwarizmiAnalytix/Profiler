@@ -317,9 +317,9 @@ is enabled:
 ```cpp
 void* ptr = std::malloc(1024);
 if (ptr) {
-    session.memory_tracker().track_allocation(ptr, 1024, "buffer");
+    session.get_memory_tracker().track_allocation(ptr, 1024, "buffer");
     // Use the buffer.
-    session.memory_tracker().track_deallocation(ptr);
+    session.get_memory_tracker().track_deallocation(ptr);
     std::free(ptr);
 }
 ```

@@ -61,8 +61,8 @@ PROFILERTEST(PublicApi, reports_and_hotspots_from_umbrella_header)
         PROFILER_PROFILE_SCOPE("public_report_scope");
         void* ptr = std::malloc(64);
         ASSERT_NE(ptr, nullptr);
-        session.memory_tracker().track_allocation(ptr, 64, "public_buffer");
-        session.memory_tracker().track_deallocation(ptr);
+        session.get_memory_tracker().track_allocation(ptr, 64, "public_buffer");
+        session.get_memory_tracker().track_deallocation(ptr);
         std::free(ptr);
     }
     ASSERT_TRUE(session.stop());

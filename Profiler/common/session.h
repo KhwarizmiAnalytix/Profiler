@@ -74,7 +74,7 @@ public:
     PROFILER_API std::unique_ptr<hotspot_report> generate_hotspot_report() const;
     PROFILER_API void                            export_report(const std::string& path) const;
 
-    PROFILER_API memory_tracker& memory_tracker();
+    PROFILER_API memory_tracker& get_memory_tracker();
 
     PROFILER_API const std::vector<capture_event>& events() const;
 

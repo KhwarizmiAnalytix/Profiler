@@ -339,13 +339,13 @@ public:
      * @brief Get reference to the memory tracker component
      * @return Reference to the memory tracker
      */
-    profiler::memory_tracker& memory_tracker() { return *memory_tracker_; }
+    profiler::memory_tracker& get_memory_tracker() { return *memory_tracker_; }
 
     /**
      * @brief Get reference to the statistical analyzer component
      * @return Reference to the statistical analyzer
      */
-    profiler::statistical_analyzer& statistical_analyzer() { return *statistical_analyzer_; }
+    profiler::statistical_analyzer& get_statistical_analyzer() { return *statistical_analyzer_; }
 
     /**
      * @brief Generate a comprehensive profiling report

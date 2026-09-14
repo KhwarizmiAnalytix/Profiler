@@ -194,9 +194,9 @@ void session::export_report(const std::string& path) const
     }
 }
 
-memory_tracker& session::memory_tracker()
+memory_tracker& session::get_memory_tracker()
 {
-    return native_->memory_tracker();
+    return native_->get_memory_tracker();
 }
 
 const std::vector<capture_event>& session::events() const
