@@ -19,3 +19,8 @@ consumer_trace.json
 *.gcno
 *.info
 /coverage-html/
+
+# Scripts/setup.py (Python build helper)
+__pycache__/
+*.pyc
+/Scripts/logs/
