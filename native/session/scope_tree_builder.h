@@ -52,7 +52,8 @@ namespace scope_tree_builder
  *         the recorded scope nesting, or nullptr if `space` has no
  *         host-thread events to build a tree from.
  */
-PROFILER_API std::unique_ptr<profiler::profiler_scope_data> build_scope_tree(const profiler::x_space& space);
+PROFILER_API std::unique_ptr<profiler::profiler_scope_data> build_scope_tree(
+    const profiler::x_space& space);
 
 }  // namespace scope_tree_builder
 }  // namespace profiler
