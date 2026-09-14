@@ -49,11 +49,11 @@ class PROFILER_VISIBILITY ProfilerLock
 {
 public:
     // Returns true if the process has active profiling session.
-    static bool HasActiveSession();
+    PROFILER_API static bool HasActiveSession();
 
     // Acquires the profiler lock if no other profiler session is currently
     // active.
-    static std::optional<ProfilerLock> Acquire();
+    PROFILER_API static std::optional<ProfilerLock> Acquire();
 
     // Default constructor creates an inactive instance.
     ProfilerLock() = default;
@@ -73,7 +73,7 @@ public:
     ~ProfilerLock() { ReleaseIfActive(); }
 
     // Allow creating another active instance.
-    void ReleaseIfActive();
+    PROFILER_API void ReleaseIfActive();
 
     // Returns true if this is the active instance.
     bool Active() const { return active_; }
