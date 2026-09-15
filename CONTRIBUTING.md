@@ -5,7 +5,7 @@ GitHub fork/branch/pull-request workflow.
 
 ## Build and test
 
-See the [README](README.md#build-and-run) and the [user guide](docs/profiler.md#build-from-source)
+See the [README](README.md#clone-and-build-the-examples) and the [user guide](docs/profiler.md#build-from-source)
 for full instructions. The short version:
 
 ```bash

@@ -78,7 +78,7 @@ configuration; binaries are under `build/bin/Release/`. For Makefiles or Ninja,
 
 ## Integrate with CMake
 
-The [README](../README.md#add-profiler-to-your-application) contains a complete
+The [README](../README.md#add-it-to-your-project) contains a complete
 FetchContent example. Set Profiler options before `FetchContent_MakeAvailable()`.
 Pin the source revision for repeatable builds. The
 [local FetchContent consumer](../consumer/fetchcontent/CMakeLists.txt) demonstrates

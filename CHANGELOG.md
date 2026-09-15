@@ -35,6 +35,10 @@
   module, alongside `ProfilerDependencies`/`ProfilerCoverage`/`ProfilerSanitizers`.
   Formally declare `PROFILER_THIRD_PARTY_DIR` as a cache variable so it shows up
   in `cmake -LH`/`ccmake` like the other options.
+- Restructure the README into What is Profiler? / Get it / Use it in C++
+  (beginner minimal capture, then detailed `session_options` configuration) /
+  Outputs / Holistic Trace Analysis, each with real console output and file
+  snapshots (`docs/samples/`) instead of code alone.
 
 ## 1.0.1 — 2026-09-13
 
