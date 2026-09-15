@@ -43,12 +43,6 @@ set(PROFILER_DEPENDENCY_LIBS "")
 set(PROFILER_DEPENDENCY_INCLUDE_DIRS "")
 set(PROFILER_DEPENDENCY_COMPILE_DEFINITIONS "")
 
-set(PROFILER_HAS_METAL 0)
-if(APPLE AND PROFILER_GPU_BACKEND STREQUAL "metal")
-    set(PROFILER_HAS_METAL 1)
-endif()
-list(APPEND PROFILER_DEPENDENCY_COMPILE_DEFINITIONS PROFILER_HAS_METAL=${PROFILER_HAS_METAL})
-
 set(BUILD_TESTING OFF CACHE BOOL "Disable third-party tests" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable third-party examples" FORCE)
 set(BUILD_BENCHMARKS OFF CACHE BOOL "Disable third-party benchmarks" FORCE)
@@ -181,29 +175,6 @@ file(GLOB_RECURSE native_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/nat
 file(GLOB_RECURSE native_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.cpp")
 list(APPEND profiler_headers ${native_headers})
 list(APPEND profiler_sources ${native_sources})
-
-if(PROFILER_HAS_METAL)
-    enable_language(OBJCXX)
-    set(CMAKE_OBJCXX_STANDARD ${PROFILER_CXX_STANDARD})
-    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
-    find_library(PROFILER_METAL_FRAMEWORK Metal REQUIRED)
-    find_library(PROFILER_FOUNDATION_FRAMEWORK Foundation REQUIRED)
-    file(GLOB_RECURSE profiler_mm LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.mm")
-    list(APPEND profiler_sources ${profiler_mm})
-    set_source_files_properties(
-        ${profiler_mm} PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
-    )
-    list(APPEND PROFILER_DEPENDENCY_LIBS ${PROFILER_METAL_FRAMEWORK}
-         ${PROFILER_FOUNDATION_FRAMEWORK}
-    )
-    file(GLOB_RECURSE profiler_kineto_mm LIST_DIRECTORIES false
-         "${PROFILER_SRC_DIR}/bespoke/base/*.mm"
-    )
-    list(APPEND profiler_sources ${profiler_kineto_mm})
-    set_source_files_properties(
-        ${profiler_kineto_mm} PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-Wno-deprecated-declarations"
-    )
-endif()
 
 if(PROFILER_ENABLE_KINETO)
     file(GLOB_RECURSE kineto_headers LIST_DIRECTORIES false

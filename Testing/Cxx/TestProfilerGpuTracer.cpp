@@ -24,7 +24,7 @@
  * Mirrors TF device_tracer_cuda.cc: CreateGpuTracer is gated by
  * device_tracer_level; activities are added via gpu_trace_collector::AddEvent
  * (CUPTI analog). Synthetic events run on every platform. The device kernel
- * probe is live when PROFILER_HAS_METAL=1.
+ * probe has no native implementation in this port and always returns false.
  */
 
 #include <cstdint>
@@ -41,10 +41,6 @@
 #include "native/gpu/gpu_tracer.h"
 #include "native/session/profiler.h"
 #include "native/tracing/traceme.h"
-
-#ifndef PROFILER_HAS_METAL
-#define PROFILER_HAS_METAL 0
-#endif
 
 using namespace profiler;
 using profiler::profiler_impl::add_gpu_tracer_event;
@@ -218,51 +214,5 @@ PROFILERTEST(BackendGpuTracer, add_event_is_noop_when_inactive)
 
 PROFILERTEST(BackendGpuTracer, device_kernel_probe_records_interval)
 {
-#if !PROFILER_HAS_METAL
     EXPECT_FALSE(run_gpu_kernel_probe(kProbeKernel));
-#else
-    profiler_session session(make_gpu_options());
-    ASSERT_TRUE(session.start());
-    ASSERT_TRUE(gpu_tracer_is_recording());
-    {
-        profiler_scope scope(kHostScope, &session);
-        if (!run_gpu_kernel_probe(kProbeKernel))
-        {
-            ASSERT_TRUE(session.stop());
-            GTEST_SKIP() << "No GPU device available";
-        }
-    }
-    ASSERT_TRUE(session.stop());
-    ASSERT_TRUE(session.has_collected_xspace());
-
-    const xplane* gpu = find_plane_with_name(session.collected_xspace(), GpuPlaneName(0));
-    ASSERT_NE(gpu, nullptr);
-    EXPECT_TRUE(IsDevicePlane(*gpu));
-    EXPECT_GT(count_events(*gpu), 0U);
-
-    bool                 saw_probe   = false;
-    double               duration_ns = 0.0;
-    xplane_visitor const visitor     = CreateTfXPlaneVisitor(gpu);
-    visitor.for_each_line(
-        [&](const xline_visitor& line)
-        {
-            line.for_each_event(
-                [&](const xevent_visitor& event)
-                {
-                    if (event.name() == kProbeKernel)
-                    {
-                        saw_probe   = true;
-                        duration_ns = event.duration_ns();
-                    }
-                });
-        });
-    EXPECT_TRUE(saw_probe);
-    EXPECT_GT(duration_ns, 0.0);
-
-    const std::string chrome = session.generate_chrome_trace_json();
-    EXPECT_NE(chrome.find(GpuPlaneName(0)), std::string::npos);
-    EXPECT_NE(chrome.find(kProbeKernel), std::string::npos);
-
-    print_gpu_plane(*gpu);
-#endif
 }

@@ -56,8 +56,7 @@ std::unique_ptr<profiler_interface> create_gpu_tracer(const profile_options& opt
 /**
  * Dispatch a tiny device kernel and push it through `add_gpu_tracer_event`.
  *
- * Metal: real compute kernel when `PROFILER_HAS_METAL=1`.
- * Otherwise returns false (no CUPTI intercept in this native port; CUDA GPU
+ * Returns false (no native device-kernel probe in this port; CUDA/HIP GPU
  * activity stays on the Kineto path).
  */
 PROFILER_API bool run_gpu_kernel_probe(std::string_view kernel_name = "profiler_gpu_probe");

@@ -141,7 +141,7 @@ The CI consumer step demonstrates these settings.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PROFILER_BACKEND` | `KINETO` | Exactly one of `KINETO`, `ITT` |
-| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip`, `metal` |
+| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip` |
 | `PROFILER_REQUIRE_CUDA` | `OFF` | Fail configuration when requested CUDA is unavailable |
 | `PROFILER_REQUIRE_NVTX` | `OFF` | Fail CUDA configuration when NVTX is unavailable |
 | `PROFILER_ENABLE_TESTING` | `ON` | Build `ProfilerCxxTests`; also register enabled example smoke tests |
@@ -155,7 +155,7 @@ The CI consumer step demonstrates these settings.
 
 A parent project's `MEMORY_GPU_BACKEND` supplies the default if
 `PROFILER_GPU_BACKEND` is unset. The native pipeline is always compiled.
-HIP and Metal code paths exist, but the main CI matrix does not exercise them.
+The HIP code path exists, but the main CI matrix does not exercise it.
 Setting a GPU option alone is not proof that device activity capture is available;
 check the configure summary and validate a trace on the target hardware.
 
@@ -204,7 +204,7 @@ Collection is chosen on `session_options`:
 | Option | Purpose |
 | --- | --- |
 | `backend` | `automatic` (the compiled `PROFILER_BACKEND`), or `kineto`, `itt`, `nvtx`, `kineto_gpu_fallback` |
-| `activities` | Device activities to collect (`cpu`, `cuda`, `hip`, `metal`) |
+| `activities` | Device activities to collect (`cpu`, `cuda`, `hip`) |
 | `profile_memory` | Kineto allocator events via `report_memory_usage` |
 | `with_stack` | Record C++ callsite stacks on instrumentation events |
 | `with_flops` | Request flop metadata when the backend supports it |
@@ -454,7 +454,7 @@ complete outstanding GPU work before stopping capture. See
 `KINETO_GPU_FALLBACK` provides event-based timings when available; it is not a
 replacement for a full CUPTI trace with runtime-to-device correlation for HTA.
 Native `with_gpu_tracing()` enables a separate GPU collector and does not enable
-Kineto/CUPTI. Metal and HIP paths require their platform libraries and are not
+Kineto/CUPTI. The HIP path requires its platform libraries and is not
 covered by the standard CI matrix or this guide's HTA validation.
 
 ## Architecture

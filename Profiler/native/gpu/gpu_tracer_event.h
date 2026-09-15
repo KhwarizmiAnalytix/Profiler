@@ -55,8 +55,8 @@ enum class gpu_tracer_event_type : uint8_t
 /**
  * One GPU activity record (`CuptiTracerEvent`).
  *
- * Produced by the device activity backend (CUPTI callbacks on CUDA, command-
- * buffer GPU times on Metal) and consumed by `gpu_trace_collector`.
+ * Produced by the device activity backend (e.g. CUPTI callbacks on CUDA) and
+ * consumed by `gpu_trace_collector`.
  */
 struct gpu_tracer_event
 {

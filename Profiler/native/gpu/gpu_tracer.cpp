@@ -39,10 +39,6 @@ limitations under the License.
 #include "native/gpu/gpu_event_collector.h"
 #include "native/tracing/traceme.h"
 
-#ifndef PROFILER_HAS_METAL
-#define PROFILER_HAS_METAL 0
-#endif
-
 namespace profiler::profiler_impl
 {
 namespace
@@ -133,11 +129,9 @@ std::unique_ptr<profiler_interface> create_gpu_tracer(const profile_options& opt
     return std::make_unique<gpu_tracer>();
 }
 
-#if !PROFILER_HAS_METAL
 bool run_gpu_kernel_probe(std::string_view /*kernel_name*/)
 {
     return false;
 }
-#endif
 
 }  // namespace profiler::profiler_impl

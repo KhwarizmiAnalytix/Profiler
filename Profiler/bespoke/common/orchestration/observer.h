@@ -19,15 +19,14 @@ enum class PROFILER_VISIBILITY_ENUM ActivityType
     CPU                   = 0,
     CUDA                  = 1,  // NVIDIA CUPTI kernels / runtime
     HIP                   = 2,  // AMD roctracer; libkineto reuses the CUDA-named types
-    Metal                 = 3,  // Metal command-buffer / PrivateUse1 fallback
-    PrivateUse1           = 3,  // PyTorch name kept as an alias for Metal
+    PrivateUse1           = 3,  // Generic vendor-agnostic device slot (PyTorch name)
     NUM_KINETO_ACTIVITIES = 4,  // must be the last one
 };
 
 inline std::string actToString(ActivityType t)
 {
     const std::array<std::string, static_cast<size_t>(ActivityType::NUM_KINETO_ACTIVITIES)>
-        ActivityTypeNames = {"CPU", "CUDA", "HIP", "Metal"};
+        ActivityTypeNames = {"CPU", "CUDA", "HIP", "PrivateUse1"};
     return ActivityTypeNames[static_cast<int>(t)];
 }
 

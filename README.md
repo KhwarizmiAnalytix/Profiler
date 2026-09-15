@@ -292,7 +292,7 @@ troubleshooting, with [verified CPU output](docs/outputs.md#hta-analysis).
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `PROFILER_BACKEND` | `KINETO` | Instrumentation backend: `KINETO` or `ITT` |
-| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip`, or `metal` |
+| `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, or `hip` |
 | `PROFILER_REQUIRE_CUDA` | `OFF` | Require the requested CUDA Toolkit |
 | `PROFILER_REQUIRE_NVTX` | `OFF` | Require NVTX for a CUDA configuration |
 | `PROFILER_ENABLE_TESTING` | `ON` | Build the C++ test suite |

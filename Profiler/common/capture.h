@@ -33,14 +33,14 @@ namespace profiler
 /**
  * Device activity kinds collected by an instrumentation capture.
  * The compiled backend (Kineto or ITT) interprets these; CUDA requires a
- * Kineto build with CUPTI.
+ * Kineto build with CUPTI. Metal support was removed; numeric identities of
+ * the retained values are preserved.
  */
 enum class activity
 {
-    cpu,
-    cuda,
-    hip,
-    metal,
+    cpu  = 0,
+    cuda = 1,
+    hip  = 2,
 };
 
 /**

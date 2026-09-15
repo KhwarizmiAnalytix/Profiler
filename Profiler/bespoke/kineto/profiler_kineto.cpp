@@ -553,7 +553,7 @@ void toggleCollectionDynamic(
     {
         if (act == profiler::profiler_impl::ActivityType::CUDA ||
             act == profiler::profiler_impl::ActivityType::HIP ||
-            act == profiler::profiler_impl::ActivityType::Metal)
+            act == profiler::profiler_impl::ActivityType::PrivateUse1)
         {
             profiler::profiler_impl::impl::kineto::toggleCollectionDynamic(enable);
         }

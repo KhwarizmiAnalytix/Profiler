@@ -102,7 +102,7 @@ struct profiler_options
     /// Enable thread-safe profiling for multi-threaded applications
     bool enable_thread_safety_ = true;
 
-    /// Enable native GPU device tracing (Metal command-buffer GPU times → `/device:GPU:N`).
+    /// Enable native GPU device tracing (`/device:GPU:N`).
     bool enable_gpu_tracing_ = false;
 
     /**
@@ -580,8 +580,8 @@ public:
     }
 
     /**
-     * @brief Enable native GPU device tracing (Metal GPU intervals on `/device:GPU:N`)
-     * @param enable true to start the Metal device tracer with the session
+     * @brief Enable native GPU device tracing (GPU intervals on `/device:GPU:N`)
+     * @param enable true to start the native GPU device tracer with the session
      * @return Reference to this profiler_session_builder for method chaining
      */
     profiler_session_builder& with_gpu_tracing(bool enable = true)

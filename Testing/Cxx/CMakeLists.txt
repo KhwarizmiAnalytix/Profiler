@@ -6,7 +6,6 @@ set(TestFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendGpuFallback.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMemory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMetadata.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMetal.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendOutput.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerLockAndEnv.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerChromeTraceHierarchical.cpp"

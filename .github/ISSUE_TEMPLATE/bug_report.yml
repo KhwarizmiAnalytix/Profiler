@@ -41,7 +41,6 @@ body:
         - none
         - cuda
         - hip
-        - metal
     validations:
       required: true
   - type: input

@@ -46,18 +46,11 @@ def profiler_defines():
         "//bazel:enable_hip": ["PROFILER_HAS_HIP=1", "PROFILER_HAS_ROCTX=0"],
         "//conditions:default": ["PROFILER_HAS_HIP=0", "PROFILER_HAS_ROCTX=0"],
     })
-    defines += select({
-        "//bazel:enable_metal": ["PROFILER_HAS_METAL=1"],
-        "//conditions:default": ["PROFILER_HAS_METAL=0"],
-    })
 
     return defines
 
 def profiler_linkopts():
     return common_linkopts() + select({
-        "//bazel:enable_metal": ["-framework", "Metal", "-framework", "Foundation"],
-        "//conditions:default": [],
-    }) + select({
         # nvtx3.hpp dlopens the injector; FindCUDAToolkit's CUDA::nvtx3
         # target adds CMAKE_DL_LIBS for the same reason. Linux-only: -ldl
         # is invalid on Windows and redundant on Apple.

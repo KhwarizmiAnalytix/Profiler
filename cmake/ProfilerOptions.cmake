@@ -28,11 +28,14 @@ if(NOT DEFINED PROFILER_GPU_BACKEND)
 else()
     set(_profiler_gpu_default "${PROFILER_GPU_BACKEND}")
 endif()
-set(PROFILER_GPU_BACKEND "${_profiler_gpu_default}" CACHE STRING
-                                                          "GPU backend: none, cuda, hip, metal"
-)
-set_property(CACHE PROFILER_GPU_BACKEND PROPERTY STRINGS none cuda hip metal)
+set(PROFILER_GPU_BACKEND "${_profiler_gpu_default}" CACHE STRING "GPU backend: none, cuda, hip")
+set_property(CACHE PROFILER_GPU_BACKEND PROPERTY STRINGS none cuda hip)
 unset(_profiler_gpu_default)
+if(NOT PROFILER_GPU_BACKEND MATCHES "^(none|cuda|hip)$")
+    message(FATAL_ERROR
+            "PROFILER_GPU_BACKEND must be none, cuda, or hip (Metal support was removed)"
+    )
+endif()
 
 option(PROFILER_ENABLE_TESTING "Build Profiler test suite" ON)
 option(PROFILER_ENABLE_EXAMPLES "Build Profiler example programs" OFF)

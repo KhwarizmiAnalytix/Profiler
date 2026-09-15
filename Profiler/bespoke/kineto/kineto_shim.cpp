@@ -329,7 +329,7 @@ void prepareTrace(
     {
         k_activities.insert(libkineto::ActivityType::COLLECTIVE_COMM);
     }
-    if (activities.count(profiler::profiler_impl::ActivityType::Metal) > 0)  //NOLINT
+    if (activities.count(profiler::profiler_impl::ActivityType::PrivateUse1) > 0)  //NOLINT
     {
         k_activities.insert(kPrivateUse1Types.begin(), kPrivateUse1Types.end());
     }

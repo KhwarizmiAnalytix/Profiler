@@ -91,9 +91,6 @@ std::set<ActivityType> to_internal_activities(const std::set<activity>& activiti
         case activity::hip:
             out.insert(ActivityType::HIP);
             break;
-        case activity::metal:
-            out.insert(ActivityType::Metal);
-            break;
         }
     }
     if (out.empty())

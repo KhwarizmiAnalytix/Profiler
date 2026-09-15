@@ -10,6 +10,7 @@ All build paths and examples refer to this standalone repository.
 | [Output examples](outputs.md) | Actual console, hotspot, JSON, CSV, XML, and HTA output, with field explanations |
 | [Runnable examples](../examples/README.md) | Executables, commands, generated files, and optional Python dependencies |
 | [Dependencies](../third_party/README.md) | Vendored libraries and alternative dependency locations |
+| [Design review and CPU/GPU plan](design-review.md) | Efficiency/reliability requirements, Metal removal, architecture findings, backend tradeoffs, and implementation/release gates |
 
 Profiler has a C++ API. The optional HTA script analyzes exported files in Python;
 it does not provide Python bindings to the Profiler library.
