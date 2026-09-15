@@ -25,8 +25,10 @@ jobs:
 
       - name: Install lintrunner and lint-tool
         # typing_extensions is imported by lint-tool adapters but not declared
-        # as an install_requires on current PyPI lint-tool.
-        run: pip install lintrunner lint-tool typing_extensions
+        # as an install_requires on current PyPI lint-tool. PyYAML is needed by
+        # cmakelang's cmake-format to parse .cmake-format.yaml but is not
+        # declared as an install_requires on current PyPI cmakelang either.
+        run: pip install lintrunner lint-tool typing_extensions PyYAML
 
       - name: Initialize linters
         run: lintrunner init
