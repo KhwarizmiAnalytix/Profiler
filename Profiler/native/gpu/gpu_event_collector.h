@@ -34,6 +34,7 @@ limitations under the License.
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -80,11 +81,15 @@ class PROFILER_VISIBILITY gpu_activity_tracer
 public:
     static gpu_activity_tracer& get();
 
-    bool enable(gpu_trace_collector* collector);
+    // Takes shared ownership so a producer's local copy (see collector(), used by
+    // add_gpu_tracer_event) keeps the collector alive for the duration of its call
+    // even if disable() runs concurrently -- a bare atomic<gpu_trace_collector*> had
+    // no lifetime lease and could hand out a pointer that's freed mid-call.
+    bool enable(std::shared_ptr<gpu_trace_collector> collector);
     void disable();
 
-    gpu_trace_collector* collector() const;
-    bool                 is_recording() const;
+    std::shared_ptr<gpu_trace_collector> collector() const;
+    bool                                 is_recording() const;
 
     gpu_activity_tracer(const gpu_activity_tracer&)            = delete;
     gpu_activity_tracer& operator=(const gpu_activity_tracer&) = delete;
@@ -92,7 +97,8 @@ public:
 private:
     gpu_activity_tracer() = default;
 
-    std::atomic<gpu_trace_collector*> collector_{nullptr};
+    mutable std::mutex                   mu_;
+    std::shared_ptr<gpu_trace_collector> collector_;
 };
 
 /**

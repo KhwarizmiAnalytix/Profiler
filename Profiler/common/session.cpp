@@ -77,7 +77,7 @@ session::~session()
 session::session(session&& other) noexcept
     : options_(std::move(other.options_)), native_(std::move(other.native_)),
       inst_(std::move(other.inst_)), inst_result_(std::move(other.inst_result_)),
-      active_(other.active_)
+      last_error_(std::move(other.last_error_)), active_(other.active_)
 {
     other.active_ = false;
 }
@@ -96,6 +96,7 @@ session& session::operator=(session&& other) noexcept
     native_       = std::move(other.native_);
     inst_         = std::move(other.inst_);
     inst_result_  = std::move(other.inst_result_);
+    last_error_   = std::move(other.last_error_);
     active_       = other.active_;
     other.active_ = false;
     return *this;
@@ -108,10 +109,19 @@ bool session::start()
         return false;
     }
 
+    // Drop the previous run's instrumentation result so events()/write_trace() during
+    // (or after) this new run can't observe stale data left over from the last one.
+    inst_result_.reset();
+    last_error_.clear();
+
     bool started_any = false;
     if (options_.native)
     {
-        native_ = std::make_unique<profiler_session>(to_native_options(options_));
+        // A fresh profiler_session every start(), not reused -- any report/hotspot
+        // report generated from a previous run keeps its own snapshot alive
+        // (see generate_report()/generate_hotspot_report()), so replacing native_
+        // here doesn't dangle them.
+        native_ = std::make_shared<profiler_session>(to_native_options(options_));
         if (!native_->start())
         {
             native_.reset();
@@ -152,6 +162,7 @@ bool session::stop()
         return false;
     }
 
+    last_error_.clear();
     bool ok = true;
     if (inst_ && inst_->is_active())
     {
@@ -160,6 +171,10 @@ bool session::stop()
     if (native_ && native_->is_active())
     {
         ok = native_->stop();
+        if (!ok)
+        {
+            last_error_ = native_->last_error();
+        }
     }
     active_ = false;
     return ok;
@@ -168,6 +183,11 @@ bool session::stop()
 bool session::is_active() const
 {
     return active_;
+}
+
+const std::string& session::last_error() const
+{
+    return last_error_;
 }
 
 bool session::write_trace(const std::string& path)
@@ -189,14 +209,40 @@ std::string session::generate_chrome_trace_json() const
     return native_ ? native_->generate_chrome_trace_json() : std::string{};
 }
 
-std::unique_ptr<profiler_report> session::generate_report() const
+std::shared_ptr<profiler_report> session::generate_report() const
 {
-    return native_ ? native_->generate_report() : nullptr;
+    if (!native_)
+    {
+        return nullptr;
+    }
+    std::unique_ptr<profiler_report> report = native_->generate_report();
+    if (!report)
+    {
+        return nullptr;
+    }
+    // The report holds a reference into *native_; keep that native_session alive
+    // for as long as the report is, even if this session's native_ is later
+    // replaced (start()) or the session itself is destroyed.
+    std::shared_ptr<profiler_session> keep_alive = native_;
+    return std::shared_ptr<profiler_report>(
+        report.release(), [keep_alive](profiler_report* p) { delete p; });
 }
 
-std::unique_ptr<hotspot_report> session::generate_hotspot_report() const
+std::shared_ptr<hotspot_report> session::generate_hotspot_report() const
 {
-    return native_ ? native_->generate_hotspot_report() : nullptr;
+    if (!native_)
+    {
+        return nullptr;
+    }
+    std::unique_ptr<hotspot_report> report = native_->generate_hotspot_report();
+    if (!report)
+    {
+        return nullptr;
+    }
+    // Same rationale as generate_report(): the hotspot tree is owned by *native_.
+    std::shared_ptr<profiler_session> keep_alive = native_;
+    return std::shared_ptr<hotspot_report>(
+        report.release(), [keep_alive](hotspot_report* p) { delete p; });
 }
 
 void session::export_report(const std::string& path) const
@@ -207,9 +253,9 @@ void session::export_report(const std::string& path) const
     }
 }
 
-memory_tracker& session::get_memory_tracker()
+memory_tracker* session::get_memory_tracker()
 {
-    return native_->get_memory_tracker();
+    return native_ ? native_->get_memory_tracker() : nullptr;
 }
 
 const std::vector<capture_event>& session::events() const

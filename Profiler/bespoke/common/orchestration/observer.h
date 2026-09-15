@@ -1,6 +1,8 @@
 #pragma once
 
 #include <mutex>
+#include <thread>
+#include <unordered_map>
 #include <utility>
 
 #include "bespoke/base/thread_local_debug_info.h"
@@ -226,8 +228,14 @@ protected:
     std::mutex state_mutex_;
     // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
     ProfilerConfig config_ = ProfilerConfig(ProfilerState::Disabled);
+    // Keyed by enrolling thread: a single ProfilerStateBase instance can be shared
+    // across worker threads (see enableProfilerInChildThread), each of which
+    // registers its own thread-local callback -- a single shared handle_ scalar
+    // would have concurrent enrollers overwrite one another's handle.
     // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
-    profiler::CallbackHandle handle_ = 0;
+    std::mutex handles_mutex_;
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
+    std::unordered_map<std::thread::id, profiler::CallbackHandle> handles_;
 };
 
 // Note: The following are only for the active *thread local* profiler.

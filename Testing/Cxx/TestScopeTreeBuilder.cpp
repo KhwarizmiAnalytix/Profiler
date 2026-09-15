@@ -116,6 +116,30 @@ PROFILERTEST(ScopeTreeBuilder, nested_events_become_children_by_interval_contain
     EXPECT_TRUE(sibling->children_.empty());
 }
 
+// Regression for the false-parenting defect in docs/design-review.md finding 8:
+// A=[1000,3000) starts before B=[2000,4000) and B starts inside A's interval, but
+// B ends after A closes -- they overlap without either containing the other, so
+// neither may become the other's parent.
+PROFILERTEST(ScopeTreeBuilder, crossing_intervals_do_not_nest)
+{
+    profiler::x_space space;
+    profiler::xplane* plane = space.add_planes();
+    plane->set_name(std::string(profiler::kHostThreadsPlaneName));
+    profiler::xplane_builder builder(plane);
+
+    add_duration_event(builder, 1, "A", 1000, 2000);  // [1000, 3000) ns
+    add_duration_event(builder, 1, "B", 2000, 2000);  // [2000, 4000) ns
+
+    auto root = profiler::scope_tree_builder::build_scope_tree(space);
+    ASSERT_NE(root, nullptr);
+    ASSERT_EQ(root->children_.size(), 2u);
+
+    EXPECT_EQ(root->children_[0]->name_, "A");
+    EXPECT_TRUE(root->children_[0]->children_.empty());
+    EXPECT_EQ(root->children_[1]->name_, "B");
+    EXPECT_TRUE(root->children_[1]->children_.empty());
+}
+
 PROFILERTEST(ScopeTreeBuilder, separate_lines_produce_separate_thread_labeled_branches)
 {
     profiler::x_space space;

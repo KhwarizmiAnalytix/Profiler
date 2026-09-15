@@ -318,9 +318,17 @@ public:
 
     /**
      * @brief Stop the profiling session
-     * @return true if successfully stopped, false if not active or failed
+     * @return true if successfully stopped and all backend collectors
+     *         reported success; false if not active, or if a backend's
+     *         stop()/collect_data() failed (see last_error() for why)
      */
     PROFILER_API bool stop();
+
+    /**
+     * @brief Message from the most recent backend stop()/collect_data()
+     * failure, or empty if the last stop() succeeded (or none has run yet).
+     */
+    const std::string& last_error() const { return last_error_; }
 
     /**
      * @brief Check if the profiling session is currently active
@@ -336,10 +344,12 @@ public:
     PROFILER_API std::unique_ptr<profiler::profiler_scope> create_scope(const std::string& name);
 
     /**
-     * @brief Get reference to the memory tracker component
-     * @return Reference to the memory tracker
+     * @brief Get the memory tracker component
+     * @return Pointer to the memory tracker, or nullptr if memory tracking
+     *         wasn't enabled (session_options::memory_tracking) or start()
+     *         hasn't run yet
      */
-    profiler::memory_tracker& get_memory_tracker() { return *memory_tracker_; }
+    profiler::memory_tracker* get_memory_tracker() { return memory_tracker_.get(); }
 
     /**
      * @brief Get reference to the statistical analyzer component
@@ -500,6 +510,9 @@ private:
     /// Captured XSpace timeline from backend profilers
     profiler::x_space xspace_;
     bool              xspace_ready_ = false;
+
+    /// Message from the most recent backend stop()/collect_data() failure; see last_error().
+    std::string last_error_;
 
     /// Lazily-built, cached reconstruction of xspace_'s scope hierarchy (see build_scope_tree()).
     /// mutable: built on demand from a const accessor; invalidated whenever xspace_ changes.

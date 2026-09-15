@@ -185,21 +185,27 @@ gpu_activity_tracer& gpu_activity_tracer::get()
     return tracer;
 }
 
-bool gpu_activity_tracer::enable(gpu_trace_collector* collector)
+bool gpu_activity_tracer::enable(std::shared_ptr<gpu_trace_collector> collector)
 {
-    gpu_trace_collector* expected = nullptr;
-    return collector_.compare_exchange_strong(
-        expected, collector, std::memory_order_acq_rel, std::memory_order_acquire);
+    std::lock_guard<std::mutex> const lock(mu_);
+    if (collector_ != nullptr)
+    {
+        return false;
+    }
+    collector_ = std::move(collector);
+    return true;
 }
 
 void gpu_activity_tracer::disable()
 {
-    collector_.store(nullptr, std::memory_order_release);
+    std::lock_guard<std::mutex> const lock(mu_);
+    collector_.reset();
 }
 
-gpu_trace_collector* gpu_activity_tracer::collector() const
+std::shared_ptr<gpu_trace_collector> gpu_activity_tracer::collector() const
 {
-    return collector_.load(std::memory_order_acquire);
+    std::lock_guard<std::mutex> const lock(mu_);
+    return collector_;
 }
 
 bool gpu_activity_tracer::is_recording() const
@@ -209,7 +215,7 @@ bool gpu_activity_tracer::is_recording() const
 
 void add_gpu_tracer_event(gpu_tracer_event event)
 {
-    gpu_trace_collector* collector = gpu_activity_tracer::get().collector();
+    std::shared_ptr<gpu_trace_collector> const collector = gpu_activity_tracer::get().collector();
     if (collector == nullptr)
     {
         return;

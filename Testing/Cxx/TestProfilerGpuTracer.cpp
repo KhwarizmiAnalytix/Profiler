@@ -27,10 +27,13 @@
  * probe has no native implementation in this port and always returns false.
  */
 
+#include <atomic>
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <utility>
+#include <vector>
 
 #include "ProfilerTest.h"
 #include "native/exporters/xplane/tf_xplane_visitor.h"
@@ -215,4 +218,37 @@ PROFILERTEST(BackendGpuTracer, add_event_is_noop_when_inactive)
 PROFILERTEST(BackendGpuTracer, device_kernel_probe_records_interval)
 {
     EXPECT_FALSE(run_gpu_kernel_probe(kProbeKernel));
+}
+
+// Regression for design-review.md finding 7 (GPU producer/collector lifetime race):
+// a producer thread calling add_gpu_tracer_event() while the control thread
+// disables/destroys the collector used to race on a bare
+// atomic<gpu_trace_collector*> with no lifetime lease. The fix gives the
+// singleton's collector handle shared ownership so a producer's in-flight call
+// keeps the collector alive until it returns. On a plain build this mainly
+// checks nothing crashes; run with -DPROFILER_SANITIZER=thread for real
+// verification.
+PROFILERTEST(BackendGpuTracer, concurrent_producer_survives_start_stop_churn)
+{
+    std::atomic<bool> stop_producer{false};
+    std::thread       producer(
+        [&stop_producer]()
+        {
+            uint64_t i = 0;
+            while (!stop_producer.load(std::memory_order_relaxed))
+            {
+                add_kernel_event(kSyntheticKernel, i, i + 1);
+                ++i;
+            }
+        });
+
+    for (int iter = 0; iter < 200; ++iter)
+    {
+        profiler_session session(make_gpu_options());
+        ASSERT_TRUE(session.start());
+        ASSERT_TRUE(session.stop());
+    }
+
+    stop_producer.store(true, std::memory_order_relaxed);
+    producer.join();
 }

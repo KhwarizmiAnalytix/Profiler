@@ -68,7 +68,9 @@ bool backend_available(capture_backend backend)
     case capture_backend::itt:
         return PROFILER_HAS_ITT != 0;
     case capture_backend::nvtx:
-        return true;
+        // NVTX markers need the CUDA stubs (bespoke/base/cuda.cpp) to be compiled in;
+        // a CPU-only build has no NVTX sink even though the enum value always exists.
+        return PROFILER_HAS_CUDA != 0;
     case capture_backend::automatic:
     default:
         return (PROFILER_HAS_KINETO != 0) || (PROFILER_HAS_ITT != 0);

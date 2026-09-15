@@ -55,8 +55,8 @@ public:
         {
             return profiler_status::Error("Another profile session running.");
         }
-        collector_ = std::make_unique<gpu_trace_collector>();
-        if (!gpu_activity_tracer::get().enable(collector_.get()))
+        collector_ = std::make_shared<gpu_trace_collector>();
+        if (!gpu_activity_tracer::get().enable(collector_))
         {
             collector_.reset();
             return profiler_status::Error("Another profile session running.");
@@ -108,7 +108,7 @@ public:
 
 private:
     bool                                 recording_ = false;
-    std::unique_ptr<gpu_trace_collector> collector_;
+    std::shared_ptr<gpu_trace_collector> collector_;
 };
 
 }  // namespace

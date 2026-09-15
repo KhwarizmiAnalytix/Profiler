@@ -75,17 +75,24 @@ public:
     PROFILER_API bool stop();
     PROFILER_API bool is_active() const;
 
+    /// Message from the most recent start()/stop() backend failure, or empty
+    /// if the last call succeeded (or none has run yet).
+    PROFILER_API const std::string& last_error() const;
+
     /// Kineto JSON when that backend produced a trace; otherwise native Chrome Trace.
     PROFILER_API bool write_trace(const std::string& path);
 
     PROFILER_API bool write_chrome_trace(const std::string& path) const;
     PROFILER_API std::string generate_chrome_trace_json() const;
 
-    PROFILER_API std::unique_ptr<profiler_report> generate_report() const;
-    PROFILER_API std::unique_ptr<hotspot_report> generate_hotspot_report() const;
+    /// The returned report/hotspot report stays valid even after this session is
+    /// stopped, restarted, or destroyed -- it keeps its own native session snapshot alive.
+    PROFILER_API std::shared_ptr<profiler_report> generate_report() const;
+    PROFILER_API std::shared_ptr<hotspot_report> generate_hotspot_report() const;
     PROFILER_API void                            export_report(const std::string& path) const;
 
-    PROFILER_API memory_tracker& get_memory_tracker();
+    /// nullptr if native profiling isn't enabled/started, or memory tracking wasn't requested.
+    PROFILER_API memory_tracker* get_memory_tracker();
 
     PROFILER_API const std::vector<capture_event>& events() const;
 
@@ -94,9 +101,10 @@ public:
 
 private:
     session_options                   options_{};
-    std::unique_ptr<profiler_session> native_;
+    std::shared_ptr<profiler_session> native_;
     std::unique_ptr<capture>          inst_;
     std::unique_ptr<capture_result>   inst_result_;
+    std::string                       last_error_;
     bool                              active_ = false;
 };
 

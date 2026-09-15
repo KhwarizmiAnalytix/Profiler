@@ -107,7 +107,10 @@ struct ActivityTraceWrapper
     explicit ActivityTraceWrapper(std::unique_ptr<interface_trace_t>&& trace);
     ActivityTraceWrapper() = default;
     PROFILER_API explicit operator bool() const;
-    PROFILER_API void     save(const std::string& path);
+    // Returns true only if this call performed the write; false if there was
+    // no trace to save or a previous call already consumed it (Kineto's
+    // underlying save is destructive and cannot be repeated).
+    PROFILER_API bool save(const std::string& path);
 
     const std::unique_ptr<interface_trace_t>& get() { return trace_; }
 

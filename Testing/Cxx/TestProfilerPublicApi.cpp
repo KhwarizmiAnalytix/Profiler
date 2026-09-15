@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "ProfilerTest.h"
 #include "profiler.h"
@@ -61,8 +62,8 @@ PROFILERTEST(PublicApi, reports_and_hotspots_from_umbrella_header)
         PROFILER_PROFILE_SCOPE("public_report_scope");
         void* ptr = std::malloc(64);
         ASSERT_NE(ptr, nullptr);
-        session.get_memory_tracker().track_allocation(ptr, 64, "public_buffer");
-        session.get_memory_tracker().track_deallocation(ptr);
+        session.get_memory_tracker()->track_allocation(ptr, 64, "public_buffer");
+        session.get_memory_tracker()->track_deallocation(ptr);
         std::free(ptr);
     }
     ASSERT_TRUE(session.stop());
@@ -108,6 +109,42 @@ PROFILERTEST(PublicApi, capture_from_umbrella_header)
         }
         EXPECT_TRUE(found_scope);
     }
+}
+
+// Regression/stress test for design-review.md finding 7 (worker enrollment race):
+// concurrently enrolling child threads used to share one callback-handle scalar
+// on the (possibly shared) ProfilerStateBase instance, so concurrent enrollers
+// could overwrite one another's handle and trip the "leaked callback" assert.
+// Each worker here enrolls, records, and disenrolls under contention; on a plain
+// build this mainly checks nothing crashes/asserts, run with
+// -DPROFILER_SANITIZER=thread for real verification.
+PROFILERTEST(PublicApi, concurrent_child_thread_enrollment_does_not_race)
+{
+    profiler::capture cap;
+    ASSERT_TRUE(cap.start());
+
+    constexpr int     kWorkerCount = 8;
+    std::vector<std::thread> workers;
+    workers.reserve(kWorkerCount);
+    for (int i = 0; i < kWorkerCount; ++i)
+    {
+        workers.emplace_back(
+            [i]
+            {
+                for (int iter = 0; iter < 20; ++iter)
+                {
+                    profiler::child_thread_capture enroll;
+                    PROFILER_RECORD_USER_SCOPE("public_worker_stress");
+                }
+            });
+    }
+    for (auto& worker : workers)
+    {
+        worker.join();
+    }
+
+    auto result = cap.stop();
+    ASSERT_NE(result, nullptr);
 }
 
 PROFILERTEST(PublicApi, capture_child_thread_from_umbrella_header)

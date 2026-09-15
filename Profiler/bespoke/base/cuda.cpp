@@ -60,7 +60,9 @@ void cudaCheck(cudaError_t result, const char* file, int line)
         {
             ss << cudaGetErrorString(result);
         }
-        // PROFILER_CHECK(false, ss.str());
+        // Surface the error instead of discarding it -- a profiler must not throw/abort
+        // the host application over a backend error, so this logs rather than checks.
+        logSoftAssert(__func__, file, static_cast<uint32_t>(line), "result == cudaSuccess", ss.str());
     }
 }
 #define PROFILER_CUDA_CHECK(result) cudaCheck(result, __FILE__, __LINE__);
@@ -189,7 +191,20 @@ struct CUDAOrHIPMethods : public ProfilerStubs
 
     void synchronize() const override { PROFILER_CUDA_CHECK(cudaDeviceSynchronize()); }
 
-    bool enabled() const override { return true; }
+    // Reflects actual runtime device availability, not just that this translation
+    // unit was compiled in -- a CUDA/HIP build with no devices (or a broken
+    // driver) should report itself unavailable rather than claim support it can't
+    // use. Cached: the device set doesn't change over a process's lifetime.
+    bool enabled() const override
+    {
+        static bool const has_device = []()
+        {
+            int               device_count = 0;
+            cudaError_t const err          = cudaGetDeviceCount(&device_count);
+            return err == cudaSuccess && device_count > 0;
+        }();
+        return has_device;
+    }
 };
 
 struct RegisterCUDAOrHIPMethods

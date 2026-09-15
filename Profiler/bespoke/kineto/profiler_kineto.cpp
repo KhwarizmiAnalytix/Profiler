@@ -391,8 +391,13 @@ void pushProfilingCallbacks(const std::unordered_set<profiler::RecordScope>& sco
 
 struct ProfilerStateInfo
 {
+    // Non-null only for the KINETO/KINETO_GPU_FALLBACK/KINETO_PRIVATEUSE1_FALLBACK
+    // states; NVTX/ITT/PRIVATEUSE1 child-thread enrollment replays their own push
+    // function (see enableProfilerInChildThread) using config below instead.
     std::shared_ptr<KinetoThreadLocalState>   state_ptr;
     std::unordered_set<profiler::RecordScope> scopes;
+    profiler::profiler_impl::impl::ProfilerConfig config{
+        profiler::profiler_impl::impl::ProfilerState::Disabled};
 };
 std::mutex                         profiler_state_info_mutex;
 std::shared_ptr<ProfilerStateInfo> profiler_state_info_ptr{nullptr};
@@ -585,12 +590,22 @@ void enableProfiler(
     if (config.state == ProfilerState::NVTX)
     {
         profiler::profiler_impl::impl::pushNVTXCallbacks(config, scopes);
+        // Publish config/scopes (no KinetoThreadLocalState -- NVTX doesn't use one) so
+        // enableProfilerInChildThread can replay pushNVTXCallbacks on worker threads too.
+        auto state_info_ptr    = std::make_shared<ProfilerStateInfo>();
+        state_info_ptr->scopes = scopes;
+        state_info_ptr->config = config;
+        store_profiler_state_info(std::move(state_info_ptr));
         return;
     }
     if (config.state == ProfilerState::ITT)
     {
 #if PROFILER_HAS_ITT
         profiler::profiler_impl::impl::pushITTCallbacks(config, scopes);
+        auto state_info_ptr    = std::make_shared<ProfilerStateInfo>();
+        state_info_ptr->scopes = scopes;
+        state_info_ptr->config = config;
+        store_profiler_state_info(std::move(state_info_ptr));
 #endif
         return;
     }
@@ -599,6 +614,10 @@ void enableProfiler(
         if (profiler::profiler_impl::impl::pushPRIVATEUSE1CallbacksStub)
         {
             profiler::profiler_impl::impl::pushPRIVATEUSE1CallbacksStub(config, scopes);
+            auto state_info_ptr    = std::make_shared<ProfilerStateInfo>();
+            state_info_ptr->scopes = scopes;
+            state_info_ptr->config = config;
+            store_profiler_state_info(std::move(state_info_ptr));
         }
         return;
     }
@@ -641,13 +660,42 @@ bool isProfilerEnabledInMainThread()
 void enableProfilerInChildThread()
 {
     auto state_info_ptr = load_profiler_state_info();
-    if (state_info_ptr == nullptr || state_info_ptr->state_ptr == nullptr)
+    if (state_info_ptr == nullptr)
     {
         return;
     }
 
-    KinetoThreadLocalState::push(state_info_ptr->state_ptr);
-    pushProfilingCallbacks</*global=*/false>(state_info_ptr->scopes);
+    if (state_info_ptr->state_ptr != nullptr)
+    {
+        KinetoThreadLocalState::push(state_info_ptr->state_ptr);
+        pushProfilingCallbacks</*global=*/false>(state_info_ptr->scopes);
+        return;
+    }
+
+    // No KinetoThreadLocalState published -- this is an NVTX/ITT/PRIVATEUSE1 session;
+    // replay that backend's own push function on this thread instead.
+    switch (state_info_ptr->config.state)
+    {
+    case ProfilerState::NVTX:
+        profiler::profiler_impl::impl::pushNVTXCallbacks(
+            state_info_ptr->config, state_info_ptr->scopes);
+        break;
+    case ProfilerState::ITT:
+#if PROFILER_HAS_ITT
+        profiler::profiler_impl::impl::pushITTCallbacks(
+            state_info_ptr->config, state_info_ptr->scopes);
+#endif
+        break;
+    case ProfilerState::PRIVATEUSE1:
+        if (profiler::profiler_impl::impl::pushPRIVATEUSE1CallbacksStub)
+        {
+            profiler::profiler_impl::impl::pushPRIVATEUSE1CallbacksStub(
+                state_info_ptr->config, state_info_ptr->scopes);
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 void disableProfilerInChildThread()
@@ -924,8 +972,7 @@ bool ProfilerResult::save(const std::string& path)
     {
         return false;
     }
-    trace_->save(path);
-    return static_cast<bool>(*trace_);
+    return trace_->save(path);
 }
 
 }  // namespace profiler_impl

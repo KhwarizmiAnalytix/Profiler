@@ -111,17 +111,26 @@ void nest_line_events(
     for (const flat_event& event : events)
     {
         auto const start = to_time_point(event.start_ns);
+        auto const end   = to_time_point(event.end_ns);
         while (!open_ancestors.empty() && open_ancestors.back()->end_time_ <= start)
         {
             open_ancestors.pop_back();
         }
+        // The innermost still-open ancestor may have started before `event` but end
+        // before it does too (an overlapping, non-nesting pair, e.g. A=[1000,3000),
+        // B=[2000,4000)) -- only accept it as this event's parent if its interval
+        // fully contains [start, end); otherwise this event isn't actually nested
+        // under anything currently open, so it attaches under root instead of a
+        // false parent.
         profiler::profiler_scope_data* parent =
-            open_ancestors.empty() ? &root : open_ancestors.back();
+            (!open_ancestors.empty() && open_ancestors.back()->end_time_ >= end)
+                ? open_ancestors.back()
+                : &root;
 
         auto node           = std::make_unique<profiler::profiler_scope_data>();
         node->name_         = event.name;
         node->start_time_   = start;
-        node->end_time_     = to_time_point(event.end_ns);
+        node->end_time_     = end;
         node->depth_level_  = parent->depth_level_ + 1;
         node->parent_       = parent;
         node->thread_label_ = thread_label;

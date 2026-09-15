@@ -228,13 +228,13 @@ PROFILERTEST(BackendMemory, native_profiles_memory)
         void* ptr = ::operator new(kAllocBytes);
         std::memset(ptr, 0xCD, kAllocBytes);
         total_allocated += kAllocBytes;
-        session.get_memory_tracker().track_allocation(ptr, kAllocBytes, kMemoryScope);
+        session.get_memory_tracker()->track_allocation(ptr, kAllocBytes, kMemoryScope);
 
-        EXPECT_GE(session.get_memory_tracker().get_current_usage(), kAllocBytes);
-        EXPECT_GE(session.get_memory_tracker().get_total_allocated(), kAllocBytes);
-        EXPECT_GE(session.get_memory_tracker().get_peak_usage(), kAllocBytes);
+        EXPECT_GE(session.get_memory_tracker()->get_current_usage(), kAllocBytes);
+        EXPECT_GE(session.get_memory_tracker()->get_total_allocated(), kAllocBytes);
+        EXPECT_GE(session.get_memory_tracker()->get_peak_usage(), kAllocBytes);
 
-        session.get_memory_tracker().track_deallocation(ptr);
+        session.get_memory_tracker()->track_deallocation(ptr);
         ::operator delete(ptr);
         total_allocated -= kAllocBytes;
     }
@@ -242,7 +242,7 @@ PROFILERTEST(BackendMemory, native_profiles_memory)
     ASSERT_TRUE(session.stop());
     EXPECT_EQ(total_allocated, 0U);
 
-    const auto stats = session.get_memory_tracker().get_current_stats();
+    const auto stats = session.get_memory_tracker()->get_current_stats();
     EXPECT_EQ(stats.current_usage_, 0U);
     EXPECT_GE(stats.total_allocated_, kAllocBytes);
     EXPECT_GE(stats.peak_usage_, kAllocBytes);

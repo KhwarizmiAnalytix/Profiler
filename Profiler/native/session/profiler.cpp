@@ -272,6 +272,9 @@ bool profiler_session::stop()
         statistical_analyzer_->stop_analysis();
     }
 
+    last_error_.clear();
+    bool backend_ok = true;
+
     if (backend_profilers_)
     {
         std::string           backend_errors;
@@ -313,9 +316,11 @@ bool profiler_session::stop()
             }
         }
         xspace_ready_ = collect_status.ok();
+        backend_ok    = stop_status.ok() && collect_status.ok();
 
         if (!backend_errors.empty())
         {
+            last_error_ = backend_errors;
             PROFILER_LOG_ERROR("Profiler backend errors: {}", backend_errors);
         }
 
@@ -333,7 +338,7 @@ bool profiler_session::stop()
 
     profiler_lock_.ReleaseIfActive();
 
-    return true;
+    return backend_ok;
 }
 
 std::unique_ptr<profiler::profiler_scope> profiler_session::create_scope(const std::string& name)

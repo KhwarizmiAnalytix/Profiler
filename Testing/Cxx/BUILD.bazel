@@ -12,6 +12,7 @@ _PROFILER_COMMON_TESTS = [
     "TestProfilerChromeTraceHierarchical.cpp",
     "TestProfilerHeavyFunction.cpp",
     "TestProfilerGpuTracer.cpp",
+    "TestProfilerLifecycleRegressions.cpp",
     "TestProfilerNativeHotspot.cpp",
     "TestProfilerPublicApi.cpp",
     "TestProfilerThreadpoolTracing.cpp",

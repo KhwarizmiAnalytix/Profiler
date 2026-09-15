@@ -93,12 +93,17 @@ bool ProfilerConfig::pushGlobalCallbacks() const
 
 ProfilerStateBase::~ProfilerStateBase()
 {
-    if (handle_ != 0u)
+    std::lock_guard<std::mutex> const lock(handles_mutex_);
+    for (auto& [thread_id, handle] : handles_)
     {
-        auto handle [[maybe_unused]] = handle_;  // Used in SOFT_ASSERT
-        removeCallback();
-        SOFT_ASSERT(false, "Leaked callback handle: ", handle);
+        (void)thread_id;
+        if (handle != 0u)
+        {
+            profiler::removeCallback(handle);
+            SOFT_ASSERT(false, "Leaked callback handle: ", handle);
+        }
     }
+    handles_.clear();
 }
 
 /*static*/ ProfilerStateBase* ProfilerStateBase::get(bool global)
@@ -147,24 +152,30 @@ std::shared_ptr<ProfilerStateBase> popTLS()
 
 void ProfilerStateBase::setCallbackHandle(profiler::CallbackHandle handle)
 {
-    if (handle_ != 0u)
+    std::lock_guard<std::mutex> const lock(handles_mutex_);
+    auto const                        tid = std::this_thread::get_id();
+    auto                               it = handles_.find(tid);
+    if (it != handles_.end() && it->second != 0u)
     {
-        profiler::removeCallback(handle_);
+        profiler::removeCallback(it->second);
         SOFT_ASSERT(
             false,
             "ProfilerStateBase already has a registered callback. "
             "Removing to avoid leaked callback.");
     }
 
-    handle_ = handle;
+    handles_[tid] = handle;
 }
 
 void ProfilerStateBase::removeCallback()
 {
-    if (handle_ != 0u)
+    std::lock_guard<std::mutex> const lock(handles_mutex_);
+    auto const                        tid = std::this_thread::get_id();
+    auto                               it = handles_.find(tid);
+    if (it != handles_.end() && it->second != 0u)
     {
-        profiler::removeCallback(handle_);
-        handle_ = 0;
+        profiler::removeCallback(it->second);
+        handles_.erase(it);
     }
 }
 

@@ -183,15 +183,18 @@ ActivityTraceWrapper::operator bool() const
 #endif  // PROFILER_HAS_KINETO
 }
 
-void ActivityTraceWrapper::save(PROFILER_UNUSED const std::string& path)
+bool ActivityTraceWrapper::save(PROFILER_UNUSED const std::string& path)
 {
 #if PROFILER_HAS_KINETO
     if (saved_ || trace_ == nullptr)
     {
-        return;
+        return false;
     }
     trace_->save(path);
     saved_ = true;
+    return true;
+#else
+    return false;
 #endif  // PROFILER_HAS_KINETO
 }
 

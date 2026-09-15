@@ -11,6 +11,7 @@ set(TestFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerChromeTraceHierarchical.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerHeavyFunction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerGpuTracer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerLifecycleRegressions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerNativeHotspot.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestStatisticalAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerPublicApi.cpp"
