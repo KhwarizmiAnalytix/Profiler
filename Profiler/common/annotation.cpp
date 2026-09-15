@@ -61,8 +61,26 @@ private:
 };
 
 annotation::annotation(std::string name, bool is_function, const char* file, int line)
-    : impl_(std::make_unique<impl>(std::move(name), is_function, file, line))
 {
+    // Cheap inactive gate (design-review.md Phase 2): check whether anything would
+    // actually observe this scope *before* allocating impl_/its RecordFunction/its
+    // native profiler_scope -- an inactive PROFILER_SCOPE call should cost one
+    // pointer read plus one lock-free callback-table lookup, not two heap allocations.
+    auto* session             = profiler::profiler_session::current_session();
+    bool const native_active = session != nullptr && session->is_active();
+
+    bool instrumentation_maybe_active = false;
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
+    RecordScope const scope = is_function ? RecordScope::FUNCTION : RecordScope::USER_SCOPE;
+    instrumentation_maybe_active = getStepCallbacksUnlessEmpty(scope).has_value();
+#endif
+
+    if (!native_active && !instrumentation_maybe_active)
+    {
+        return;  // impl_ stays null; nothing wants to observe this scope.
+    }
+
+    impl_ = std::make_unique<impl>(std::move(name), is_function, file, line);
 }
 
 annotation::~annotation() = default;

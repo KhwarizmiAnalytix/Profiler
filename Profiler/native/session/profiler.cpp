@@ -467,13 +467,11 @@ const profiler::profiler_scope_data* profiler_session::build_scope_tree() const
 //=============================================================================
 
 profiler_scope::profiler_scope(const std::string& name, profiler::profiler_session* session)
-    : data_(std::make_unique<profiler::profiler_scope_data>()),
+    : name_(name),
       session_((session != nullptr) ? session : profiler::profiler_session::current_session())
 {
-    data_->name_      = name;
-    data_->thread_id_ = std::this_thread::get_id();
-
-    // Auto-start if session is active
+    // Auto-start if session is active. If not, data_ is never allocated at all --
+    // see start() for where it's lazily constructed.
     if ((session_ != nullptr) && session_->is_active())
     {
         start();
@@ -506,7 +504,13 @@ void profiler_scope::start()
         return;
     }
 
-    started_           = true;
+    started_ = true;
+    if (!data_)
+    {
+        data_             = std::make_unique<profiler::profiler_scope_data>();
+        data_->name_      = name_;
+        data_->thread_id_ = std::this_thread::get_id();
+    }
     data_->start_time_ = std::chrono::high_resolution_clock::now();
 
     // Back this scope with a real traceme event -- this is what host_tracer reads from,
@@ -524,11 +528,13 @@ void profiler_scope::start()
             pushed_gpu_annotation_ = true;
         }
 
-        memory_annotation_ = std::make_unique<scoped_memory_debug_annotation>(data_->name_.c_str());
-
-        // Start memory tracking for this scope
+        // Memory tracking/attribution is opt-in (session_options::memory_tracking):
+        // skip both the debug-annotation allocation and the tracker snapshot on the
+        // default preset, matching every other optional-detail feature.
         if (session_->options_.enable_memory_tracking_ && session_->memory_tracker_)
         {
+            memory_annotation_ =
+                std::make_unique<scoped_memory_debug_annotation>(data_->name_.c_str());
             start_memory_stats_     = session_->memory_tracker_->get_current_stats();
             data_->memory_stats_    = start_memory_stats_;
             has_start_memory_stats_ = true;
@@ -563,10 +569,15 @@ void profiler_scope::stop()
     stopped_         = true;
     data_->end_time_ = std::chrono::high_resolution_clock::now();
 
-    // Calculate timing statistics
     double const duration_ms = data_->get_duration_ms();
-    data_->timing_stats_.add_sample(duration_ms);
-    data_->timing_stats_.calculate_statistics(session_->options_.calculate_percentiles_);
+    // timing_stats_ (mean/variance/percentiles) is nowhere read outside the statistical-
+    // analysis path below, so computing it -- including the percentile sort when
+    // calculate_percentiles_ is on -- is opt-in detail, not default-preset work.
+    if (session_->options_.enable_statistical_analysis_)
+    {
+        data_->timing_stats_.add_sample(duration_ms);
+        data_->timing_stats_.calculate_statistics(session_->options_.calculate_percentiles_);
+    }
 
     // Update memory statistics
     // session_ is guaranteed non-null here due to check at line 821

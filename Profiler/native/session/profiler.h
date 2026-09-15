@@ -96,8 +96,10 @@ struct profiler_options
     /// Enable hierarchical profiling for nested scopes
     bool enable_hierarchical_profiling_ = true;
 
-    /// Enable statistical analysis of profiling data
-    bool enable_statistical_analysis_ = true;
+    /// Enable statistical analysis of profiling data (mean/variance/percentiles across
+    /// repeated same-name scopes). Off by default: it adds a shared-lock write and a
+    /// per-scope stats computation (incl. a percentile sort) to every scope stop().
+    bool enable_statistical_analysis_ = false;
 
     /// Enable thread-safe profiling for multi-threaded applications
     bool enable_thread_safety_ = true;
@@ -734,7 +736,11 @@ public:
      * @brief Get read-only access to the scope data
      * @return Const reference to the profiler scope data
      */
-    const profiler::profiler_scope_data& data() const { return *data_; }
+    const profiler::profiler_scope_data& data() const
+    {
+        static const profiler::profiler_scope_data empty{};
+        return data_ ? *data_ : empty;
+    }
 
     /// Disable copy constructor to ensure RAII semantics
     profiler_scope(const profiler_scope&) = delete;
@@ -749,8 +755,13 @@ public:
     profiler_scope& operator=(profiler_scope&&) = delete;
 
 private:
-    /// Scope data containing timing and memory measurements
+    /// Scope data containing timing and memory measurements. Allocated lazily by
+    /// start() -- an inactive scope (no active, hierarchical-profiling session)
+    /// never allocates it at all. See name_ for the value stashed until then.
     std::unique_ptr<profiler::profiler_scope_data> data_;
+
+    /// Scope name, held here (not yet in data_) until start() actually needs it.
+    std::string name_;
 
     /// Pointer to the profiler session managing this scope
     profiler::profiler_session* session_;

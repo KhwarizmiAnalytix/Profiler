@@ -58,6 +58,11 @@ struct session_options
     bool report_input_shapes = false;
     bool with_flops          = false;
     bool with_modules        = false;
+
+    /// Per-scope mean/variance/percentile aggregation across repeated same-name
+    /// scopes (native statistical_analyzer). Off by default: it adds a shared-lock
+    /// write and a stats computation (incl. a percentile sort) to every scope stop().
+    bool statistical_analysis = false;
 };
 
 class PROFILER_VISIBILITY session

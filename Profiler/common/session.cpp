@@ -37,7 +37,7 @@ profiler_options to_native_options(const session_options& options)
     opts.enable_hierarchical_profiling_ = true;
     opts.enable_memory_tracking_        = options.memory_tracking;
     opts.enable_gpu_tracing_            = options.gpu_tracing;
-    opts.enable_statistical_analysis_   = true;
+    opts.enable_statistical_analysis_   = options.statistical_analysis;
     return opts;
 }
 
