@@ -170,7 +170,13 @@ compiled Kineto or ITT backend. `PROFILER_SCOPE` / `PROFILER_FUNCTION` /
 #include "profiler.h"
 
 int main() {
-    profiler::session session;
+    profiler::session_options options;
+    options.backend        = profiler::capture_backend::automatic;
+    options.activities     = {profiler::activity::cpu};
+    options.profile_memory = false;
+    options.with_stack     = false;
+    options.with_flops     = false;
+    profiler::session session(options);
     if (!session.start()) return 1;
     {
         PROFILER_SCOPE("request");
@@ -192,7 +198,27 @@ int main() {
 it writes the native Chrome Trace. `write_chrome_trace()` always writes the
 native timeline. `PROFILER_FUNCTION()` uses the current function name.
 
-The native-only builder remains for reports, memory tracking, and GPU tracing
+`PROFILER_SCOPE` / `PROFILER_FUNCTION` / `PROFILER_OP` do not name a backend.
+Collection is chosen on `session_options`:
+
+| Option | Purpose |
+| --- | --- |
+| `backend` | `automatic` (the compiled `PROFILER_BACKEND`), or `kineto`, `itt`, `nvtx`, `kineto_gpu_fallback` |
+| `activities` | Device activities to collect (`cpu`, `cuda`, `hip`, `metal`) |
+| `profile_memory` | Kineto allocator events via `report_memory_usage` |
+| `with_stack` | Record C++ callsite stacks on instrumentation events |
+| `with_flops` | Request flop metadata when the backend supports it |
+| `report_input_shapes` | Record attached input-shape metadata |
+| `with_modules` | Record module metadata when the backend supports it |
+| `memory_tracking` | Native session memory tracker |
+| `gpu_tracing` | Native GPU collector (not Kineto/CUPTI) |
+| `native` / `instrumentation` | Start the native collector, the instrumentation backend, or both |
+
+Default `backend` is `automatic`. An explicit backend that is not compiled in
+causes `session.start()` to fail. `profiler::capture` uses the same flags on
+`capture_config` when you want instrumentation without native collection.
+
+The native-only builder remains for statistical analysis and output-format
 options that are not on `session_options`:
 
 ```cpp
@@ -343,13 +369,17 @@ prove the process allocated no memory.
 
 Build with `PROFILER_BACKEND=KINETO`. Use the same `profiler::session` and
 `PROFILER_SCOPE` / `PROFILER_OP` as the native pipeline. Do not include Kineto
-headers from application code, and do not name the backend in application code.
+headers from application code. Select Kineto collection with `session_options`
+(`backend`, `activities`, `profile_memory`, `with_stack`, `with_flops`, …).
 
 ```cpp
 #include "profiler.h"
 
 int main() {
-    profiler::session session;
+    profiler::session_options options;
+    options.backend    = profiler::capture_backend::kineto;
+    options.activities = {profiler::activity::cpu};
+    profiler::session session(options);
     if (!session.start()) return 1;
     {
         PROFILER_SCOPE("request");
@@ -394,7 +424,8 @@ annotation macros. Launch the application under Intel VTune to collect the
 ranges. `write_trace()` falls back to native Chrome Trace because ITT does not
 export a Kineto JSON file.
 
-**NVTX:** In a CUDA/NVTX build, start a capture with `capture_backend::nvtx`.
+**NVTX:** In a CUDA/NVTX build, set `session_options.backend` (or
+`capture_config.backend`) to `capture_backend::nvtx`.
 Ranges become visible when running under NVIDIA Nsight. NVTX is a runtime
 instrumentation state, not another value for `PROFILER_BACKEND`. Profiler uses
 the NVTX C API, including the NVTX3 C header when selected by CMake.

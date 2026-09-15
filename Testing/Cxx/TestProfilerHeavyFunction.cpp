@@ -17,9 +17,10 @@
  */
 
 /*
- * Stress / e2e: native profiler_session, Kineto PROFILER_RECORD_USER_SCOPE, ITT
- * ranges, and (when LibTorch is on) torch::autograd::profiler over the same
- * computational workloads (matrix, Monte Carlo, FFT).
+ * Stress / e2e: native profiler_session, Kineto capture, ITT ranges, and (when
+ * LibTorch is on) torch::autograd::profiler over the same computational
+ * workloads (matrix, Monte Carlo, FFT). Workloads use PROFILER_SCOPE so native
+ * and Kineto/ITT see the same annotations.
  *
  * API and pipeline docs: docs/profiler.md
  */
@@ -42,13 +43,7 @@
 #include <vector>
 
 #include "ProfilerTest.h"
-#include "native/analysis/hotspot_report.h"
-#include "native/analysis/statistical_analyzer.h"
-#include "native/memory/memory_tracker.h"
-#include "native/session/profiler.h"
-#include "native/session/profiler_report.h"
-#include "native/tracing/traceme.h"
-#include "native/tracing/traceme_recorder.h"
+#include "profiler.h"
 
 #ifndef PROFILER_HAS_LIBTORCH
 #define PROFILER_HAS_LIBTORCH 0
@@ -72,15 +67,6 @@
 #endif
 #endif
 
-#if PROFILER_HAS_KINETO
-#ifdef SOFT_ASSERT
-#undef SOFT_ASSERT
-#endif
-#include "bespoke/common/record_function.h"
-#include "bespoke/kineto/hotspot_report.h"
-#include "bespoke/kineto/profiler_kineto.h"
-#endif
-
 using namespace profiler;
 
 namespace
@@ -93,7 +79,7 @@ namespace
 std::vector<std::vector<double>> matrix_multiply(
     const std::vector<std::vector<double>>& a, const std::vector<std::vector<double>>& b)
 {
-    PROFILER_PROFILE_SCOPE("matrix_multiply");
+    PROFILER_SCOPE("matrix_multiply");
 
     const size_t rows_a = a.size();
     const size_t cols_a = a[0].size();
@@ -108,11 +94,11 @@ std::vector<std::vector<double>> matrix_multiply(
     std::vector<std::vector<double>> result(rows_a, std::vector<double>(cols_b, 0.0));
 
     {
-        PROFILER_PROFILE_SCOPE("matrix_multiply_computation");
+        PROFILER_SCOPE("matrix_multiply_computation");
 
         for (size_t i = 0; i < rows_a; ++i)
         {
-            PROFILER_PROFILE_SCOPE("matrix_row_computation");
+            PROFILER_SCOPE("matrix_row_computation");
 
             for (size_t j = 0; j < cols_b; ++j)
             {
@@ -134,7 +120,7 @@ std::vector<std::vector<double>> matrix_multiply(
  */
 void merge_sort(std::vector<double>& arr, size_t left, size_t right, int depth = 0)
 {
-    PROFILER_PROFILE_SCOPE("merge_sort_depth_" + std::to_string(depth));
+    PROFILER_SCOPE("merge_sort_depth_" + std::to_string(depth));
 
     if (left >= right)
         return;
@@ -142,17 +128,17 @@ void merge_sort(std::vector<double>& arr, size_t left, size_t right, int depth =
     size_t mid = left + (right - left) / 2;
 
     {
-        PROFILER_PROFILE_SCOPE("merge_sort_left_half");
+        PROFILER_SCOPE("merge_sort_left_half");
         merge_sort(arr, left, mid, depth + 1);
     }
 
     {
-        PROFILER_PROFILE_SCOPE("merge_sort_right_half");
+        PROFILER_SCOPE("merge_sort_right_half");
         merge_sort(arr, mid + 1, right, depth + 1);
     }
 
     {
-        PROFILER_PROFILE_SCOPE("merge_operation");
+        PROFILER_SCOPE("merge_operation");
 
         // Merge the sorted halves
         std::vector<double> temp(right - left + 1);
@@ -189,7 +175,7 @@ void merge_sort(std::vector<double>& arr, size_t left, size_t right, int depth =
  */
 double estimate_pi_monte_carlo(size_t num_samples)
 {
-    PROFILER_PROFILE_SCOPE("monte_carlo_pi_estimation");
+    PROFILER_SCOPE("monte_carlo_pi_estimation");
 
     std::random_device                     rd;
     std::mt19937                           gen(rd());
@@ -198,13 +184,13 @@ double estimate_pi_monte_carlo(size_t num_samples)
     size_t points_inside_circle = 0;
 
     {
-        PROFILER_PROFILE_SCOPE("monte_carlo_sampling");
+        PROFILER_SCOPE("monte_carlo_sampling");
 
         for (size_t i = 0; i < num_samples; ++i)
         {
             if (i % 100000 == 0)
             {
-                PROFILER_PROFILE_SCOPE("monte_carlo_batch_" + std::to_string(i / 100000));
+                PROFILER_SCOPE("monte_carlo_batch_" + std::to_string(i / 100000));
 
                 for (size_t j = 0; j < std::min(size_t(100000), num_samples - i); ++j)
                 {
@@ -228,17 +214,17 @@ double estimate_pi_monte_carlo(size_t num_samples)
  */
 std::vector<std::complex<double>> simulate_fft(const std::vector<double>& signal)
 {
-    PROFILER_PROFILE_SCOPE("simulate_fft");
+    PROFILER_SCOPE("simulate_fft");
 
     const size_t                      n = signal.size();
     std::vector<std::complex<double>> result(n);
 
     {
-        PROFILER_PROFILE_SCOPE("fft_computation");
+        PROFILER_SCOPE("fft_computation");
 
         for (size_t k = 0; k < n; ++k)
         {
-            PROFILER_PROFILE_SCOPE("fft_frequency_bin");
+            PROFILER_SCOPE("fft_frequency_bin");
 
             std::complex<double> sum(0.0, 0.0);
             for (size_t j = 0; j < n; ++j)
@@ -258,7 +244,7 @@ std::vector<std::complex<double>> simulate_fft(const std::vector<double>& signal
  */
 std::vector<std::vector<double>> generate_test_matrix(size_t rows, size_t cols)
 {
-    PROFILER_PROFILE_SCOPE("generate_test_matrix");
+    PROFILER_SCOPE("generate_test_matrix");
 
     std::random_device                     rd;
     std::mt19937                           gen(rd());
@@ -279,7 +265,7 @@ std::vector<std::vector<double>> generate_test_matrix(size_t rows, size_t cols)
 
 std::vector<double> generate_test_signal(size_t size)
 {
-    PROFILER_PROFILE_SCOPE("generate_test_signal");
+    PROFILER_SCOPE("generate_test_signal");
 
     std::random_device                     rd;
     std::mt19937                           gen(rd());
@@ -312,11 +298,11 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
     session.start();
 
     {
-        PROFILER_PROFILE_SCOPE("heavy_computational_workload");
+        PROFILER_SCOPE("heavy_computational_workload");
 
         // Test 1: Matrix multiplication profiling
         {
-            PROFILER_PROFILE_SCOPE("matrix_operations_test");
+            PROFILER_SCOPE("matrix_operations_test");
 
             const size_t matrix_size = 100;  // 100x100 matrices
             auto         matrix_a    = generate_test_matrix(matrix_size, matrix_size);
@@ -325,7 +311,7 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
             // Perform multiple matrix multiplications
             for (int i = 0; i < 3; ++i)
             {
-                PROFILER_PROFILE_SCOPE("matrix_multiply_iteration_" + std::to_string(i));
+                PROFILER_SCOPE("matrix_multiply_iteration_" + std::to_string(i));
                 auto result = matrix_multiply(matrix_a, matrix_b);
 
                 // Verify result is not empty (basic correctness check)
@@ -336,7 +322,7 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
 
         // Test 2: Monte Carlo simulation profiling
         {
-            PROFILER_PROFILE_SCOPE("monte_carlo_simulation_test");
+            PROFILER_SCOPE("monte_carlo_simulation_test");
 
             const size_t num_samples = 1000000;  // 1 million samples
             double       pi_estimate = estimate_pi_monte_carlo(num_samples);
@@ -350,7 +336,7 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
 
         // Test 4: FFT simulation profiling
         {
-            PROFILER_PROFILE_SCOPE("fft_simulation_test");
+            PROFILER_SCOPE("fft_simulation_test");
 
             const size_t signal_size = 512;  // Common FFT size
             auto         test_signal = generate_test_signal(signal_size);
@@ -363,7 +349,7 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
 
         // Test 5: Multi-threaded computation profiling
         {
-            PROFILER_PROFILE_SCOPE("multithreaded_computation_test");
+            PROFILER_SCOPE("multithreaded_computation_test");
 
             std::vector<std::thread> workers;
             const int                num_threads = 4;
@@ -373,7 +359,7 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
                 workers.emplace_back(
                     [i]()
                     {
-                        PROFILER_PROFILE_SCOPE("worker_thread_" + std::to_string(i));
+                        PROFILER_SCOPE("worker_thread_" + std::to_string(i));
 
                         // Each thread performs different computational work
                         const size_t           samples_per_thread = 250000;
@@ -460,8 +446,9 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
 // ============================================================================
 // KINETO PROFILER TEST
 // ============================================================================
-// Same heavy workloads as the native case above, instrumented with
-// PROFILER_RECORD_USER_SCOPE and collected via enableProfiler / disableProfiler.
+// Same heavy workloads and PROFILER_SCOPE annotations as the native case.
+// profiler::session starts native collection together with the compiled Kineto
+// backend; helper scopes (matrix_multiply, …) must appear in the Kineto events.
 // ============================================================================
 
 #if PROFILER_HAS_KINETO
@@ -469,12 +456,12 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
 namespace
 {
 
-const profiler::profiler_impl::KinetoEvent* find_kineto_event(
-    const std::vector<profiler::profiler_impl::KinetoEvent>& events, const std::string& name)
+const profiler::capture_event* find_capture_event(
+    const std::vector<profiler::capture_event>& events, const std::string& name)
 {
     for (const auto& event : events)
     {
-        if (event.name() == name)
+        if (event.name == name)
         {
             return &event;
         }
@@ -486,39 +473,31 @@ const profiler::profiler_impl::KinetoEvent* find_kineto_event(
 
 PROFILERTEST(Profiler, kineto_heavy_function_profiling)
 {
-    profiler::profiler_impl::ProfilerConfig const config(
-        profiler::profiler_impl::ProfilerState::KINETO,
-        /*report_input_shapes=*/false,
-        /*profile_memory=*/false,
-        /*with_stack=*/false,
-        /*with_flops=*/false,
-        /*with_modules=*/false);
+    profiler::session_options opts;
+    opts.backend        = profiler::capture_backend::kineto;
+    opts.activities     = {profiler::activity::cpu};
+    opts.profile_memory = false;
+    opts.with_stack     = false;
+    opts.with_flops     = false;
+    opts.with_modules   = false;
 
-    const std::set<profiler::profiler_impl::ActivityType> activities{
-        profiler::profiler_impl::ActivityType::CPU};
-    const std::unordered_set<profiler::RecordScope> scopes{profiler::RecordScope::USER_SCOPE};
-
-    try
+    profiler::session session(opts);
+    if (!session.start())
     {
-        profiler::profiler_impl::prepareProfiler(config, activities);
-        profiler::profiler_impl::enableProfiler(config, activities, scopes);
-    }
-    catch (const std::exception& ex)
-    {
-        GTEST_SKIP() << "Kineto profiler unavailable: " << ex.what();
+        GTEST_SKIP() << "Kineto profiler unavailable";
     }
 
     {
-        PROFILER_RECORD_USER_SCOPE("kineto_heavy_workload");
+        PROFILER_SCOPE("kineto_heavy_workload");
 
         {
-            PROFILER_RECORD_USER_SCOPE("kineto_matrix_operations");
+            PROFILER_SCOPE("kineto_matrix_operations");
             const size_t matrix_size = 50;
             auto         matrix_a    = generate_test_matrix(matrix_size, matrix_size);
             auto         matrix_b    = generate_test_matrix(matrix_size, matrix_size);
             for (int i = 0; i < 2; ++i)
             {
-                PROFILER_RECORD_USER_SCOPE("kineto_matrix_multiply_iteration");
+                PROFILER_SCOPE("kineto_matrix_multiply_iteration");
                 auto result = matrix_multiply(matrix_a, matrix_b);
                 EXPECT_EQ(result.size(), matrix_size);
                 EXPECT_EQ(result[0].size(), matrix_size);
@@ -526,58 +505,56 @@ PROFILERTEST(Profiler, kineto_heavy_function_profiling)
         }
 
         {
-            PROFILER_RECORD_USER_SCOPE("kineto_monte_carlo");
+            PROFILER_SCOPE("kineto_monte_carlo");
             const double pi_estimate = estimate_pi_monte_carlo(200000);
             EXPECT_GT(pi_estimate, 2.5);
             EXPECT_LT(pi_estimate, 3.8);
         }
 
         {
-            PROFILER_RECORD_USER_SCOPE("kineto_fft_simulation");
+            PROFILER_SCOPE("kineto_fft_simulation");
             auto signal = generate_test_signal(256);
             EXPECT_EQ(signal.size(), 256U);
         }
     }
 
-    auto profiler_result = profiler::profiler_impl::disableProfiler();
-    ASSERT_NE(profiler_result, nullptr);
+    ASSERT_TRUE(session.stop());
 
-    const auto& events = profiler_result->events();
+    const auto& events = session.events();
     if (events.empty())
     {
         GTEST_SKIP() << "Kineto backend produced no CPU events in this environment";
     }
 
-    const auto* outer  = find_kineto_event(events, "kineto_heavy_workload");
-    const auto* matrix = find_kineto_event(events, "kineto_matrix_operations");
-    const auto* monte  = find_kineto_event(events, "kineto_monte_carlo");
+    const auto* outer  = find_capture_event(events, "kineto_heavy_workload");
+    const auto* matrix = find_capture_event(events, "kineto_matrix_operations");
+    const auto* monte  = find_capture_event(events, "kineto_monte_carlo");
+    const auto* helper = find_capture_event(events, "matrix_multiply");
+    const auto* pi     = find_capture_event(events, "monte_carlo_pi_estimation");
     ASSERT_NE(outer, nullptr);
     ASSERT_NE(matrix, nullptr);
     ASSERT_NE(monte, nullptr);
-    EXPECT_GT(outer->durationNs(), 0U);
-    EXPECT_GE(outer->durationNs(), matrix->durationNs());
+    ASSERT_NE(helper, nullptr) << "Helper PROFILER_SCOPE must reach the Kineto backend";
+    ASSERT_NE(pi, nullptr) << "Helper PROFILER_SCOPE must reach the Kineto backend";
+    EXPECT_GT(outer->duration_ns, 0U);
+    EXPECT_GE(outer->duration_ns, matrix->duration_ns);
 
     std::cout << "\n=== Kineto events (" << events.size() << ") ===\n";
     for (const auto& event : events)
     {
-        std::cout << event.name() << "\t" << event.durationNs() << " ns\tscope="
-                  << static_cast<int>(event.scope())
-                  << "\tactivity=" << static_cast<int>(event.activityType()) << "\n";
+        std::cout << event.name << "\t" << event.duration_ns << " ns\n";
     }
     std::cout << std::flush;
 
-    if (!profiler_result->event_tree().empty())
+    auto hotspot = session.generate_hotspot_report();
+    if (hotspot)
     {
-        profiler::profiler_impl::hotspot_report const hotspot(*profiler_result);
         std::cout << "\n=== Kineto heavy-function hotspot report ===\n";
-        std::cout << "--- Operator table ---\n" << hotspot.table();
-        std::cout << "\n--- Top-down call tree ---\n" << hotspot.top_down_tree();
-        std::cout << "\n--- Bottom-up hotspots ---\n" << hotspot.bottom_up_hotspots();
-        std::cout << std::flush;
+        std::cout << hotspot->table() << std::flush;
     }
 
     const std::string trace_filename = "kineto_heavy_function_trace.json";
-    ASSERT_TRUE(profiler_result->save(trace_filename));
+    ASSERT_TRUE(session.write_trace(trace_filename));
 
     std::ifstream json_file(trace_filename);
     ASSERT_TRUE(json_file.good()) << "Failed to create Kineto JSON output file";
@@ -590,8 +567,8 @@ PROFILERTEST(Profiler, kineto_heavy_function_profiling)
         << "JSON file missing traceEvents array";
     EXPECT_GT(json_content.size(), 100U) << "JSON should contain meaningful content";
 
-    std::cout << "Kineto Chrome trace saved: " << trace_filename << " ("
-              << json_content.size() << " bytes)\n";
+    std::cout << "Kineto Chrome trace saved: " << trace_filename << " (" << json_content.size()
+              << " bytes)\n";
 }
 
 #endif  // PROFILER_HAS_KINETO
@@ -671,7 +648,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
         {
             profiler::profiler_impl::itt_range_push("matrix_operations");
         }
-        PROFILER_PROFILE_SCOPE("itt_matrix_operations");
+        PROFILER_SCOPE("itt_matrix_operations");
 
         const size_t matrix_size = 50;
         auto         matrix_a    = generate_test_matrix(matrix_size, matrix_size);
@@ -686,7 +663,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
                 profiler::profiler_impl::itt_range_push(iter_name.c_str());
             }
 
-            PROFILER_PROFILE_SCOPE(("itt_matrix_multiply_" + std::to_string(i)).c_str());
+            PROFILER_SCOPE("itt_matrix_multiply_" + std::to_string(i));
 
             auto result = matrix_multiply(matrix_a, matrix_b);
             EXPECT_EQ(result.size(), matrix_size);
@@ -709,7 +686,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
         {
             profiler::profiler_impl::itt_range_push("sorting_operations");
         }
-        PROFILER_PROFILE_SCOPE("itt_sorting_operations");
+        PROFILER_SCOPE("itt_sorting_operations");
 
         const size_t        array_size = 10000;
         std::vector<double> test_data(array_size);
@@ -729,7 +706,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
                 profiler::profiler_impl::itt_range_push("merge_sort");
             }
 
-            PROFILER_PROFILE_SCOPE("itt_merge_sort");
+            PROFILER_SCOPE("itt_merge_sort");
 
             auto data_copy = test_data;
             merge_sort(data_copy, 0, data_copy.size() - 1);
@@ -753,7 +730,7 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
         {
             profiler::profiler_impl::itt_range_push("monte_carlo_simulation");
         }
-        PROFILER_PROFILE_SCOPE("itt_monte_carlo_simulation");
+        PROFILER_SCOPE("itt_monte_carlo_simulation");
 
         const size_t num_samples = 100000;
         double       pi_estimate = estimate_pi_monte_carlo(num_samples);
@@ -780,7 +757,8 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
         std::cout << "Profiler profiling completed\n";
     }
 
-    // Export profiling data to JSON (captures Profiler profiling scopes with hierarchical drill-down)
+    // Export profiling data to JSON (captures Profiler profiling scopes with hierarchical
+    // drill-down)
     std::string const itt_output_file = "itt_heavy_function_trace.json";
     session.write_chrome_trace(itt_output_file);
 
@@ -869,8 +847,8 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
 // ============================================================================
 // Same heavy workloads, captured by torch::autograd::profiler when the setup.py
 // `torch` token finds a LibTorch install (PROFILER_HAS_LIBTORCH). Uses ATen
-// RECORD_USER_SCOPE so events land in the PyTorch Kineto trace, not the native
-// PROFILER_RECORD_* macros.
+// RECORD_USER_SCOPE so events land in the PyTorch Kineto trace, not Profiler
+// PROFILER_SCOPE annotations.
 // ============================================================================
 
 #if PROFILER_HAS_LIBTORCH
@@ -902,15 +880,14 @@ PROFILERTEST(Profiler, pytorch_heavy_function_profiling)
     using torch::profiler::impl::ActivityType;
     using torch::profiler::impl::ProfilerState;
 
-    ProfilerConfig const config(
-        ProfilerState::KINETO,
+    ProfilerConfig const config(ProfilerState::KINETO,
         /*report_input_shapes=*/false,
         /*profile_memory=*/false,
         /*with_stack=*/false,
         /*with_flops=*/false,
         /*with_modules=*/false);
 
-    const std::set<ActivityType> activities{ActivityType::CPU};
+    const std::set<ActivityType>              activities{ActivityType::CPU};
     const std::unordered_set<at::RecordScope> scopes{at::RecordScope::USER_SCOPE};
 
     try
@@ -975,8 +952,8 @@ PROFILERTEST(Profiler, pytorch_heavy_function_profiling)
     std::cout << "\n=== PyTorch profiler events (" << events.size() << ") ===\n";
     for (const auto& event : events)
     {
-        std::cout << event.name() << "\t" << event.durationNs() << " ns\tscope="
-                  << static_cast<int>(event.scope())
+        std::cout << event.name() << "\t" << event.durationNs()
+                  << " ns\tscope=" << static_cast<int>(event.scope())
                   << "\tactivity=" << static_cast<int>(event.activityType()) << "\n";
     }
     std::cout << std::flush;

@@ -189,6 +189,7 @@ bool capture::prepare()
     }
     profiler_impl::prepareProfiler(
         make_config(config_), to_internal_activities(config_.activities));
+
     prepared_ = true;
     return true;
 #else
@@ -212,6 +213,7 @@ bool capture::start()
         return false;
     }
     profiler_impl::enableProfiler(make_config(config_), to_internal_activities(config_.activities));
+
     active_ = true;
     return true;
 #else
@@ -240,6 +242,7 @@ std::unique_ptr<capture_result> capture::stop()
             copied.start_ns    = event.startNs();
             copied.duration_ns = event.durationNs();
             copied.metadata    = event.extraMeta();
+            copied.stack       = event.stack();
             result->events_.push_back(std::move(copied));
         }
         result->impl_->kineto = std::move(kineto);

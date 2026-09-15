@@ -13,10 +13,12 @@ can collect Kineto device activities through CUPTI.
 
 Link **`Profiler::Profiler`**, include **`profiler.h`**, and use the **`profiler`**
 namespace. Start `profiler::session` and annotate with `PROFILER_SCOPE` /
-`PROFILER_FUNCTION`. Native collection and the compiled Kineto or ITT backend
-run together; do not include `native/`, `bespoke/kineto/`, or `bespoke/itt/`
-headers. No LibTorch, TensorFlow runtime, or Python dependency is required
-for the C++ library. Python is optional for offline Holistic Trace Analysis (HTA).
+`PROFILER_FUNCTION`. Those macros are backend-agnostic; `session_options`
+selects backend, activities, memory profiling, stack, flops, and related flags.
+Native collection and the compiled Kineto or ITT backend run together; do not
+include `native/`, `bespoke/kineto/`, or `bespoke/itt/` headers. No LibTorch,
+TensorFlow runtime, or Python dependency is required for the C++ library.
+Python is optional for offline Holistic Trace Analysis (HTA).
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
 [Output examples](docs/outputs.md) · [Runnable examples](examples/README.md)

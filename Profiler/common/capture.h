@@ -74,6 +74,7 @@ struct capture_event
     uint64_t                                     start_ns    = 0;
     uint64_t                                     duration_ns = 0;
     std::unordered_map<std::string, std::string> metadata;
+    std::vector<std::string>                     stack;
 };
 
 /**
@@ -107,7 +108,7 @@ private:
 
 /**
  * Backend-agnostic instrumentation session. Annotate work with
- * `PROFILER_RECORD_FUNCTION` / `PROFILER_RECORD_USER_SCOPE`. The Kineto, ITT,
+ * `PROFILER_SCOPE` / `PROFILER_FUNCTION` / `PROFILER_OP`. The Kineto, ITT,
  * and NVTX implementations stay inside the Profiler library.
  */
 class PROFILER_VISIBILITY capture

@@ -35,18 +35,29 @@ class hotspot_report;
 class memory_tracker;
 
 /**
- * Unified client session. Starts the native collector and the compiled
+ * Unified client session. Starts the native collector and the selected
  * instrumentation backend together. Annotate with PROFILER_SCOPE /
- * PROFILER_FUNCTION; do not select Kineto vs ITT.
+ * PROFILER_FUNCTION / PROFILER_OP; those macros are backend-agnostic.
+ * Choose collection with session_options (backend, activities, memory,
+ * stack, flops, …).
  */
 struct session_options
 {
-    bool               native          = true;
-    bool               instrumentation = true;
-    std::set<activity> activities      = {activity::cpu};
-    bool               memory_tracking = false;
-    bool               gpu_tracing     = false;
-    bool               profile_memory  = false;
+    bool native          = true;
+    bool instrumentation = true;
+
+    /// `automatic` uses the library's compiled backend (`PROFILER_BACKEND`).
+    capture_backend backend = capture_backend::automatic;
+
+    std::set<activity> activities = {activity::cpu};
+
+    bool memory_tracking     = false;
+    bool gpu_tracing         = false;
+    bool profile_memory      = false;
+    bool with_stack          = false;
+    bool report_input_shapes = false;
+    bool with_flops          = false;
+    bool with_modules        = false;
 };
 
 class PROFILER_VISIBILITY session

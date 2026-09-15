@@ -127,7 +127,15 @@ PROFILERTEST(PublicApi, capture_child_thread_from_umbrella_header)
 
 PROFILERTEST(PublicApi, unified_session_from_umbrella_header)
 {
-    profiler::session session;
+    profiler::session_options options;
+    options.backend        = profiler::capture_backend::automatic;
+    options.activities     = {profiler::activity::cpu};
+    options.profile_memory = false;
+    options.with_stack     = false;
+    options.with_flops     = false;
+    options.with_modules   = false;
+
+    profiler::session session(options);
     ASSERT_TRUE(session.start());
     {
         PROFILER_SCOPE("unified_scope");
@@ -161,6 +169,56 @@ PROFILERTEST(PublicApi, unified_session_from_umbrella_header)
         }
         EXPECT_TRUE(found);
     }
+}
+
+PROFILERTEST(PublicApi, session_options_with_stack)
+{
+    profiler::session_options options;
+    options.backend    = profiler::capture_backend::automatic;
+    options.activities = {profiler::activity::cpu};
+    options.with_stack = true;
+
+    profiler::session session(options);
+    ASSERT_TRUE(session.start());
+    const int expected_line = __LINE__ + 2;
+    {
+        PROFILER_SCOPE("public_stack_scope");
+    }
+    ASSERT_TRUE(session.stop());
+
+    if (!profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "Stack frames are recorded by the Kineto backend";
+    }
+
+    const profiler::capture_event* found = nullptr;
+    for (const auto& event : session.events())
+    {
+        if (event.name == "public_stack_scope")
+        {
+            found = &event;
+            break;
+        }
+    }
+    if (found == nullptr)
+    {
+        GTEST_SKIP() << "Kineto backend produced no CPU events in this environment";
+    }
+
+    ASSERT_FALSE(found->stack.empty());
+    const std::string expected_file     = "TestProfilerPublicApi.cpp";
+    const std::string expected_location = expected_file + ":" + std::to_string(expected_line);
+    EXPECT_NE(found->stack.front().find(expected_location), std::string::npos)
+        << found->stack.front();
+}
+
+PROFILERTEST(PublicApi, session_rejects_unavailable_backend)
+{
+    profiler::session_options options;
+    options.backend = profiler::kineto_enabled() ? profiler::capture_backend::itt
+                                                 : profiler::capture_backend::kineto;
+    profiler::session session(options);
+    EXPECT_FALSE(session.start());
 }
 
 PROFILERTEST(PublicApi, capture_rejects_second_start)

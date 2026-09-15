@@ -6,7 +6,10 @@
  *
  *   #include "profiler.h"
  *
- *   profiler::session session;
+ *   profiler::session_options options;
+ *   options.backend = profiler::capture_backend::automatic;
+ *   options.activities = {profiler::activity::cpu};
+ *   profiler::session session(options);
  *   session.start();
  *   { PROFILER_SCOPE("work"); }
  *   session.stop();

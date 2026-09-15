@@ -28,8 +28,9 @@ namespace profiler
 {
 
 /**
- * RAII annotation that records into the native session and the compiled
- * instrumentation backend (Kineto or ITT). Inactive collectors are no-ops.
+ * RAII annotation that records into the native session and whichever
+ * instrumentation backend the active session/capture started. Inactive
+ * collectors are no-ops.
  */
 class PROFILER_VISIBILITY annotation
 {

@@ -25,11 +25,16 @@
 - Move first-party library C++ sources under `Profiler/` (`common/`, `native/`,
   `bespoke/`, `util/`, `profiler.h`). Client includes are unchanged.
 - Expose `profiler::session` so native and Kineto/ITT share one client API:
-  `start` / `PROFILER_SCOPE` / `stop` / `write_trace`. The compiled backend is
-  not selected in application code.
+  `start` / `PROFILER_SCOPE` / `stop` / `write_trace`. `PROFILER_SCOPE` is
+  backend-agnostic; `session_options` selects backend, activities, memory
+  profiling, stack, flops, and related collection flags.
 - Restrict coverage reports to first-party sources under `Profiler/`.
 - Remove remaining XSigma host CMake hooks and documentation paths so the
   repository is self-contained.
+- Gather all user-facing CMake build options into a single `cmake/ProfilerOptions.cmake`
+  module, alongside `ProfilerDependencies`/`ProfilerCoverage`/`ProfilerSanitizers`.
+  Formally declare `PROFILER_THIRD_PARTY_DIR` as a cache variable so it shows up
+  in `cmake -LH`/`ccmake` like the other options.
 
 ## 1.0.1 — 2026-09-13
 

@@ -27,6 +27,7 @@ int main(int argc, char** argv)
     std::filesystem::create_directories(output);
 
     profiler::session_options options;
+    options.backend    = profiler::capture_backend::kineto;
     options.activities = {profiler::activity::cpu};
     profiler::session session(options);
     if (!session.start())

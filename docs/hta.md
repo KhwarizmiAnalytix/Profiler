@@ -59,6 +59,7 @@ sample files and the actual table, see [HTA output](outputs.md#hta-analysis).
 
 ```cpp
 profiler::session_options options;
+options.backend    = profiler::capture_backend::kineto;
 options.activities = {profiler::activity::cpu};
 profiler::session session(options);
 if (!session.start()) return 1;
@@ -129,6 +130,7 @@ Adapt the CPU capture to request device activities:
 
 ```cpp
 profiler::session_options options;
+options.backend    = profiler::capture_backend::kineto;
 options.activities = {profiler::activity::cpu, profiler::activity::cuda};
 profiler::session session(options);
 ```

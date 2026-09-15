@@ -44,9 +44,13 @@ profiler_options to_native_options(const session_options& options)
 capture_config to_capture_config(const session_options& options)
 {
     capture_config cfg;
-    cfg.backend        = capture_backend::automatic;
-    cfg.activities     = options.activities;
-    cfg.profile_memory = options.profile_memory;
+    cfg.backend             = options.backend;
+    cfg.activities          = options.activities;
+    cfg.profile_memory      = options.profile_memory;
+    cfg.with_stack          = options.with_stack;
+    cfg.report_input_shapes = options.report_input_shapes;
+    cfg.with_flops          = options.with_flops;
+    cfg.with_modules        = options.with_modules;
     return cfg;
 }
 
@@ -125,6 +129,15 @@ bool session::start()
         else
         {
             inst_.reset();
+            if (options_.backend != capture_backend::automatic)
+            {
+                if (native_ && native_->is_active())
+                {
+                    (void)native_->stop();
+                }
+                native_.reset();
+                return false;
+            }
         }
     }
 
