@@ -84,6 +84,15 @@ class profiler_session_builder;
  * This structure contains all configuration parameters that control the behavior
  * of the enhanced profiler, including timing, memory tracking, statistical analysis,
  * and output formatting options.
+ *
+ * @note For new code, prefer `profiler::session_options` + `profiler::session`
+ * (common/session.h): it covers native and instrumentation (Kineto/ITT)
+ * capture together through one request, and layers backend_capabilities'
+ * required/best-effort policy on top. This struct configures the native-only
+ * path directly and remains fully supported (`session` builds one internally
+ * via its own conversion) -- design-review.md section 4's target is to treat
+ * it as the compatibility-mapped surface underneath that unified request, not
+ * to remove or restrict it.
  */
 struct profiler_options
 {

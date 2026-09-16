@@ -32,6 +32,14 @@ namespace profiler
  *
  * Contains all configuration parameters needed to set up and control
  * profiling behavior across different device types and profiling modes.
+ *
+ * @note Internal collector configuration only (design-review.md section 4):
+ * built exclusively from `profiler_options` by
+ * `profiler_session::build_backend_profile_options()` and consumed only by
+ * `profiler_factory`/the native tracer factories. It has no public
+ * constructor path from `session`/`session_options`, and no in-repo caller
+ * outside `native/core`, `native/cpu`, and `native/gpu` constructs one
+ * directly -- it does not need to grow another public-facing surface.
  */
 class profile_options
 {
