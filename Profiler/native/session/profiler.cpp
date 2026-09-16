@@ -173,6 +173,21 @@ double profiler_scope_data::get_duration_ms() const
 }
 
 //=============================================================================
+// Compatibility bridge (design-review.md section 4)
+//=============================================================================
+
+profiler::profiler_options to_profiler_options(const profiler::session_options& options)
+{
+    profiler_options opts;
+    opts.enable_timing_                 = true;
+    opts.enable_hierarchical_profiling_ = true;
+    opts.enable_memory_tracking_        = options.memory_tracking;
+    opts.enable_gpu_tracing_            = options.gpu_tracing;
+    opts.enable_statistical_analysis_   = options.statistical_analysis;
+    return opts;
+}
+
+//=============================================================================
 // profiler_session Implementation
 //=============================================================================
 
@@ -182,6 +197,11 @@ profiler_session::profiler_session(profiler::profiler_options options)
     : options_(std::move(options))
 {
     initialize_components();
+}
+
+profiler_session::profiler_session(const profiler::session_options& options)
+    : profiler_session(to_profiler_options(options))
+{
 }
 
 profiler_session::~profiler_session()

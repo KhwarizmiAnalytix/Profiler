@@ -58,6 +58,7 @@
 
 #include "common/approximate_clock.h"
 #include "common/profiler_macros.h"
+#include "common/session.h"
 #include "native/analysis/hotspot_report.h"
 #include "native/core/profiler_interface.h"
 #include "native/core/profiler_lock.h"
@@ -90,10 +91,12 @@ class profiler_session_builder;
  * (common/session.h): it covers native and instrumentation (Kineto/ITT)
  * capture together through one request, and layers backend_capabilities'
  * required/best-effort policy on top. This struct configures the native-only
- * path directly and remains fully supported (`session` builds one internally
- * via its own conversion) -- design-review.md section 4's target is to treat
- * it as the compatibility-mapped surface underneath that unified request, not
- * to remove or restrict it.
+ * path directly and remains fully supported -- `session` builds one
+ * internally via the now-public `to_profiler_options()` bridge (declared
+ * below `profiler_options`, or construct a `profiler_session` directly from
+ * `session_options` via its own constructor overload) -- design-review.md
+ * section 4's target is to treat it as the compatibility-mapped surface
+ * underneath that unified request, not to remove or restrict it.
  */
 struct profiler_options
 {
@@ -154,6 +157,20 @@ struct profiler_options
     /// no worker pool is ever created from it. Not currently consumed.
     size_t thread_pool_size_ = std::thread::hardware_concurrency();
 };
+
+/**
+ * @brief Compatibility bridge (design-review.md section 4): the same
+ * conversion `session`'s own native-session construction uses internally,
+ * exposed publicly so native-level code can build a profiler_options (or a
+ * profiler_session, via its session_options-taking constructor) directly
+ * from the unified session_options request without needing the session
+ * facade. Only fields profiler_options can represent carry over --
+ * session_options's native/instrumentation split and policy have no
+ * profiler_options equivalent, since those govern the instrumentation
+ * backend (profiler::capture), not the native collector this configures.
+ */
+PROFILER_API profiler::profiler_options to_profiler_options(
+    const profiler::session_options& options);
 
 /**
  * @brief Memory usage statistics container
@@ -320,6 +337,17 @@ public:
      */
     PROFILER_API profiler_session();
     PROFILER_API explicit profiler_session(profiler::profiler_options options);
+
+    /**
+     * @brief Construct from the unified session_options request (common/session.h)
+     * instead of the native-only profiler_options -- the compatibility bridge
+     * design-review.md section 4 asks for, so native-level code can build a
+     * session straight from session_options without needing the session
+     * facade at all. Equivalent to
+     * profiler_session(to_profiler_options(options)); see that function's
+     * comment for exactly which fields carry over.
+     */
+    PROFILER_API explicit profiler_session(const profiler::session_options& options);
 
     /**
      * @brief Destructor - automatically stops profiling if active

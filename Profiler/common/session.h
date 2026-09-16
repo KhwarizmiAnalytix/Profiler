@@ -72,6 +72,16 @@ struct session_options
     capture_policy policy = capture_policy::best_effort;
 };
 
+/**
+ * @brief Compatibility bridge (design-review.md section 4): the same
+ * capture_config `session` builds internally for its instrumentation
+ * backend, exposed publicly so code constructing profiler::capture directly
+ * (bypassing session) can reuse it instead of re-deriving the mapping by
+ * hand. See native/session/profiler.h's to_profiler_options() for the
+ * native-collector-configuration half of this bridge.
+ */
+PROFILER_API capture_config to_capture_config(const session_options& options);
+
 class PROFILER_VISIBILITY session
 {
 public:

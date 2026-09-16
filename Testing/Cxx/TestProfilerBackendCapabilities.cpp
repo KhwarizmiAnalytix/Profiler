@@ -133,3 +133,67 @@ PROFILERTEST(BackendCapabilities, best_effort_unavailable_gpu_activity_does_not_
     // policy pre-check's specific message.
     EXPECT_EQ(session.last_error().find("required activity unavailable"), std::string::npos);
 }
+
+// design-review.md section 4's actual compatibility-mapping ask: to_profiler_options()/
+// to_capture_config() are the same conversion `session` uses internally, made public so
+// code constructing profiler_session/capture directly can reuse it instead of re-deriving
+// the mapping (or silently drifting from it in a second, hand-rolled copy).
+PROFILERTEST(BackendCapabilities, to_profiler_options_maps_expected_fields)
+{
+    session_options opts;
+    opts.memory_tracking      = true;
+    opts.gpu_tracing          = true;
+    opts.statistical_analysis = true;
+
+    const profiler_options mapped = to_profiler_options(opts);
+    EXPECT_TRUE(mapped.enable_timing_);
+    EXPECT_TRUE(mapped.enable_hierarchical_profiling_);
+    EXPECT_EQ(mapped.enable_memory_tracking_, opts.memory_tracking);
+    EXPECT_EQ(mapped.enable_gpu_tracing_, opts.gpu_tracing);
+    EXPECT_EQ(mapped.enable_statistical_analysis_, opts.statistical_analysis);
+}
+
+PROFILERTEST(BackendCapabilities, to_capture_config_maps_expected_fields)
+{
+    session_options opts;
+    opts.backend             = capture_backend::itt;
+    opts.activities          = {activity::cpu, activity::cuda};
+    opts.with_stack          = true;
+    opts.profile_memory      = true;
+    opts.report_input_shapes = true;
+    opts.with_flops          = true;
+    opts.with_modules        = true;
+
+    const capture_config cfg = to_capture_config(opts);
+    EXPECT_EQ(cfg.backend, opts.backend);
+    EXPECT_EQ(cfg.activities, opts.activities);
+    EXPECT_EQ(cfg.profile_memory, opts.profile_memory);
+    EXPECT_EQ(cfg.with_stack, opts.with_stack);
+    EXPECT_EQ(cfg.report_input_shapes, opts.report_input_shapes);
+    EXPECT_EQ(cfg.with_flops, opts.with_flops);
+    EXPECT_EQ(cfg.with_modules, opts.with_modules);
+}
+
+// profiler_session's new session_options-taking constructor must behave
+// identically to manually converting via to_profiler_options() first --
+// proving it's a genuine convenience overload, not a second, subtly
+// different construction path.
+PROFILERTEST(BackendCapabilities, profiler_session_from_session_options_matches_manual_conversion)
+{
+    session_options opts;
+    opts.memory_tracking      = true;
+    opts.statistical_analysis = true;
+
+    {
+        profiler_session direct(opts);
+        ASSERT_TRUE(direct.start());
+        EXPECT_NE(direct.get_memory_tracker(), nullptr);
+        ASSERT_TRUE(direct.stop());
+    }
+    {
+        profiler_session manual(to_profiler_options(opts));
+        ASSERT_TRUE(manual.start());
+        EXPECT_NE(manual.get_memory_tracker(), nullptr);
+        ASSERT_TRUE(manual.stop());
+    }
+}

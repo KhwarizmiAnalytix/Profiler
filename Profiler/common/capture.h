@@ -75,16 +75,18 @@ enum class capture_policy
 };
 
 /**
- * Instrumentation-backend request, built from `session_options` by
- * `session`'s internal conversion (common/session.cpp's to_capture_config()).
- * Six of its seven fields intentionally mirror `session_options` (which also
- * carries `native`/`instrumentation`/`memory_tracking`/`policy` -- concerns
- * `capture`/the instrumentation backend has no use for). design-review.md
- * section 4's target is one public request struct with adapters receiving a
- * validated effective plan; this remains the direct public constructor
- * argument for `capture` used standalone (without `session`), so it is kept
- * rather than removed -- merging it away would break that direct usage
- * without a compatibility shim, which is a larger, separate migration.
+ * Instrumentation-backend request, built from `session_options` via the
+ * public `to_capture_config()` bridge (common/session.h) -- the same
+ * conversion `session` uses internally, now reusable directly by code that
+ * constructs `capture` standalone. Six of its seven fields intentionally
+ * mirror `session_options` (which also carries `native`/`instrumentation`/
+ * `memory_tracking`/`policy` -- concerns `capture`/the instrumentation
+ * backend has no use for). design-review.md section 4's target is one
+ * public request struct with adapters receiving a validated effective plan;
+ * this remains the direct public constructor argument for `capture` used
+ * standalone (without `session`), so it is kept rather than removed --
+ * merging it away would break that direct usage without a compatibility
+ * shim, which is a larger, separate migration.
  */
 struct capture_config
 {

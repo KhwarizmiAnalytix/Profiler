@@ -28,20 +28,13 @@
 
 namespace profiler
 {
-namespace
-{
 
-profiler_options to_native_options(const session_options& options)
-{
-    profiler_options opts;
-    opts.enable_timing_                 = true;
-    opts.enable_hierarchical_profiling_ = true;
-    opts.enable_memory_tracking_        = options.memory_tracking;
-    opts.enable_gpu_tracing_            = options.gpu_tracing;
-    opts.enable_statistical_analysis_   = options.statistical_analysis;
-    return opts;
-}
-
+// Compatibility bridge (design-review.md section 4): the capture_config an
+// instrumentation backend receives for a session_options request. Public
+// (declared in session.h) so callers constructing profiler::capture directly
+// can use the same conversion session's own capture(...) construction does,
+// instead of re-deriving it. See to_profiler_options() (native/session/
+// profiler.h) for the native-collector-configuration half of this bridge.
 capture_config to_capture_config(const session_options& options)
 {
     capture_config cfg;
@@ -54,6 +47,9 @@ capture_config to_capture_config(const session_options& options)
     cfg.with_modules        = options.with_modules;
     return cfg;
 }
+
+namespace
+{
 
 // Builds the same flat capture_event list write_chrome_trace()/generate_chrome_trace_json()
 // already expose from XSpace (see export_to_chrome_trace_json()'s equivalent iteration in
@@ -218,7 +214,7 @@ bool session::start()
         // report generated from a previous run keeps its own snapshot alive
         // (see generate_report()/generate_hotspot_report()), so replacing native_
         // here doesn't dangle them.
-        native_ = std::make_shared<profiler_session>(to_native_options(options_));
+        native_ = std::make_shared<profiler_session>(to_profiler_options(options_));
         if (!native_->start())
         {
             native_.reset();
