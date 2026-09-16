@@ -56,6 +56,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/approximate_clock.h"
 #include "common/profiler_macros.h"
 #include "native/analysis/hotspot_report.h"
 #include "native/core/profiler_interface.h"
@@ -251,10 +252,10 @@ struct profiler_scope_data
     std::string name_;
 
     /// High-resolution timestamp when scope started
-    std::chrono::high_resolution_clock::time_point start_time_;
+    profiler::steady_clock_t::time_point start_time_;
 
     /// High-resolution timestamp when scope ended
-    std::chrono::high_resolution_clock::time_point end_time_;
+    profiler::steady_clock_t::time_point end_time_;
 
     /// Memory usage statistics for this scope
     profiler::memory_stats memory_stats_;
@@ -438,7 +439,7 @@ public:
      * @brief Retrieve the session start timestamp (nanoseconds)
      * @return Start timestamp
      */
-    std::chrono::high_resolution_clock::time_point session_start_time() const
+    profiler::steady_clock_t::time_point session_start_time() const
     {
         return start_time_;
     }
@@ -447,7 +448,7 @@ public:
      * @brief Retrieve the session end timestamp (nanoseconds)
      * @return End timestamp
      */
-    std::chrono::high_resolution_clock::time_point session_end_time() const { return end_time_; }
+    profiler::steady_clock_t::time_point session_end_time() const { return end_time_; }
 
     /**
      * @brief Access the memory tracker in read-only form
@@ -505,10 +506,10 @@ private:
     std::atomic<uint64_t> generation_{0};
 
     /// High-resolution timestamp when profiling session started
-    std::chrono::high_resolution_clock::time_point start_time_;
+    profiler::steady_clock_t::time_point start_time_;
 
     /// High-resolution timestamp when profiling session ended
-    std::chrono::high_resolution_clock::time_point end_time_;
+    profiler::steady_clock_t::time_point end_time_;
 
     /// Nanosecond timestamps compatible with XSpace exporters
     uint64_t start_time_ns_ = 0;
@@ -798,7 +799,7 @@ private:
     std::string name_;
 
     /// High-resolution timestamp when this scope started. Only meaningful once started_.
-    std::chrono::high_resolution_clock::time_point start_time_;
+    profiler::steady_clock_t::time_point start_time_;
 
     /// Pointer to the profiler session managing this scope
     profiler::profiler_session* session_;

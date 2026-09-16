@@ -173,3 +173,32 @@ PROFILERTEST(ScopeTreeBuilder, separate_lines_produce_separate_thread_labeled_br
     EXPECT_TRUE(found_a);
     EXPECT_TRUE(found_b);
 }
+
+// Regression for design-review.md finding 10: get_duration_us()/get_duration_ms()
+// used to compute their own separate duration_cast<microseconds>, truncating to a
+// whole microsecond *before* converting to double -- discarding the sub-microsecond
+// precision get_duration_ns() already preserved. A 1500ns (1.5us) duration is exactly
+// the case that exposed the bug: the old get_duration_us() would have returned 1.0,
+// not 1.5.
+PROFILERTEST(ScopeTreeBuilder, sub_microsecond_duration_precision_is_preserved)
+{
+    profiler::x_space space;
+    profiler::xplane* plane = space.add_planes();
+    plane->set_name(std::string(profiler::kHostThreadsPlaneName));
+    profiler::xplane_builder builder(plane);
+
+    add_duration_event(builder, 1, "sub_us_scope", /*begin_ps=*/0, /*duration_ps=*/1500000);
+
+    auto root = profiler::scope_tree_builder::build_scope_tree(space);
+    ASSERT_NE(root, nullptr);
+    ASSERT_EQ(root->children_.size(), 1u);
+    const profiler::profiler_scope_data& node = *root->children_[0];
+
+    EXPECT_DOUBLE_EQ(node.get_duration_ns(), 1500.0);
+    EXPECT_DOUBLE_EQ(node.get_duration_us(), 1.5);
+    EXPECT_DOUBLE_EQ(node.get_duration_ms(), 0.0015);
+    // The three accessors must agree with each other exactly (same underlying
+    // ns value, not three independently-truncated computations).
+    EXPECT_DOUBLE_EQ(node.get_duration_us(), node.get_duration_ns() / 1000.0);
+    EXPECT_DOUBLE_EQ(node.get_duration_ms(), node.get_duration_ns() / 1000000.0);
+}

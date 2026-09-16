@@ -151,22 +151,25 @@ void timing_stats::reset()
 // profiler_scope_data Implementation
 //=============================================================================
 
-double profiler_scope_data::get_duration_ms() const
-{
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time_ - start_time_);
-    return duration.count() / 1000.0;
-}
-
-double profiler_scope_data::get_duration_us() const
-{
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time_ - start_time_);
-    return static_cast<double>(duration.count());
-}
-
 double profiler_scope_data::get_duration_ns() const
 {
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time_ - start_time_);
     return static_cast<double>(duration.count());
+}
+
+double profiler_scope_data::get_duration_us() const
+{
+    // Derive from the nanosecond value rather than a separate
+    // duration_cast<microseconds> -- that truncated to a whole microsecond
+    // before this function's own double conversion, discarding sub-
+    // microsecond precision get_duration_ns() already preserves
+    // (design-review.md finding 10 / section 6.4 bullet 3).
+    return get_duration_ns() / 1000.0;
+}
+
+double profiler_scope_data::get_duration_ms() const
+{
+    return get_duration_ns() / 1000000.0;
 }
 
 //=============================================================================
@@ -232,7 +235,7 @@ bool profiler_session::start()
         backend_profilers_.reset();
     }
 
-    start_time_ = std::chrono::high_resolution_clock::now();
+    start_time_ = profiler::steady_clock_t::now();
 
     // Start memory tracking
     if (options_.enable_memory_tracking_ && memory_tracker_)
@@ -259,7 +262,7 @@ bool profiler_session::stop()
         return false;  // Not active
     }
 
-    end_time_    = std::chrono::high_resolution_clock::now();
+    end_time_    = profiler::steady_clock_t::now();
     end_time_ns_ = static_cast<uint64_t>(get_current_time_nanos());
 
     // Stop memory tracking
@@ -506,7 +509,7 @@ void profiler_scope::start()
     }
 
     started_    = true;
-    start_time_ = std::chrono::high_resolution_clock::now();
+    start_time_ = profiler::steady_clock_t::now();
 
     // Back this scope with a real traceme event -- this is what host_tracer reads from,
     // so PROFILER_PROFILE_SCOPE rides the same lock-free, thread-local recording path as
@@ -560,10 +563,12 @@ void profiler_scope::stop()
     }
 
     stopped_             = true;
-    auto const end_time  = std::chrono::high_resolution_clock::now();
+    auto const end_time  = profiler::steady_clock_t::now();
+    // Preserve sub-microsecond precision through to this ms value rather than
+    // truncating to a whole microsecond first (design-review.md finding 10).
     double const duration_ms =
-        std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_).count() /
-        1000.0;
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time_).count() /
+        1000000.0;
 
     // session_ is guaranteed non-null here due to the early-return check above
     // cppcheck-suppress knownConditionTrueFalse

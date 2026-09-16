@@ -144,8 +144,11 @@ public:
         }
 
         std::string name;    ///< Human-readable event name with optional metadata
-        int64_t start_time;  ///< Start timestamp (ns since epoch) or -activity_id for end events
-        int64_t end_time;    ///< End timestamp (ns since epoch) or -activity_id for start events
+        int64_t start_time;  ///< Start timestamp (steady-clock ns, see traceme.h's
+                             ///< get_current_time_nanos() -- not epoch/wall-clock) or
+                             ///< -activity_id for end events
+        int64_t end_time;    ///< End timestamp (steady-clock ns, same source) or
+                             ///< -activity_id for start events
     };
     /**
      * @brief Thread identification and metadata for trace event attribution.

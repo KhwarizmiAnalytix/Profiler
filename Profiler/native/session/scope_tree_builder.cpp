@@ -41,12 +41,15 @@ struct flat_event
     std::string name;
 };
 
-std::chrono::high_resolution_clock::time_point to_time_point(int64_t nanos)
+profiler::steady_clock_t::time_point to_time_point(int64_t nanos)
 {
-    // Reconstructed nodes don't have a real high_resolution_clock reading (the collection
-    // already finished when this runs) -- only relative differences (get_duration_*()) are
-    // meaningful here, so any consistent zero point works.
-    return std::chrono::high_resolution_clock::time_point(std::chrono::nanoseconds(nanos));
+    // Reconstructed nodes don't have a real clock reading (the collection
+    // already finished when this runs) -- only relative differences
+    // (get_duration_*()) are meaningful here, so any consistent zero point
+    // works. Must match profiler_scope_data::start_time_/end_time_'s clock
+    // type (profiler::steady_clock_t, design-review.md finding 10) exactly --
+    // chrono time_points of different clocks don't implicitly convert.
+    return profiler::steady_clock_t::time_point(std::chrono::nanoseconds(nanos));
 }
 
 std::string event_display_name(const xevent_visitor& event)
