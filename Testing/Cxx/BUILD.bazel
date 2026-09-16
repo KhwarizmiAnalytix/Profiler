@@ -4,6 +4,7 @@ package(default_visibility = ["//visibility:public"])
 
 _PROFILER_COMMON_TESTS = [
     "TestHotspotReport.cpp",
+    "TestProfilerBackendCapabilities.cpp",
     "TestProfilerBackendFunction.cpp",
     "TestProfilerBackendGpuFallback.cpp",
     "TestProfilerBackendMemory.cpp",

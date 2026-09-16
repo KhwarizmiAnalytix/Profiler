@@ -20,6 +20,7 @@
 
 #include <utility>
 
+#include "common/backend_capabilities.h"
 #include "native/analysis/hotspot_report.h"
 #include "native/memory/memory_tracker.h"
 #include "native/session/profiler.h"
@@ -182,6 +183,33 @@ bool session::start()
     xspace_events_cache_.clear();
     xspace_events_cached_ = false;
     last_error_.clear();
+
+    if (options_.instrumentation && options_.policy == capture_policy::required)
+    {
+        const backend_capabilities& caps = discover_backend_capabilities();
+        for (activity act : options_.activities)
+        {
+            if (caps.supports(act))
+            {
+                continue;
+            }
+            switch (act)
+            {
+            case activity::cpu:
+                last_error_ = "required activity unavailable: cpu";
+                break;
+            case activity::cuda:
+                last_error_ = "required activity unavailable: cuda (no CUDA-capable device found, "
+                              "or PROFILER_GPU_BACKEND != cuda)";
+                break;
+            case activity::hip:
+                last_error_ = "required activity unavailable: hip (no HIP-capable device found, "
+                              "or PROFILER_GPU_BACKEND != hip)";
+                break;
+            }
+            return false;
+        }
+    }
 
     bool started_any = false;
     if (options_.native)

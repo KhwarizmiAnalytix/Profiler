@@ -63,6 +63,13 @@ struct session_options
     /// scopes (native statistical_analyzer). Off by default: it adds a shared-lock
     /// write and a stats computation (incl. a percentile sort) to every scope stop().
     bool statistical_analysis = false;
+
+    /// Whether an `activities` entry that turns out to be unavailable (e.g.
+    /// activity::cuda with no CUDA-capable device) fails start() outright, or
+    /// is silently dropped so the rest of the capture still runs. See
+    /// capture_policy's own comment for why the default preserves today's
+    /// (best_effort) behavior rather than design-review.md's eventual target.
+    capture_policy policy = capture_policy::best_effort;
 };
 
 class PROFILER_VISIBILITY session

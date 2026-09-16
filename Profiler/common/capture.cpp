@@ -20,6 +20,8 @@
 
 #include <utility>
 
+#include "bespoke/base/base.h"
+
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
 #include "bespoke/kineto/kineto_shim.h"
 #include "bespoke/kineto/profiler_kineto.h"
@@ -63,14 +65,26 @@ bool backend_available(capture_backend backend)
     switch (backend)
     {
     case capture_backend::kineto:
-    case capture_backend::kineto_gpu_fallback:
         return PROFILER_HAS_KINETO != 0;
+    case capture_backend::kineto_gpu_fallback:
+        // Recording/eliding real CUDA or HIP events needs an actual device,
+        // not just the toolkit headers -- PROFILER_HAS_CUDA/_HIP alone
+        // reflects compilation, not a usable device (design-review.md
+        // finding 2). cudaStubs()->enabled() does the real, cached
+        // cudaGetDeviceCount()/equivalent probe.
+        return PROFILER_HAS_KINETO != 0 && profiler::profiler_impl::impl::cudaStubs()->enabled();
     case capture_backend::itt:
         return PROFILER_HAS_ITT != 0;
     case capture_backend::nvtx:
-        // NVTX markers need the CUDA stubs (bespoke/base/cuda.cpp) to be compiled in;
-        // a CPU-only build has no NVTX sink even though the enum value always exists.
-        return PROFILER_HAS_CUDA != 0;
+        // NVTX markers need the CUDA stubs (bespoke/base/cuda.cpp) to be
+        // compiled in; a CPU-only build has no NVTX sink even though the enum
+        // value always exists. Checked against PROFILER_HAS_NVTX specifically
+        // (not PROFILER_HAS_CUDA): a CUDA toolkit can be found without its
+        // NVTX headers, in which case those two macros disagree, and NVTX
+        // itself -- unlike the GPU-fallback timing path above -- needs no
+        // device at all (it's a no-op without an attached developer tool
+        // either way; design-review.md section 5's evidence notes).
+        return PROFILER_HAS_NVTX != 0;
     case capture_backend::automatic:
     default:
         return (PROFILER_HAS_KINETO != 0) || (PROFILER_HAS_ITT != 0);

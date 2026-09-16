@@ -2,6 +2,7 @@ set(TestFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/TestCommonContainers.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestHotspotReport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestNativeUtils.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendCapabilities.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendFunction.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendGpuFallback.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TestProfilerBackendMemory.cpp"

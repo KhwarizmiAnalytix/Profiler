@@ -57,6 +57,22 @@ enum class capture_backend
     kineto_gpu_fallback,
 };
 
+/**
+ * Whether an unavailable requested activity/backend must fail startup, or
+ * may be silently dropped and captured best-effort with the rest. Default
+ * is `best_effort` for backward compatibility -- design-review.md section
+ * 1.1 recommends `required` as the eventual default ("An unavailable
+ * required GPU collector fails startup by default"), but flipping the
+ * default here would silently start failing any existing caller that
+ * requests e.g. activity::cuda on a machine without a GPU and currently
+ * expects a quiet CPU-only capture; opt in explicitly instead.
+ */
+enum class capture_policy
+{
+    best_effort,
+    required,
+};
+
 struct capture_config
 {
     capture_backend    backend             = capture_backend::automatic;
