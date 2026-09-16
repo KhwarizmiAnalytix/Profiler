@@ -34,6 +34,7 @@ Codex; C++ rules apply only when working on C++:
 - [Testing](.agent-rules/testing.md) and [builds](.agent-rules/build%20rule.md)
 - [Dependencies](.agent-rules/ThirdParty.md)
 - [Portability](.agent-rules/must-have.md) and [documentation](.agent-rules/markdown.md)
+- [Scope and opportunistic fixes](.agent-rules/scope.md)
 
 Use these task-specific skills as needed:
 

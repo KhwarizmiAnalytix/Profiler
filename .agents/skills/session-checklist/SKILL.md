@@ -9,7 +9,9 @@ Do not invoke this skill for every edit or commit. Use it only when the task
 explicitly requests a full verification or handoff review.
 
 Read [CLAUDE.md](../../../CLAUDE.md) and review the working diff without
-discarding unrelated user changes. Scale the checks to what changed.
+discarding unrelated user changes. Scale the checks to what changed. Review
+any opportunistic fixes under `.agent-rules/scope.md` separately and verify
+that each has its own validation or a recorded blocker.
 
 1. **Build definitions.** For source or build changes, compare the affected
    CMake and Bazel source lists, test registration, options, and dependencies
