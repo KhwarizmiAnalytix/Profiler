@@ -25,6 +25,7 @@ include(ProfilerOptions)
 include(ProfilerDependencies)
 include(ProfilerCoverage)
 include(ProfilerSanitizers)
+include(ProfilerLinking)
 
 set(CMAKE_CXX_STANDARD ${PROFILER_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -239,6 +240,7 @@ if(PROFILER_ENABLE_COVERAGE)
     profiler_enable_coverage(Profiler)
 endif()
 profiler_enable_sanitizer(Profiler)
+profiler_keep_static_registrations(Profiler)
 
 set_target_properties(
     Profiler

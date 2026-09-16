@@ -146,10 +146,16 @@ cc_library(
         "//conditions:default": [],
     }),
     # native/core/profiler_factory.h's registered profilers (host_tracer_factory,
-    # python_tracer_factory, gpu_tracer_factory) self-register via static-init --
-    # no other code references a symbol in those translation units. Bazel links this
-    # target as a static archive (see linkstatic above); without alwayslink, the linker
-    # drops those objects and host/GPU tracing never starts. CMake's shared-library
-    # build doesn't hit this since every object file in a .so is linked.
+    # python_tracer_factory, gpu_tracer_factory, metadata_collector) and the
+    # bespoke stub registrations (cuda.cpp's RegisterCUDAOrHIPMethods, itt.cpp's
+    # RegisterITTMethods) self-register via static-init -- no other code references
+    # a symbol in those translation units. Bazel links this target as a static
+    # archive (see linkstatic above); without alwayslink, the linker drops those
+    # objects and the corresponding tracing/backend capability never starts, with
+    # no error (reproduced locally via a minimal consumer linked against a static
+    # build with no force-link: capture succeeded but produced an empty trace).
+    # CMake's shared-library build doesn't hit this since every object file in a
+    # .so is linked; CMake's static build has the equivalent fix in
+    # cmake/ProfilerLinking.cmake's profiler_keep_static_registrations().
     alwayslink = True,
 )
