@@ -364,6 +364,44 @@ if(PROFILER_ENABLE_INSTALL)
       INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
         )
     endif()
+
+    # Third-party archives Profiler links PRIVATE-ly (cmake/ProfilerDependencies.cmake):
+    # deliberate for SHARED, where they're already linked into libProfiler.so and an
+    # install consumer needs nothing else -- not true for STATIC, where a plain archive
+    # resolves none of its own symbols. Without also installing and referencing these,
+    # a find_package() consumer of a STATIC build gets undefined-symbol errors for every
+    # libkineto/fmt/ITT symbol Profiler itself calls (reproduced and confirmed fixed by
+    # this block). Scope: the configuration this was actually reproduced/tested against
+    # (PROFILER_BACKEND=KINETO or ITT, PROFILER_GPU_BACKEND=none) -- a CUDA/HIP static
+    # consumer would additionally need find_dependency(CUDAToolkit) wiring here, not
+    # attempted yet.
+    set(_profiler_static_link_block "")
+    if(NOT BUILD_SHARED_LIBS)
+        set(_profiler_static_install_targets fmt)
+        if(TARGET kineto)
+            list(APPEND _profiler_static_install_targets kineto)
+        endif()
+        if(TARGET ittnotify)
+            list(APPEND _profiler_static_install_targets ittnotify)
+        endif()
+        install(TARGETS ${_profiler_static_install_targets} ARCHIVE DESTINATION lib)
+        # One pair of quotes around the whole semicolon-joined list (not one
+        # pair per item) -- set_target_properties() takes a single value per
+        # property, and a quoted "a;b;c" is the standard way to pass a list
+        # as that one value.
+        set(_profiler_static_link_libs "")
+        foreach(_profiler_dep_tgt IN LISTS _profiler_static_install_targets)
+            string(APPEND _profiler_static_link_libs
+                   "\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:${_profiler_dep_tgt}>;"
+            )
+        endforeach()
+        set(_profiler_static_link_block
+            "set_target_properties(Profiler::Profiler PROPERTIES
+      INTERFACE_LINK_LIBRARIES \"${_profiler_static_link_libs}\")
+"
+        )
+    endif()
+
     file(
         GENERATE
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
@@ -374,7 +412,7 @@ if(NOT TARGET Profiler::Profiler)
   set_target_properties(Profiler::Profiler PROPERTIES
       ${_profiler_imported_props})
 endif()
-# A STATIC Profiler::Profiler needs the same whole-archive treatment the
+${_profiler_static_link_block}# A STATIC Profiler::Profiler needs the same whole-archive treatment the
 # in-tree Profiler target gets (see ProfilerLinking.cmake) -- an ordinary
 # archive link silently drops the self-registering GPU/host/python tracer
 # and CUDA/ITT stub translation units otherwise, since nothing else in the
