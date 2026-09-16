@@ -75,12 +75,15 @@ public:
     /**
      * @brief Gets whether to include dataset operations in profiling
      * @return true if dataset ops should be included, false otherwise
+     * @note Not currently consumed -- this native port has no dataset-op tracing
+     * (a TF/XLA-era concept); setting it has no effect.
      */
     bool include_dataset_ops() const { return include_dataset_ops_; }
 
     /**
      * @brief Sets whether to include dataset operations in profiling
      * @param include_dataset_ops true to include dataset ops, false otherwise
+     * @note Not currently consumed -- see include_dataset_ops().
      */
     void set_include_dataset_ops(bool include_dataset_ops)
     {
@@ -135,12 +138,16 @@ public:
     /**
      * @brief Gets whether HLO proto generation is enabled
      * @return true if HLO proto generation is enabled, false otherwise
+     * @note Not currently consumed -- this native port generates no HLO protos
+     * (a TF/XLA-era concept, selects an empty collector if wired up); setting it
+     * has no effect.
      */
     bool enable_hlo_proto() const { return enable_hlo_proto_; }
 
     /**
      * @brief Sets whether to enable HLO proto generation
      * @param enable_hlo_proto true to enable HLO proto generation, false otherwise
+     * @note Not currently consumed -- see enable_hlo_proto().
      */
     void set_enable_hlo_proto(bool enable_hlo_proto) { enable_hlo_proto_ = enable_hlo_proto; }
 
@@ -162,24 +169,30 @@ public:
     /**
      * @brief Gets the profiling duration in milliseconds
      * @return The profiling duration in milliseconds
+     * @note Not currently consumed -- no scheduling/duration-limited collection
+     * consumer exists in this native port; setting it has no effect.
      */
     uint64_t duration_ms() const { return duration_ms_; }
 
     /**
      * @brief Sets the profiling duration in milliseconds
      * @param duration_ms The profiling duration in milliseconds
+     * @note Not currently consumed -- see duration_ms().
      */
     void set_duration_ms(uint64_t duration_ms) { duration_ms_ = duration_ms; }
 
     /**
      * @brief Gets the repository path for profiling data
      * @return The repository path as a string
+     * @note Not currently consumed -- this native port has no repository/remote-output
+     * consumer (a TF-era concept); setting it has no effect.
      */
     const std::string& repository_path() const { return repository_path_; }
 
     /**
      * @brief Sets the repository path for profiling data
      * @param repository_path The path where profiling data should be stored
+     * @note Not currently consumed -- see repository_path().
      */
     void set_repository_path(const std::string& repository_path)
     {

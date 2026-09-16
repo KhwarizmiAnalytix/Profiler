@@ -101,7 +101,9 @@ struct profiler_options
     /// per-scope stats computation (incl. a percentile sort) to every scope stop().
     bool enable_statistical_analysis_ = false;
 
-    /// Enable thread-safe profiling for multi-threaded applications
+    /// Not currently consumed anywhere -- setting this has no effect. Multi-threaded
+    /// recording safety today comes from the always-on thread-local/lock-free paths
+    /// (traceme_recorder, annotation), not from a toggle.
     bool enable_thread_safety_ = true;
 
     /// Enable native GPU device tracing (`/device:GPU:N`).
@@ -137,7 +139,9 @@ struct profiler_options
     /// Whether to track memory usage deltas between measurements
     bool track_memory_deltas_ = true;
 
-    /// Size of thread pool for concurrent profiling operations
+    /// Forwarded to statistical_analyzer::worker_threads_hint_ (see
+    /// set_worker_threads_hint()), but that hint is only stored there, never read --
+    /// no worker pool is ever created from it. Not currently consumed.
     size_t thread_pool_size_ = std::thread::hardware_concurrency();
 };
 
@@ -591,8 +595,8 @@ public:
     }
 
     /**
-     * @brief Enable or disable thread safety
-     * @param enable true to enable thread safety, false to disable
+     * @brief Set enable_thread_safety_ -- not currently consumed anywhere; has no effect.
+     * @param enable Stored on options_.enable_thread_safety_ only.
      * @return Reference to this profiler_session_builder for method chaining
      */
     profiler_session_builder& with_thread_safety(bool enable = true)
@@ -680,7 +684,9 @@ public:
     }
 
     /**
-     * @brief Set the thread pool size for concurrent operations
+     * @brief Set thread_pool_size_ -- forwarded to the statistical analyzer's
+     * worker_threads_hint_, which is stored but never read; no worker pool is
+     * created from it. Not currently consumed.
      * @param size Number of threads in the thread pool
      * @return Reference to this profiler_session_builder for method chaining
      */
