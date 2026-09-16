@@ -8,6 +8,8 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -58,6 +60,62 @@ PROFILERTEST(PublicApi, write_chrome_trace_from_umbrella_header)
 
     const std::string path = "public_api_trace.json";
     ASSERT_TRUE(session.write_chrome_trace(path));
+    std::remove(path.c_str());
+}
+
+// Narrow slice of design-review.md Phase 3's "report counts agree with
+// exported events" done-criterion: session::events() and session::write_
+// trace() both ultimately read from the same capture_result once Kineto
+// backs a capture (write_trace() prefers it per its own doc comment), so
+// every event name events() reports must also appear in what actually got
+// written to disk -- proving the in-memory and exported views of the same
+// capture never silently diverge. This does not attempt the full unified-
+// snapshot rework across profiler_report/hotspot_report (a much larger,
+// separate piece of work; see the design-review.md redesign plan) -- just
+// the one comparison that's safe to verify without touching that ownership
+// model at all.
+PROFILERTEST(PublicApi, events_and_exported_trace_agree_on_event_names)
+{
+    if (!profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "write_trace() only prefers Kineto's capture_result when Kineto backs it";
+    }
+
+    profiler::session_options options;
+    options.native          = true;
+    options.instrumentation = true;
+
+    profiler::session session(options);
+    ASSERT_TRUE(session.start());
+    {
+        PROFILER_SCOPE("count_agreement_probe_a");
+        PROFILER_SCOPE("count_agreement_probe_b");
+    }
+    ASSERT_TRUE(session.stop());
+
+    const auto& events = session.events();
+    if (events.empty())
+    {
+        GTEST_SKIP() << "Kineto backend produced no CPU events in this environment";
+    }
+
+    const std::string path = "public_api_count_agreement_trace.json";
+    std::remove(path.c_str());
+    ASSERT_TRUE(session.write_trace(path));
+
+    std::ifstream    file(path);
+    ASSERT_TRUE(file.good());
+    std::ostringstream contents;
+    contents << file.rdbuf();
+    const std::string exported = contents.str();
+
+    for (const auto& event : events)
+    {
+        EXPECT_NE(exported.find(event.name), std::string::npos)
+            << "events() reported \"" << event.name << "\" but it's missing from write_trace()'s "
+            << "exported file -- the in-memory and exported views of this capture disagree";
+    }
+
     std::remove(path.c_str());
 }
 
