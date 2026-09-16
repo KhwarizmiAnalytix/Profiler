@@ -94,6 +94,18 @@ public:
     /// Kineto JSON when that backend produced a trace; otherwise native Chrome Trace.
     PROFILER_API bool write_trace(const std::string& path);
 
+    /// Writes Kineto's own JSON specifically -- the schema Holistic Trace
+    /// Analysis (HTA) expects (see docs/hta.md): categories, correlation
+    /// ids, pid/tid. Unlike write_trace(), this never silently substitutes
+    /// native XSpace-derived Chrome Trace JSON when no Kineto trace exists
+    /// for this capture (docs/hta.md's own compatibility table: that output
+    /// "lacks the Kineto categories/correlation HTA expects") -- it fails
+    /// instead, so a caller who specifically wants an HTA-compatible export
+    /// finds out immediately rather than getting a file HTA can't parse
+    /// correctly. design-review.md section 6.4 bullet 8: "make backend-
+    /// native export a separately named operation."
+    PROFILER_API bool write_kineto_hta_trace(const std::string& path);
+
     PROFILER_API bool write_chrome_trace(const std::string& path) const;
     PROFILER_API std::string generate_chrome_trace_json() const;
 

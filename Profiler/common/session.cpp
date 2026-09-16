@@ -305,6 +305,21 @@ bool session::write_trace(const std::string& path)
     return native_ && native_->write_chrome_trace(path);
 }
 
+bool session::write_kineto_hta_trace(const std::string& path)
+{
+    if (inst_result_ && inst_result_->has_trace())
+    {
+        return inst_result_->save(path);
+    }
+    // Unlike write_trace(), there is no fallback here: a native XSpace-
+    // derived Chrome Trace is not HTA-compatible (docs/hta.md), so silently
+    // writing one at a path the caller asked for an HTA-compatible trace at
+    // would be the same "format switch" section 6.7 forbids for write_trace(),
+    // just with a worse failure mode (a file HTA can't parse correctly
+    // instead of a build error).
+    return false;
+}
+
 bool session::write_chrome_trace(const std::string& path) const
 {
     return native_ && native_->write_chrome_trace(path);

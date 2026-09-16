@@ -119,6 +119,82 @@ PROFILERTEST(PublicApi, events_and_exported_trace_agree_on_event_names)
     std::remove(path.c_str());
 }
 
+// design-review.md section 6.4 bullet 8: "make backend-native export a
+// separately named operation" -- write_kineto_hta_trace() is that operation.
+// No new schema was invented (docs/hta.md/examples/example_hta.cpp already
+// document that HTA consumes Kineto's existing JSON directly); this checks
+// the fields HTA's own compatibility table says it actually needs
+// (docs/hta.md: "Parse operators, annotations, iterations, and inclusive CPU
+// durations") are genuinely present in what gets written, turning that doc's
+// manual workflow into an automated check.
+PROFILERTEST(PublicApi, write_kineto_hta_trace_has_required_hta_fields)
+{
+    if (!profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "write_kineto_hta_trace() requires the Kineto instrumentation backend";
+    }
+
+    profiler::session_options options;
+    options.native          = true;
+    options.instrumentation = true;
+
+    profiler::session session(options);
+    ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("hta_field_probe_scope"); }
+    ASSERT_TRUE(session.stop());
+
+    const std::string path = "public_api_hta_trace.json";
+    std::remove(path.c_str());
+    ASSERT_TRUE(session.write_kineto_hta_trace(path));
+
+    std::ifstream file(path);
+    ASSERT_TRUE(file.good());
+    std::ostringstream contents;
+    contents << file.rdbuf();
+    const std::string exported = contents.str();
+
+    // Required per docs/hta.md's compatibility table and confirmed against a
+    // real exported trace's schema: duration events carry a category, a
+    // pid/tid pair, a duration, and a correlation id (Kineto's own "External
+    // id", used for CPU/GPU launch correlation -- not a generic "correlation"
+    // key).
+    EXPECT_NE(exported.find("\"cat\""), std::string::npos);
+    EXPECT_NE(exported.find("\"pid\""), std::string::npos);
+    EXPECT_NE(exported.find("\"tid\""), std::string::npos);
+    EXPECT_NE(exported.find("\"dur\""), std::string::npos);
+    EXPECT_NE(exported.find("External id"), std::string::npos);
+    EXPECT_NE(exported.find("hta_field_probe_scope"), std::string::npos);
+
+    std::remove(path.c_str());
+}
+
+// The same request on an ITT-backed (or otherwise non-Kineto) capture must
+// fail outright rather than silently substitute a native Chrome Trace that
+// HTA can't parse correctly (docs/hta.md: native write_chrome_trace() output
+// "lacks the Kineto categories/correlation HTA expects").
+PROFILERTEST(PublicApi, write_kineto_hta_trace_fails_without_a_kineto_trace)
+{
+    if (profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "This build's automatic backend would actually be Kineto";
+    }
+
+    profiler::session_options options;
+    options.native          = true;
+    options.instrumentation = true;
+
+    profiler::session session(options);
+    ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("hta_no_kineto_probe_scope"); }
+    ASSERT_TRUE(session.stop());
+
+    const std::string path = "public_api_hta_trace_should_not_exist.json";
+    std::remove(path.c_str());
+    EXPECT_FALSE(session.write_kineto_hta_trace(path));
+    std::ifstream file(path);
+    EXPECT_FALSE(file.good()) << "must not have written a non-HTA-compatible file";
+}
+
 PROFILERTEST(PublicApi, start_rejects_second_session)
 {
     profiler::profiler_session first;
