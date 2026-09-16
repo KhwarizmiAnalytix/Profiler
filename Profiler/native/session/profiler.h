@@ -303,19 +303,19 @@ struct profiler_scope_data
      * @brief Get the duration of this scope in milliseconds
      * @return Duration in milliseconds as a double
      */
-    double get_duration_ms() const;
+    PROFILER_API double get_duration_ms() const;
 
     /**
      * @brief Get the duration of this scope in microseconds
      * @return Duration in microseconds as a double
      */
-    double get_duration_us() const;
+    PROFILER_API double get_duration_us() const;
 
     /**
      * @brief Get the duration of this scope in nanoseconds
      * @return Duration in nanoseconds as a double
      */
-    double get_duration_ns() const;
+    PROFILER_API double get_duration_ns() const;
 };
 
 /**
