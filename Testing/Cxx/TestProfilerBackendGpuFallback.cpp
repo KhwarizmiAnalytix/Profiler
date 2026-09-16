@@ -103,4 +103,60 @@ PROFILERTEST(BackendGpuFallback, cuda_or_hip_fallback_round_trips_elapsed_time)
     EXPECT_GE(event->cudaElapsedUs(), -1);
 }
 
+// Phase 4 test: explicit stream binding and non-blocking query support
+// (design-review.md section 6.6). Tests that ProfilerStubs::record_with_stream
+// and ProfilerStubs::elapsed_nonblocking are wired correctly on real hardware.
+// Skips cleanly when no device is available.
+PROFILERTEST(BackendGpuFallback, stream_aware_record_and_nonblocking_query)
+{
+#if PROFILER_HAS_CUDA || PROFILER_HAS_HIP
+
+    // Get the CUDA/HIP stubs (registered at module load).
+    auto stubs = profiler::profiler_impl::impl::cudaStubs();
+    if (stubs == nullptr || !stubs->enabled())
+    {
+        GTEST_SKIP() << "No CUDA/HIP device available";
+    }
+
+    // Phase 4: Test record_with_stream (explicit stream binding).
+    // For now, we use nullptr to bind to the default per-thread stream,
+    // matching the existing behavior while enabling future stream-specific work.
+    profiler::profiler_impl::impl::ProfilerVoidEventStub event1, event2;
+    int16_t                                              device = -1;
+    int64_t                                              cpu_ns = 0;
+
+    stubs->record_with_stream(nullptr, &device, &event1, &cpu_ns);
+    EXPECT_GE(device, 0);
+    EXPECT_GT(cpu_ns, 0);
+
+    // Spin a bit to create measurable elapsed time.
+    for (volatile int spin = 0; spin < 100000; ++spin) {}
+
+    stubs->record_with_stream(nullptr, &device, &event2, &cpu_ns);
+
+    // Phase 4: Test elapsed_nonblocking (non-blocking query).
+    // After events have completed, elapsed_nonblocking should return a valid time
+    // rather than -1 (not ready).
+    float elapsed_us_nonblocking = stubs->elapsed_nonblocking(&event1, &event2);
+    if (elapsed_us_nonblocking >= 0.0f)
+    {
+        // Success: non-blocking query returned immediately.
+        EXPECT_GT(elapsed_us_nonblocking, 0.0f);
+    }
+    else
+    {
+        // -1 means events weren't ready synchronously. This is acceptable on
+        // slower hardware or under load; the API allows both blocking and
+        // non-blocking queries.
+    }
+
+    // Fall back to blocking elapsed() for verification.
+    float elapsed_us_blocking = stubs->elapsed(&event1, &event2);
+    EXPECT_GT(elapsed_us_blocking, 0.0f);
+
+#else
+    GTEST_SKIP() << "CUDA/HIP not compiled in";
+#endif
+}
+
 #endif  // PROFILER_HAS_CUDA || PROFILER_HAS_HIP

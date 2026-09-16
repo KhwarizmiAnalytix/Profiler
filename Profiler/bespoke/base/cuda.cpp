@@ -103,6 +103,12 @@ struct CUDAOrHIPMethods : public ProfilerStubs
 {
     void record(int16_t* device, ProfilerVoidEventStub* event, int64_t* cpu_ns) const override
     {
+        record_with_stream(nullptr, device, event, cpu_ns);
+    }
+
+    void record_with_stream(void* stream_ptr, int16_t* device, ProfilerVoidEventStub* event,
+                           int64_t* cpu_ns) const override
+    {
         if (device)
         {
             int current_device = 0;
@@ -117,10 +123,11 @@ struct CUDAOrHIPMethods : public ProfilerStubs
         {
             *cpu_ns = profiler::getTime();
         }
-        // Record on the default per-thread stream: see ScopedCUDADeviceGuard's
-        // comment above for why this is simplified relative to PyTorch's
-        // pooled-stream equivalent.
-        PROFILER_CUDA_CHECK(cudaEventRecord(cuda_event_ptr, /*stream=*/nullptr));
+        // Record on the provided stream (or default per-thread stream if nullptr).
+        // Phase 4: explicit stream binding enables optional stream-interval timing
+        // (design-review.md section 6.6 "explicit device/stream binding").
+        auto stream = static_cast<cudaStream_t>(stream_ptr);
+        PROFILER_CUDA_CHECK(cudaEventRecord(cuda_event_ptr, stream));
     }
 
     float elapsed(
@@ -132,6 +139,43 @@ struct CUDAOrHIPMethods : public ProfilerStubs
         PROFILER_CUDA_CHECK(cudaEventSynchronize(event2->get()));
         float ms = 0;
         PROFILER_CUDA_CHECK(cudaEventElapsedTime(&ms, event->get(), event2->get()));
+        // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-narrowing-conversions)
+        return ms * 1000.0;
+    }
+
+    float elapsed_nonblocking(
+        const ProfilerVoidEventStub* event_, const ProfilerVoidEventStub* event2_) const override
+    {
+        // Phase 4: non-blocking query using cudaEventQuery instead of
+        // cudaEventSynchronize (design-review.md section 6.6 "query completed
+        // events later"). Returns elapsed time if both events are ready, or -1
+        // if either is still pending.
+        auto event  = (const ProfilerEventStub*)(event_);
+        auto event2 = (const ProfilerEventStub*)(event2_);
+
+        cudaError_t err1 = cudaEventQuery(event->get());
+        if (err1 != cudaSuccess && err1 != cudaErrorNotReady)
+        {
+            PROFILER_CUDA_CHECK(err1);
+            return -1.0f;
+        }
+        cudaError_t err2 = cudaEventQuery(event2->get());
+        if (err2 != cudaSuccess && err2 != cudaErrorNotReady)
+        {
+            PROFILER_CUDA_CHECK(err2);
+            return -1.0f;
+        }
+
+        if (err1 == cudaErrorNotReady || err2 == cudaErrorNotReady)
+        {
+            return -1.0f;
+        }
+
+        float ms = 0;
+        if (cudaEventElapsedTime(&ms, event->get(), event2->get()) != cudaSuccess)
+        {
+            return -1.0f;
+        }
         // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-narrowing-conversions)
         return ms * 1000.0;
     }

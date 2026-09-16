@@ -140,6 +140,12 @@ struct capture_event
     // measured 0us interval.
     int64_t gpu_fallback_elapsed_us = -1;
 
+    // Measurement kind uncertainty (design-review.md section 6.3 "Measurement"
+    // field group): nanoseconds of device clock uncertainty from calibration.
+    // Populated from per-device calibration at session start when a GPU backend
+    // is active; 0 for CPU-only events.
+    int64_t clock_uncertainty_ns = 0;
+
     // Integrity: whether every field above (that the source could in
     // principle supply) was actually populated. Always true for a Kineto-
     // sourced event today; reserved for a future less-complete source

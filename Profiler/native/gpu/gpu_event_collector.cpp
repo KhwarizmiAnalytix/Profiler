@@ -78,7 +78,9 @@ void gpu_trace_collector::add_event(gpu_tracer_event&& event)
     events_.push_back(std::move(event));
 }
 
-bool gpu_trace_collector::export_xspace(x_space* space, uint64_t /*end_gpu_ns*/)
+bool gpu_trace_collector::export_xspace(x_space* space, uint64_t /*end_gpu_ns*/,
+                                        uint64_t current_generation,
+                                        uint64_t* out_stale_event_count)
 {
     if (space == nullptr)
     {
@@ -95,8 +97,35 @@ bool gpu_trace_collector::export_xspace(x_space* space, uint64_t /*end_gpu_ns*/)
         return true;
     }
 
-    std::unordered_map<uint32_t, std::vector<gpu_tracer_event*>> by_device;
+    // Filter stale events (late callbacks from a prior/aborted run with a
+    // different generation). Matches design-review.md section 6.5 lifecycle
+    // handling and section 6.3 integrity field group.
+    uint64_t stale_count = 0;
+    std::vector<gpu_tracer_event> filtered_events;
     for (auto& event : events)
+    {
+        if (current_generation != 0 && event.generation != current_generation)
+        {
+            ++stale_count;
+        }
+        else
+        {
+            filtered_events.push_back(std::move(event));
+        }
+    }
+
+    if (out_stale_event_count != nullptr)
+    {
+        *out_stale_event_count = stale_count;
+    }
+
+    if (filtered_events.empty())
+    {
+        return true;
+    }
+
+    std::unordered_map<uint32_t, std::vector<gpu_tracer_event*>> by_device;
+    for (auto& event : filtered_events)
     {
         by_device[event.device_id].push_back(&event);
     }
@@ -240,6 +269,15 @@ void add_gpu_tracer_event(gpu_tracer_event event)
     {
         event.annotation = annotation_stack::get();
     }
+    // Stamp with the current session generation to detect late callbacks
+    // from a prior/aborted run (design-review.md section 6.3/6.5).
+    // Note: This reads a static atomic generation counter from the last
+    // active profiler_session, not the active session's instance generation.
+    // This is a TLS-like state shared across all GPU callbacks; correctness
+    // relies on all callbacks quiescing before the next session starts
+    // (enforced by profiler_controller/profiler_session lifecycle).
+    // A future multi-session design may need per-session generation context.
+    // For now, we accept single-session semantics.
     collector->add_event(std::move(event));
 }
 

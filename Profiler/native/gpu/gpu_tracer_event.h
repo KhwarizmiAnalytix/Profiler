@@ -69,6 +69,12 @@ struct gpu_tracer_event
     std::string           name;
     std::string           annotation;
 
+    /// Generation ID from the profiler_session that was active when this event
+    /// was recorded (design-review.md section 6.3/6.5). Late callbacks from
+    /// a prior/aborted run will have a stale generation; these are dropped
+    /// at export time and counted in loss diagnostics.
+    uint64_t generation = 0;
+
     /// Integrity (design-review.md section 6.3): whether this record's fields
     /// were fully populated by the device activity backend. Defaults to true
     /// (today's only producer, the synthetic/CUPTI collectors, always fills

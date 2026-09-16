@@ -20,6 +20,7 @@ using cudaEvent_t = hipEvent_t;
 
 #define cudaSuccess hipSuccess
 #define cudaErrorInitializationError hipErrorNotInitialized
+#define cudaErrorNotReady hipErrorNotReady
 #define cudaGetErrorString hipGetErrorString
 #define cudaGetDevice hipGetDevice
 #define cudaSetDevice hipSetDevice
@@ -28,6 +29,7 @@ using cudaEvent_t = hipEvent_t;
 #define cudaEventDestroy hipEventDestroy
 #define cudaEventRecord hipEventRecord
 #define cudaEventSynchronize hipEventSynchronize
+#define cudaEventQuery hipEventQuery
 #define cudaEventElapsedTime hipEventElapsedTime
 #define cudaDeviceSynchronize hipDeviceSynchronize
 
