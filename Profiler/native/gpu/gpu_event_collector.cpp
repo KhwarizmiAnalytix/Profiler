@@ -124,6 +124,10 @@ bool gpu_trace_collector::export_xspace(x_space* space, uint64_t /*end_gpu_ns*/)
             *builder.get_or_create_stat_metadata(GetStatTypeStr(StatType::kMemcpyDetails));
         const x_stat_metadata& memset_meta =
             *builder.get_or_create_stat_metadata(GetStatTypeStr(StatType::kMemsetDetails));
+        // The CPU-side scope that launched this GPU work (annotation_stack::get(), set in
+        // add_gpu_tracer_event()) -- no existing StatType entry for this; get_or_create_stat_metadata
+        // takes an arbitrary name directly, same mechanism the StatType-backed lookups above use.
+        const x_stat_metadata& annotation_meta = *builder.get_or_create_stat_metadata("annotation");
 
         std::unordered_map<uint32_t, uint64_t> line_origin;
         for (const gpu_tracer_event* event : device_evts)
@@ -172,6 +176,10 @@ bool gpu_trace_collector::export_xspace(x_space* space, uint64_t /*end_gpu_ns*/)
             if (event->correlation_id != 0)
             {
                 xevent.add_stat_value(corr_meta, static_cast<int64_t>(event->correlation_id));
+            }
+            if (!event->annotation.empty())
+            {
+                xevent.add_stat_value(annotation_meta, event->annotation);
             }
         }
     }

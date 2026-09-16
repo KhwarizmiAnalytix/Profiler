@@ -193,6 +193,35 @@ PROFILERTEST(BackendGpuTracer, collector_kernel_on_device_plane)
     print_gpu_plane(*gpu);
 }
 
+// Regression (Phase 3 options cleanup): gpu_tracer_event::annotation is
+// populated from annotation_stack::get() in add_gpu_tracer_event() (the CPU
+// scope that launched this GPU work), but export_xspace() never wrote it into
+// the exported XSpace -- the CPU->GPU launch correlation the field exists to
+// carry was silently dropped.
+PROFILERTEST(BackendGpuTracer, kernel_carries_launching_scope_annotation)
+{
+    constexpr const char* kLaunchScope = "gpu_annotation_launch_scope";
+
+    profiler_session session(make_gpu_options());
+    ASSERT_TRUE(session.start());
+    {
+        // annotation_stack is only populated while a scope is open and GPU
+        // tracing has enabled it (see profiler_scope::start()) -- add_kernel_event
+        // doesn't set event.annotation itself, so this exercises the same
+        // add_gpu_tracer_event() fallback the real GPU producer path uses.
+        profiler_scope scope(kLaunchScope, &session);
+        const uint64_t start_ns = static_cast<uint64_t>(get_current_time_nanos());
+        add_kernel_event(kSyntheticKernel, start_ns, start_ns + kSyntheticDurNs);
+    }
+    ASSERT_TRUE(session.stop());
+    ASSERT_TRUE(session.has_collected_xspace());
+
+    const std::string chrome = session.generate_chrome_trace_json();
+    ASSERT_FALSE(chrome.empty());
+    EXPECT_NE(chrome.find("\"annotation\":\"" + std::string(kLaunchScope) + "\""), std::string::npos)
+        << "GPU kernel event should carry its launching CPU scope as an annotation stat";
+}
+
 PROFILERTEST(BackendGpuTracer, add_event_is_noop_when_inactive)
 {
     EXPECT_FALSE(gpu_tracer_is_recording());
