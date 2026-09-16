@@ -136,6 +136,32 @@ executable. On Linux and macOS use an appropriate runtime search path; temporary
 local checks can use `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`, respectively.
 The CI consumer step demonstrates these settings.
 
+### Installing a static build
+
+`-DBUILD_SHARED_LIBS=OFF` also produces a `find_package`-consumable install
+for the `PROFILER_BACKEND=KINETO` or `ITT` configuration with
+`PROFILER_GPU_BACKEND=none`:
+
+```bash
+cmake -S . -B build-static -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+cmake --build build-static --config Release --parallel
+cmake --install build-static --config Release --prefix "$PWD/install-static"
+cmake -S consumer -B build-consumer-static -DCMAKE_PREFIX_PATH="$PWD/install-static"
+cmake --build build-consumer-static --config Release --parallel
+```
+
+The consumer project's `find_package(Profiler CONFIG REQUIRED)` and
+`target_link_libraries(... Profiler::Profiler)` lines are unchanged --
+`Profiler::Profiler` carries its own required third-party static archives
+(fmt, Kineto, and ITT's `ittnotify` when built with that backend) as link
+dependencies, so nothing else needs to be added to the consumer's CMake.
+Nothing extra needs to be on `PATH`/`LD_LIBRARY_PATH` either, since there's
+no shared library to find at runtime.
+
+A CUDA or HIP static build (`PROFILER_GPU_BACKEND=cuda`/`hip`) is not yet
+`find_package`-consumable this way -- the consumer would also need
+`find_dependency(CUDAToolkit)` wiring this package doesn't provide today.
+
 ## Build options
 
 | Variable | Default | Meaning |

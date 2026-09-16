@@ -166,15 +166,24 @@ jobs:
       - name: Test (static)
         run: ctest --test-dir build-static -C Release --output-on-failure --timeout 180
 
-      # Note: a STATIC install + external find_package(Profiler) consumer is
-      # not exercised here. Unlike the SHARED case (where Kineto/fmt are
-      # already linked into libProfiler.so and a consumer needs nothing else),
-      # a STATIC libProfiler.a is only object files -- an external consumer
-      # would also need to link Profiler's own third-party static archives
-      # itself, and this package doesn't export/re-bundle those today. That's
-      # a separate, real packaging gap from the one this job proves fixed
-      # (in-tree static-link registration), tracked for the options/dependency
-      # simplification phase rather than solved here.
+      # Unlike the SHARED case (where Kineto/fmt are already linked into
+      # libProfiler.so and a consumer needs nothing else), a STATIC
+      # libProfiler.a resolves none of its own symbols -- ProfilerConfig.cmake
+      # now also installs and references Profiler's own third-party static
+      # archives (fmt/kineto/ittnotify) so a find_package() consumer gets a
+      # working link line. This is the actual previously-broken scenario
+      # (reproduced: dozens of undefined-symbol errors for libkineto/fmt
+      # symbols before that fix), verified end to end here rather than just
+      # in-tree. Scope: PROFILER_BACKEND=KINETO, PROFILER_GPU_BACKEND=none --
+      # a CUDA/HIP static consumer would additionally need
+      # find_dependency(CUDAToolkit) wiring, not covered here.
+      - name: Install and consume (static)
+        run: |
+          cmake --install build-static --config Release --prefix "${GITHUB_WORKSPACE}/install-static"
+          cmake -S consumer -B build-consumer-static \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install-static"
+          cmake --build build-consumer-static --config Release --parallel
+          ./build-consumer-static/profiler_consumer
 
   coverage:
     name: coverage
@@ -217,6 +226,42 @@ jobs:
         with:
           name: coverage-html
           path: build-coverage/coverage_report/html/
+          retention-days: 30
+
+  benchmark:
+    name: benchmark (informational)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Phase 0's reference-workload/budget-gated overhead measurement
+      # (design-review.md section 1.1), see docs/benchmarking.md. This job
+      # is informational only: a shared GitHub-hosted runner is not the
+      # dedicated, low-noise "reference machine" design-review.md requires
+      # to gate pass/fail against the 1%/3%/5% overhead targets, so it never
+      # fails the build on the reported numbers -- only on a crash/nonzero
+      # exit. Real budget gating needs a run on a controlled machine.
+      - name: Configure
+        run: |
+          cmake -S . -B build-benchmark -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_ENABLE_BENCHMARKS=ON \
+            -DPROFILER_ENABLE_TESTING=OFF
+
+      - name: Build
+        run: cmake --build build-benchmark --config Release --parallel
+
+      - name: Run
+        run: ./build-benchmark/bin/profiler_benchmark | tee benchmark-report.txt
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: benchmark-report.txt
           retention-days: 30
 
   sanitize-asan-ubsan:

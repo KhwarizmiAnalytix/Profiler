@@ -34,13 +34,16 @@ set(PROFILER_GPU_BACKEND "${_profiler_gpu_default}" CACHE STRING "GPU backend: n
 set_property(CACHE PROFILER_GPU_BACKEND PROPERTY STRINGS none cuda hip)
 unset(_profiler_gpu_default)
 if(NOT PROFILER_GPU_BACKEND MATCHES "^(none|cuda|hip)$")
-    message(FATAL_ERROR
-            "PROFILER_GPU_BACKEND must be none, cuda, or hip (Metal support was removed)"
+    message(
+        FATAL_ERROR "PROFILER_GPU_BACKEND must be none, cuda, or hip (Metal support was removed)"
     )
 endif()
 
 option(PROFILER_ENABLE_TESTING "Build Profiler test suite" ON)
 option(PROFILER_ENABLE_EXAMPLES "Build Profiler example programs" OFF)
+option(PROFILER_ENABLE_BENCHMARKS
+       "Build the profiler_benchmark overhead-measurement tool (docs/benchmarking.md)" OFF
+)
 option(PROFILER_ENABLE_LIBTORCH "Enable LibTorch in ProfilerCxxTests" OFF)
 option(PROFILER_ENABLE_INSTALL "Install headers and CMake package" ${PROFILER_STANDALONE})
 option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found" OFF)
