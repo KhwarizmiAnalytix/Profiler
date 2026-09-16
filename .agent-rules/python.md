@@ -1,7 +1,3 @@
----
-type: "always_apply"
----
-
 # Python coding standards
 
 Apply these rules to Python files, including build scripts in C++ projects.

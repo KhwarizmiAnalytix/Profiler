@@ -1,6 +1,6 @@
 ---
 name: new-test
-description: Add or extend a unit test in Profiler, preserving its framework, test registration, and error-handling contracts. Use when writing tests for changed behavior.
+description: "Use when adding or extending Profiler tests while preserving local frameworks, registration, and error contracts."
 ---
 
 # new-test

@@ -1,9 +1,12 @@
 ---
 name: session-checklist
-description: Verify non-trivial changes in Profiler before handoff or commit, including supported build systems, tests, configured lint, and diff review.
+description: "Use only when handoff, commit-readiness, full verification, or a review checklist is requested for Profiler changes."
 ---
 
 # session-checklist
+
+Do not invoke this skill for every edit or commit. Use it only when the task
+explicitly requests a full verification or handoff review.
 
 Read [CLAUDE.md](../../../CLAUDE.md) and review the working diff without
 discarding unrelated user changes. Scale the checks to what changed.

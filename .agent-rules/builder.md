@@ -1,7 +1,3 @@
----
-type: "always_apply"
----
-
 # C++ builder conventions
 
 Apply these conventions when adding or editing a C++ builder; they do not

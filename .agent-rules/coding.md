@@ -1,7 +1,3 @@
----
-type: "always_apply"
----
-
 # C++ coding standards
 
 These rules apply to first-party C++. Repository-specific contracts in

@@ -1,7 +1,3 @@
----
-type: "always_apply"
----
-
 # Third-party dependencies
 
 Keep vendored source, submodules, third-party build files, and downloaded

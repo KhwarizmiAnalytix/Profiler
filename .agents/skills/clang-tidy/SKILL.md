@@ -1,6 +1,6 @@
 ---
 name: clang-tidy
-description: Run or diagnose clang-tidy for first-party C++ work associated with Profiler. Use for requested C++ static analysis or suppression fixes; this tool does not lint Python.
+description: "Use for clang-tidy analysis or suppression fixes in first-party Profiler C++; do not use for Python."
 ---
 
 # clang-tidy

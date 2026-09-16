@@ -1,16 +1,16 @@
----
-type: "always_apply"
----
-
 # Tests and coverage
+
+When the task asks to add or change tests, load the `new-test` skill. For an
+ordinary code change without a test request, do not load it automatically.
 
 Cover changed behavior with focused tests for success, boundaries, invalid
 inputs, failure handling, and relevant state changes. Keep tests independent
 and deterministic; use fixtures when they reduce repeated setup.
 
 Match the language, test framework, macros, filenames, and directory layout
-already used by this repository. Consult `CLAUDE.md` and the `new-test`
-skill. Do not import another project's test macros or helper headers.
+already used by this repository. Consult `CLAUDE.md` and the `new-test` skill
+when adding or extending tests. Do not import another project's test macros
+or helper headers.
 Preserve existing exception assertions when exceptions are the public API.
 
 Check how tests are registered. Add new files to explicit source lists and

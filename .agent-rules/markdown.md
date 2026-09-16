@@ -10,5 +10,5 @@ request instead. Update existing documentation when behavior changes.
 
 For requested new documentation, use the location the user specifies;
 otherwise follow the existing `Docs/` or `docs/` convention. Root project
-files and tool-discovered instructions such as `CLAUDE.md`, Augment rules,
-and Claude skills belong in their designated locations.
+files and tool-discovered instructions such as `CLAUDE.md`, shared rules, and
+skills belong in their designated locations.

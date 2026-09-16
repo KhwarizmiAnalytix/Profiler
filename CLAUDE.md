@@ -21,21 +21,27 @@ Adapted from the public [XSigma rules and skills](https://github.com/KhwarizmiAn
 at revision `89848c54492abef57fd0d0dc53b9da96b7cd1d5d`. Local API, dependency, language, and build
 conventions below specialize that guidance for this standalone repository.
 
-Read the applicable rules before editing. They apply to Claude as well as
-Augment; C++ rules apply only when working on C++:
+The cross-tool entry point is [.agent-rules.md](.agent-rules.md). Cursor and
+Codex load it through [.cursor/rules/profiler.mdc](.cursor/rules/profiler.mdc)
+and [AGENTS.md](AGENTS.md); Claude should use it as the index for the same
+authoritative rules under `.agent-rules/`.
 
-- [C++ coding](.augment/rules/coding.md) and [builders](.augment/rules/builder.md)
-- [Python](.augment/rules/python.md)
-- [Testing](.augment/rules/testing.md) and [builds](.augment/rules/build%20rule.md)
-- [Dependencies](.augment/rules/ThirdParty.md)
-- [Portability](.augment/rules/must-have.md) and [documentation](.augment/rules/markdown.md)
+Read the applicable rules before editing. They apply to Claude, Cursor, and
+Codex; C++ rules apply only when working on C++:
+
+- [C++ coding](.agent-rules/coding.md) and [builders](.agent-rules/builder.md)
+- [Python](.agent-rules/python.md)
+- [Testing](.agent-rules/testing.md) and [builds](.agent-rules/build%20rule.md)
+- [Dependencies](.agent-rules/ThirdParty.md)
+- [Portability](.agent-rules/must-have.md) and [documentation](.agent-rules/markdown.md)
 
 Use these task-specific skills as needed:
 
-- [project-build](.claude/skills/project-build/SKILL.md): configure, build, and test
-- [new-test](.claude/skills/new-test/SKILL.md): add tests using local conventions
-- [clang-tidy](.claude/skills/clang-tidy/SKILL.md): analyze first-party C++ when applicable
-- [session-checklist](.claude/skills/session-checklist/SKILL.md): verify completed work
+- [project-build](.agents/skills/project-build/SKILL.md): configure, build, and test
+- [new-test](.agents/skills/new-test/SKILL.md): add tests using local conventions
+- [clang-tidy](.agents/skills/clang-tidy/SKILL.md): analyze first-party C++ when applicable
+- [session-checklist](.agents/skills/session-checklist/SKILL.md): verify completed work
+- [plan](.agents/skills/plan/SKILL.md): create and track documentation-only implementation plans
 
 ## Build and test
 

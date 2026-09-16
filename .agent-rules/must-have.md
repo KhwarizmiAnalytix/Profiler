@@ -1,7 +1,3 @@
----
-type: "always_apply"
----
-
 # Cross-platform compatibility
 
 Preserve the project's supported Linux, macOS, and Windows behavior unless
