@@ -319,6 +319,10 @@ if(PROFILER_ENABLE_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+if(PROFILER_ENABLE_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
+
 if(PROFILER_ENABLE_TESTING)
     add_subdirectory(Testing/Cxx)
 endif()

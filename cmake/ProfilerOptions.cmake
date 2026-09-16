@@ -41,6 +41,9 @@ endif()
 
 option(PROFILER_ENABLE_TESTING "Build Profiler test suite" ON)
 option(PROFILER_ENABLE_EXAMPLES "Build Profiler example programs" OFF)
+option(PROFILER_ENABLE_BENCHMARKS
+       "Build the profiler_benchmark overhead-measurement tool (docs/benchmarking.md)" OFF
+)
 option(PROFILER_ENABLE_LIBTORCH "Enable LibTorch in ProfilerCxxTests" OFF)
 option(PROFILER_ENABLE_INSTALL "Install headers and CMake package" ${PROFILER_STANDALONE})
 option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found" OFF)
