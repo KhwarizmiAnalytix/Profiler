@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -84,6 +86,17 @@ PROFILER_API std::vector<std::string> inputTypes(const profiler::RecordFunction&
 
 std::string shapeToStr(const std::vector<int64_t>& shape);
 
+// design-review.md finding 7: state_ used to be a plain, unsynchronized
+// shared_ptr<T>, so concurrent push()/get()/pop() calls (e.g. multiple
+// worker threads enrolling/disenrolling via child_thread_capture on
+// separate threads) raced on the shared_ptr control block itself --
+// confirmed by ThreadSanitizer on PublicApi.concurrent_child_thread_
+// enrollment_does_not_race (two threads' pop() calls racing on the same
+// underlying std::shared_ptr copy/reset). A mutex around each operation's
+// body is the minimal fix for that specific race; get()'s returned raw
+// pointer can still be outlived by a concurrent pop() destroying the
+// pointee -- a separate, larger lifetime-ownership redesign finding 7 also
+// flags, not attempted here.
 template <typename T>
 class PROFILER_VISIBILITY GlobalStateManager
 {
@@ -96,6 +109,7 @@ public:
 
     static void push(std::shared_ptr<T>&& state)
     {
+        std::scoped_lock const lock(singleton().mutex_);
         if (singleton().state_)
         {
             //LOG(WARNING) << "GlobalStatePtr already exists!";
@@ -106,11 +120,16 @@ public:
         }
     }
 
-    static auto* get() { return singleton().state_.get(); }
+    static auto* get()
+    {
+        std::scoped_lock const lock(singleton().mutex_);
+        return singleton().state_.get();
+    }
 
     static std::shared_ptr<T> pop()
     {
-        auto out = singleton().state_;
+        std::scoped_lock const lock(singleton().mutex_);
+        auto             out = singleton().state_;
         singleton().state_.reset();
         return out;
     }
@@ -118,6 +137,7 @@ public:
 private:
     GlobalStateManager() = default;
 
+    std::mutex          mutex_;
     std::shared_ptr<T> state_;
 };
 
