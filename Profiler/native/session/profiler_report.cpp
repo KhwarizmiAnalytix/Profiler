@@ -22,7 +22,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
-#include <fstream>
 #include <iomanip>
 #include <numeric>
 #include <set>
@@ -42,6 +41,7 @@
 #include "native/exporters/xplane/xplane_utils.h"
 #include "native/exporters/xplane/xplane_visitor.h"
 #include "native/session/profiler.h"
+#include "native/utils/checked_file_write.h"
 
 namespace profiler
 {
@@ -439,15 +439,7 @@ bool profiler_report::export_to_file(
         break;
     }
 
-    std::ofstream file(filename);
-    if (!file.is_open())
-    {
-        return false;
-    }
-
-    file << content;
-    file.close();
-    return true;
+    return profiler_impl::write_file_checked(filename, content);
 }
 
 bool profiler_report::export_console_report(const std::string& filename) const

@@ -21,10 +21,20 @@
 // and TraceMe metadata encoding. Otherwise only exercised indirectly.
 
 #include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <sstream>
 #include <string>
+
+#if defined(_WIN32)
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
 
 #include "ProfilerTest.h"
 #include "native/tracing/traceme_encode.h"
+#include "native/utils/checked_file_write.h"
 #include "native/utils/format_utils.h"
 #include "native/utils/math_utils.h"
 #include "native/utils/parse_annotation.h"
@@ -229,4 +239,72 @@ PROFILERTEST(TimeUtils, zero_duration_sleep_and_spin_return)
     profiler::profiler_impl::sleep_for_nanos(0);
     profiler::profiler_impl::spin_for_nanos(0);
     SUCCEED();
+}
+
+// ---------------------------------------------------------------------------
+// checked_file_write
+// ---------------------------------------------------------------------------
+
+namespace
+{
+std::string read_file(const std::string& path)
+{
+    std::ifstream     file(path);
+    std::ostringstream contents;
+    contents << file.rdbuf();
+    return contents.str();
+}
+
+bool file_exists(const std::string& path)
+{
+    std::ifstream file(path);
+    return file.good();
+}
+}  // namespace
+
+PROFILERTEST(CheckedFileWrite, publishes_full_content_on_success)
+{
+    const std::string path = "checked_file_write_success.txt";
+    std::remove(path.c_str());
+
+    ASSERT_TRUE(profiler::profiler_impl::write_file_checked(path, "hello checked write"));
+    EXPECT_EQ(read_file(path), "hello checked write");
+    // No stray temp file left behind.
+    EXPECT_FALSE(file_exists(path + ".tmp"));
+
+    std::remove(path.c_str());
+}
+
+PROFILERTEST(CheckedFileWrite, failure_leaves_existing_destination_untouched)
+{
+    // A directory can't be opened for writing via ofstream -- use that to force
+    // the "publish" step (the rename) to fail without needing filesystem
+    // permission tricks that would vary across CI platforms.
+    const std::string dir_path = "checked_file_write_failure_dir";
+    std::remove(dir_path.c_str());
+#if defined(_WIN32)
+    ASSERT_EQ(_mkdir(dir_path.c_str()), 0);
+#else
+    ASSERT_EQ(mkdir(dir_path.c_str(), 0755), 0);
+#endif
+
+    EXPECT_FALSE(profiler::profiler_impl::write_file_checked(dir_path, "should not publish"));
+    // The temp file (dir_path + ".tmp") must not be left behind either.
+    EXPECT_FALSE(file_exists(dir_path + ".tmp"));
+
+#if defined(_WIN32)
+    _rmdir(dir_path.c_str());
+#else
+    rmdir(dir_path.c_str());
+#endif
+}
+
+PROFILERTEST(CheckedFileWrite, overwrites_existing_valid_file_on_success)
+{
+    const std::string path = "checked_file_write_overwrite.txt";
+    ASSERT_TRUE(profiler::profiler_impl::write_file_checked(path, "first version"));
+    ASSERT_TRUE(profiler::profiler_impl::write_file_checked(path, "second version"));
+    EXPECT_EQ(read_file(path), "second version");
+
+    std::remove(path.c_str());
 }

@@ -52,6 +52,12 @@
 #include <string>
 #include <vector>
 
+#if defined(_WIN32)
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
 #include "ProfilerTest.h"
 #include "native/session/profiler.h"
 #include "native/session/profiler_report.h"
@@ -335,4 +341,41 @@ PROFILERTEST(BackendOutput, all_formats_from_one_session)
     EXPECT_NE(console.find(kOuterScope), std::string::npos);
     EXPECT_NE(xml.find("=== Node Stats (from XSpace) ==="), std::string::npos);
     EXPECT_NE(xml.find("<statistics>"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Regression (Phase 3 Part C): profiler_report::export_to_file() used to return
+// true unconditionally once the destination opened, never checking whether the
+// write itself succeeded -- the same class of bug as design-review.md's
+// finding 1 (Kineto trace export), just in the report-export path that fix
+// didn't touch. It's now backed by the checked temp-file-publish helper.
+// -----------------------------------------------------------------------------
+PROFILERTEST(BackendOutput, export_report_reports_failure_not_false_success)
+{
+    profiler_session session(make_report_options(profiler_options::output_format_enum::JSON));
+    ASSERT_TRUE(session.start());
+    run_nested_workload(session);
+    ASSERT_TRUE(session.stop());
+
+    auto report = session.generate_report();
+    ASSERT_NE(report, nullptr);
+
+    // A directory can't be published over via rename -- forces the write to
+    // fail without relying on filesystem permission tricks that would vary
+    // across CI platforms.
+    const std::string dir_path = "backend_output_export_failure_dir";
+    std::remove(dir_path.c_str());
+#if defined(_WIN32)
+    ASSERT_EQ(_mkdir(dir_path.c_str()), 0);
+#else
+    ASSERT_EQ(mkdir(dir_path.c_str(), 0755), 0);
+#endif
+
+    EXPECT_FALSE(report->export_json_report(dir_path));
+
+#if defined(_WIN32)
+    _rmdir(dir_path.c_str());
+#else
+    rmdir(dir_path.c_str());
+#endif
 }

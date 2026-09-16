@@ -19,7 +19,6 @@
 #include "native/exporters/chrome_trace_exporter.h"
 
 #include <cstdio>
-#include <fstream>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -27,6 +26,7 @@
 
 ////#include "logger/logger.h"
 #include "native/exporters/xplane/xplane.h"
+#include "native/utils/checked_file_write.h"
 
 namespace profiler::profiler_impl
 {
@@ -243,25 +243,7 @@ bool export_to_chrome_trace_json_file(
     try
     {
         std::string const json = export_to_chrome_trace_json(space, pretty_print);
-
-        std::ofstream file(filename);
-        if (!file.is_open())
-        {
-            PROFILER_LOG_ERROR("Failed to open file for writing: {}", filename);
-            return false;
-        }
-
-        file << json;
-        bool const write_ok = file.good();
-        file.close();
-        if (!write_ok || !file.good())
-        {
-            PROFILER_LOG_ERROR("Failed to write Chrome Trace JSON to: {}", filename);
-            return false;
-        }
-
-        //PROFILER_LOG_INFO("Exported Chrome Trace JSON to: {}", filename);
-        return true;
+        return write_file_checked(filename, json);
     }
     catch (const std::exception& e)
     {
