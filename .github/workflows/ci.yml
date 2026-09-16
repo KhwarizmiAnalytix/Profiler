@@ -101,6 +101,34 @@ jobs:
             ./build-consumer/Release/profiler_consumer.exe
           fi
 
+  native-only:
+    name: native-only build (PROFILER_BACKEND=NONE)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # design-review.md section 7's Phase 3 bullet: "allow a native-only
+      # build" -- no Kineto or ITT instrumentation backend compiled in at
+      # all, only native CPU collection. The rest of the CI matrix always
+      # picks one of KINETO/ITT, so this is the only job that exercises
+      # PROFILER_HAS_KINETO=0 && PROFILER_HAS_ITT=0 together.
+      - name: Configure (native-only)
+        run: |
+          cmake -S . -B build-none -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=NONE \
+            -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON \
+            -DPROFILER_ENABLE_EXAMPLES=ON
+
+      - name: Build (native-only)
+        run: cmake --build build-none --config Release --parallel
+
+      - name: Test (native-only)
+        run: ctest --test-dir build-none -C Release --output-on-failure --timeout 180
+
   static-link:
     name: static-link registration survives archive linking
     runs-on: ubuntu-latest

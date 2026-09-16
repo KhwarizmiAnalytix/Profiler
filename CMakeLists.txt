@@ -34,9 +34,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(PROFILER_BACKEND STREQUAL "KINETO")
     set(PROFILER_ENABLE_KINETO ON)
     set(PROFILER_ENABLE_ITT OFF)
-else()
+elseif(PROFILER_BACKEND STREQUAL "ITT")
     set(PROFILER_ENABLE_KINETO OFF)
     set(PROFILER_ENABLE_ITT ON)
+else()
+    # NONE: native CPU collection only, no instrumentation backend compiled in
+    # at all (design-review.md section 7's "allow a native-only build").
+    set(PROFILER_ENABLE_KINETO OFF)
+    set(PROFILER_ENABLE_ITT OFF)
 endif()
 set(PROFILER_ENABLE_NATIVE_PROFILER ON CACHE BOOL "Native pipeline is always compiled" FORCE)
 

@@ -96,6 +96,12 @@ PROFILERTEST(PublicApi, reports_and_hotspots_from_umbrella_header)
 
 PROFILERTEST(PublicApi, capture_from_umbrella_header)
 {
+    if (!profiler::kineto_enabled() && !profiler::itt_enabled())
+    {
+        GTEST_SKIP() << "Requires an instrumentation backend (Kineto or ITT); "
+                        "PROFILER_BACKEND=NONE has no capture backend to start";
+    }
+
     profiler::capture cap;
     ASSERT_TRUE(cap.prepare());
     ASSERT_TRUE(cap.start());
@@ -136,6 +142,12 @@ PROFILERTEST(PublicApi, capture_from_umbrella_header)
 // -DPROFILER_SANITIZER=thread for real verification.
 PROFILERTEST(PublicApi, concurrent_child_thread_enrollment_does_not_race)
 {
+    if (!profiler::kineto_enabled() && !profiler::itt_enabled())
+    {
+        GTEST_SKIP() << "Requires an instrumentation backend (Kineto or ITT); "
+                        "PROFILER_BACKEND=NONE has no capture backend to start";
+    }
+
     profiler::capture cap;
     ASSERT_TRUE(cap.start());
 
@@ -165,6 +177,12 @@ PROFILERTEST(PublicApi, concurrent_child_thread_enrollment_does_not_race)
 
 PROFILERTEST(PublicApi, capture_child_thread_from_umbrella_header)
 {
+    if (!profiler::kineto_enabled() && !profiler::itt_enabled())
+    {
+        GTEST_SKIP() << "Requires an instrumentation backend (Kineto or ITT); "
+                        "PROFILER_BACKEND=NONE has no capture backend to start";
+    }
+
     profiler::capture cap;
     ASSERT_TRUE(cap.start());
     std::thread worker(
@@ -276,6 +294,12 @@ PROFILERTEST(PublicApi, session_rejects_unavailable_backend)
 
 PROFILERTEST(PublicApi, capture_rejects_second_start)
 {
+    if (!profiler::kineto_enabled() && !profiler::itt_enabled())
+    {
+        GTEST_SKIP() << "Requires an instrumentation backend (Kineto or ITT); "
+                        "PROFILER_BACKEND=NONE has no capture backend to start";
+    }
+
     profiler::capture first;
     ASSERT_TRUE(first.start());
     EXPECT_FALSE(first.start());

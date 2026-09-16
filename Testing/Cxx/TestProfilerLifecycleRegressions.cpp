@@ -146,6 +146,12 @@ PROFILERTEST(LifecycleRegressions, explicit_nvtx_request_fails_without_cuda_supp
 // the first run's data.
 PROFILERTEST(LifecycleRegressions, restart_does_not_leak_previous_run_events)
 {
+    if (!profiler::kineto_enabled() && !profiler::itt_enabled())
+    {
+        GTEST_SKIP() << "native=false needs an instrumentation backend to start at all; "
+                        "PROFILER_BACKEND=NONE has none";
+    }
+
     profiler::session_options opts;
     opts.native          = false;
     opts.instrumentation = true;

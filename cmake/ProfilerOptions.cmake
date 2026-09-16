@@ -10,10 +10,12 @@ if(PROFILER_STANDALONE)
     option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 endif()
 
-set(PROFILER_BACKEND "KINETO" CACHE STRING "Instrumentation backend: KINETO or ITT")
-set_property(CACHE PROFILER_BACKEND PROPERTY STRINGS KINETO ITT)
-if(NOT PROFILER_BACKEND MATCHES "^(KINETO|ITT)$")
-    message(FATAL_ERROR "PROFILER_BACKEND must be KINETO or ITT")
+set(PROFILER_BACKEND "KINETO"
+    CACHE STRING "Instrumentation backend: KINETO, ITT, or NONE (native CPU collection only)"
+)
+set_property(CACHE PROFILER_BACKEND PROPERTY STRINGS KINETO ITT NONE)
+if(NOT PROFILER_BACKEND MATCHES "^(KINETO|ITT|NONE)$")
+    message(FATAL_ERROR "PROFILER_BACKEND must be KINETO, ITT, or NONE")
 endif()
 
 # A parent project's MEMORY_GPU_BACKEND supplies the default if
