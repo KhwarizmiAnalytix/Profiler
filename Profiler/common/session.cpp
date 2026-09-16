@@ -261,10 +261,19 @@ const std::string& session::last_error() const
 
 bool session::write_trace(const std::string& path)
 {
-    if (inst_result_ && inst_result_->save(path))
+    if (inst_result_ && inst_result_->has_trace())
     {
-        return true;
+        // A real Kineto trace exists for this capture: its export is
+        // authoritative. Do not fall back to a different backend/format on
+        // save failure -- design-review.md section 6.7 forbids switching
+        // export format on I/O error, since a reader could otherwise get
+        // native-XSpace data at a path that was supposed to be a Kineto
+        // trace.
+        return inst_result_->save(path);
     }
+    // No Kineto trace object at all (ITT/NVTX/PRIVATEUSE1 captures, or no
+    // instrumentation backend ran) -- native Chrome-trace is the only export
+    // this capture ever had, not a downgrade from a failed one.
     return native_ && native_->write_chrome_trace(path);
 }
 

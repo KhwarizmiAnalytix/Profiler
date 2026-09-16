@@ -80,6 +80,45 @@ PROFILERTEST(LifecycleRegressions, second_export_does_not_report_false_success)
     std::remove(path1.c_str());
 }
 
+// Regression for design-review.md section 6.7 ("no format switch on I/O
+// error"): with both native and instrumentation enabled, a Kineto save
+// failure (here: the same one-shot second-call trigger the test above uses)
+// used to fall through to native_->write_chrome_trace(path) -- silently
+// writing a real Chrome-trace file, in a different schema, at the path a
+// Kineto trace was requested at. session::write_trace() must now report the
+// Kineto failure directly and never touch native_ once inst_result_ exists.
+// (The test above uses native=false specifically to avoid exercising this
+// fallback at all; this one deliberately enables it to prove it's gone.)
+PROFILERTEST(LifecycleRegressions, write_trace_does_not_switch_format_on_kineto_failure)
+{
+    if (!profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "Requires the Kineto instrumentation backend";
+    }
+
+    profiler::session_options opts;
+    opts.native          = true;
+    opts.instrumentation = true;
+
+    profiler::session session(opts);
+    ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("write_trace_no_format_switch_scope"); }
+    ASSERT_TRUE(session.stop());
+
+    const std::string path1 = "lifecycle_no_format_switch_1.json";
+    const std::string path2 = "lifecycle_no_format_switch_2.json";
+    std::remove(path1.c_str());
+    std::remove(path2.c_str());
+
+    ASSERT_TRUE(session.write_trace(path1));
+    EXPECT_TRUE(file_exists(path1));
+
+    EXPECT_FALSE(session.write_trace(path2));
+    EXPECT_FALSE(file_exists(path2));
+
+    std::remove(path1.c_str());
+}
+
 // Finding 2: capture_backend::nvtx was reported available unconditionally,
 // even on a build with no CUDA/NVTX support compiled in, so an explicitly
 // requested NVTX capture would falsely report success from start().

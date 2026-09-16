@@ -94,6 +94,13 @@ public:
 
     PROFILER_API bool save(const std::string& path);
 
+    // True when this capture produced a real, savable trace object at all
+    // (as opposed to save() failing on a genuine write error for a backend
+    // that did). ITT/NVTX/PRIVATEUSE1 captures have no trace object and
+    // return false here unconditionally, distinct from a Kineto trace whose
+    // save() call failed. See session::write_trace()'s use of this.
+    PROFILER_API bool has_trace() const;
+
     uint64_t start_ns() const { return start_ns_; }
 
     const std::vector<capture_event>& events() const { return events_; }

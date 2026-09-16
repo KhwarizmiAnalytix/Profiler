@@ -97,6 +97,14 @@ struct PROFILER_VISIBILITY ProfilerResult
     // trace (NVTX/ITT/PRIVATEUSE1, or disable without a matching enable).
     PROFILER_API bool save(const std::string& path);
 
+    // True when there is a real Kineto trace object to save at all (as
+    // opposed to save() failing because *this* call's write/publish failed).
+    // Callers that fall back to a different export on a structural "no
+    // trace" (NVTX/ITT/PRIVATEUSE1) must not use the same fallback for a
+    // genuine I/O failure of a backend that did produce one -- see
+    // design-review.md section 6.7 ("no format switch on I/O error").
+    PROFILER_API bool has_trace() const;
+
 private:
     uint64_t                 trace_start_ns_ = 0;
     std::vector<KinetoEvent> events_;

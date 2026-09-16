@@ -64,5 +64,25 @@ bool write_file_checked(const std::string& path, const std::string& content)
     return true;
 }
 
+bool publish_external_temp_file(const std::string& path)
+{
+    std::string const temp_path = path + ".tmp";
+
+    {
+        std::ifstream probe(temp_path, std::ios::binary);
+        if (!probe.is_open())
+        {
+            return false;
+        }
+    }
+
+    if (std::rename(temp_path.c_str(), path.c_str()) != 0)
+    {
+        std::remove(temp_path.c_str());
+        return false;
+    }
+    return true;
+}
+
 }  // namespace profiler_impl
 }  // namespace profiler

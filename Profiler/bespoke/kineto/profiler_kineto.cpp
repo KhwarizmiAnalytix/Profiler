@@ -975,6 +975,11 @@ bool ProfilerResult::save(const std::string& path)
     return trace_->save(path);
 }
 
+bool ProfilerResult::has_trace() const
+{
+    return trace_ != nullptr && static_cast<bool>(*trace_);
+}
+
 }  // namespace profiler_impl
 
 }  // namespace profiler

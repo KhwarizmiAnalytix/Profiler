@@ -39,5 +39,22 @@ namespace profiler_impl
  */
 PROFILER_API bool write_file_checked(const std::string& path, const std::string& content);
 
+/**
+ * @brief Publishes `path + ".tmp"` the same way write_file_checked() publishes
+ * in-memory content, for writers with no success/failure return value of their
+ * own (e.g. libkineto's void-returning ActivityTraceInterface::save(), which
+ * must be pointed at the temp path by the caller before this is called).
+ *
+ * Verifies the temp file exists, then publishes it atomically (rename) over
+ * `path`. On any failure, removes the temp file and leaves an existing valid
+ * `path` untouched. This cannot detect a partial write the way
+ * write_file_checked() can (there is no in-memory content to have written in
+ * full) -- it is the best available signal when the underlying writer gives
+ * none of its own.
+ *
+ * @return true if `path` was published from the temp file.
+ */
+PROFILER_API bool publish_external_temp_file(const std::string& path);
+
 }  // namespace profiler_impl
 }  // namespace profiler

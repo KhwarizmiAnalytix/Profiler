@@ -4,11 +4,13 @@
 
 #include "bespoke/common/collection.h"
 #include "common/profiler_macros.h"
+#include "native/utils/checked_file_write.h"
 
 #if PROFILER_HAS_KINETO
 #include <libkineto.h>
 #endif
 
+#include <cstdio>
 #include <cstdlib>
 #include <string_view>
 
@@ -190,9 +192,27 @@ bool ActivityTraceWrapper::save(PROFILER_UNUSED const std::string& path)
     {
         return false;
     }
-    trace_->save(path);
+    // One-shot regardless of outcome below: libkineto's trace object is
+    // consumed by save() whether or not it actually wrote anything, so a
+    // second attempt wouldn't behave any better.
     saved_ = true;
-    return true;
+
+    // libkineto::ActivityTraceInterface::save() returns void, so it gives us
+    // no success/failure signal of its own. Point it at a temp path and
+    // publish via rename (checked_file_write.h) instead of trusting it wrote
+    // `path` directly -- a caller never observes a partially-written
+    // destination, and a failure here leaves an existing valid `path` alone.
+    std::string const temp_path = path + ".tmp";
+    try
+    {
+        trace_->save(temp_path);
+    }
+    catch (...)
+    {
+        std::remove(temp_path.c_str());
+        return false;
+    }
+    return profiler_impl::publish_external_temp_file(path);
 #else
     return false;
 #endif  // PROFILER_HAS_KINETO

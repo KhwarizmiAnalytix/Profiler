@@ -142,6 +142,15 @@ bool capture_result::save(const std::string& path)
 #endif
 }
 
+bool capture_result::has_trace() const
+{
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
+    return impl_ && impl_->kineto && impl_->kineto->has_trace();
+#else
+    return false;
+#endif
+}
+
 capture::capture() = default;
 
 capture::capture(capture_config config) : config_(std::move(config)) {}
