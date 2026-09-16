@@ -23,6 +23,7 @@
 #include <numeric>
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 #include "native/session/profiler.h"
 
@@ -228,7 +229,8 @@ void render_tree(
 
 }  // namespace
 
-hotspot_report::hotspot_report(const profiler_scope_data* root) : root_(root)
+hotspot_report::hotspot_report(std::shared_ptr<const profiler_scope_data> root)
+    : root_(std::move(root))
 {
     if (root_ == nullptr)
     {

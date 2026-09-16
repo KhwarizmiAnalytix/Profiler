@@ -358,7 +358,7 @@ std::unique_ptr<profiler::profiler_report> profiler_session::generate_report() c
 
 std::unique_ptr<profiler::hotspot_report> profiler_session::generate_hotspot_report() const
 {
-    return std::make_unique<profiler::hotspot_report>(build_scope_tree());
+    return std::make_unique<profiler::hotspot_report>(build_scope_tree_shared());
 }
 
 void profiler_session::export_report(const std::string& filename) const
@@ -465,6 +465,12 @@ const profiler::profiler_scope_data* profiler_session::build_scope_tree() const
         scope_tree_cache_ = scope_tree_builder::build_scope_tree(xspace_);
     }
     return scope_tree_cache_.get();
+}
+
+std::shared_ptr<const profiler::profiler_scope_data> profiler_session::build_scope_tree_shared() const
+{
+    build_scope_tree();  // ensures scope_tree_cache_ is populated (or stays null)
+    return scope_tree_cache_;
 }
 
 //=============================================================================

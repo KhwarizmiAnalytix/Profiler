@@ -493,6 +493,15 @@ public:
      */
     PROFILER_API const profiler::profiler_scope_data* build_scope_tree() const;
 
+    /**
+     * @brief Same tree as build_scope_tree(), shared-owned instead of
+     * borrowed from this session. Used by profiler_report/hotspot_report so
+     * they stay valid independently of this session's lifetime
+     * (design-review.md finding 5) -- prefer this over build_scope_tree()
+     * when the tree needs to outlive the call that obtained it.
+     */
+    PROFILER_API std::shared_ptr<const profiler::profiler_scope_data> build_scope_tree_shared() const;
+
 private:
     friend class profiler_session_builder;
 
@@ -553,7 +562,10 @@ private:
 
     /// Lazily-built, cached reconstruction of xspace_'s scope hierarchy (see build_scope_tree()).
     /// mutable: built on demand from a const accessor; invalidated whenever xspace_ changes.
-    mutable std::unique_ptr<profiler::profiler_scope_data> scope_tree_cache_;
+    /// shared_ptr (not unique_ptr) so build_scope_tree_shared() can hand out
+    /// shared ownership to profiler_report/hotspot_report without copying
+    /// the tree (design-review.md finding 5).
+    mutable std::shared_ptr<profiler::profiler_scope_data> scope_tree_cache_;
 
     /// Allow profiler_scope to read options_/memory_tracker_/statistical_analyzer_ on the hot path.
     friend class profiler::profiler_scope;

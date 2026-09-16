@@ -217,13 +217,61 @@ PROFILERTEST(LifecycleRegressions, report_outlives_a_session_restart)
     ASSERT_NE(report, nullptr);
     ASSERT_NE(hotspots, nullptr);
 
+    // Captured before the restart, to prove the report is a real independent
+    // snapshot (design-review.md finding 5) rather than merely "doesn't
+    // crash": its content must be byte-identical, not just non-empty, after
+    // the session that produced it moves on to a second run.
+    const std::string console_before = report->generate_console_report();
+    const std::string table_before   = hotspots->table();
+    ASSERT_FALSE(console_before.empty());
+    ASSERT_FALSE(table_before.empty());
+
     // Restart (and stop again) replaces the session's native profiler_session.
     ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("second_run_scope"); }  // distinct name: proves no cross-run bleed too
     ASSERT_TRUE(session.stop());
 
-    // The old report/hotspot report must still be safe to read.
-    EXPECT_FALSE(report->generate_console_report().empty());
+    // The old report/hotspot report must still be safe to read, and must
+    // read back exactly what was captured before the restart -- not the
+    // second run's data, and not a dangling/reconstructed approximation.
+    EXPECT_EQ(report->generate_console_report(), console_before);
+    EXPECT_EQ(hotspots->table(), table_before);
     EXPECT_NE(hotspots->table().find("report_lifetime_scope"), std::string::npos);
+    EXPECT_EQ(hotspots->table().find("second_run_scope"), std::string::npos);
+}
+
+// design-review.md finding 5 / section 6.2: profiler_report/hotspot_report
+// used to hold a live reference/pointer into the session (a raw
+// const profiler_scope_data* in hotspot_report's case), so destroying the
+// session outright -- not just restarting it -- was a real dangling-
+// reference hazard the old design could never safely support. Snapshotting
+// at construction (this session, see profiler_report.cpp's rewrite) makes
+// this case as safe as the restart case above.
+PROFILERTEST(LifecycleRegressions, report_outlives_session_destruction)
+{
+    std::shared_ptr<profiler::profiler_report>  report;
+    std::shared_ptr<profiler::hotspot_report>   hotspots;
+
+    {
+        profiler::session_options opts;
+        profiler::session         session(opts);
+        ASSERT_TRUE(session.start());
+        { PROFILER_SCOPE("destroyed_session_scope"); }
+        ASSERT_TRUE(session.stop());
+
+        report   = session.generate_report();
+        hotspots = session.generate_hotspot_report();
+        ASSERT_NE(report, nullptr);
+        ASSERT_NE(hotspots, nullptr);
+    }  // session destroyed here, not just restarted.
+
+    EXPECT_FALSE(report->generate_console_report().empty());
+    EXPECT_NE(
+        report->generate_console_report().find("destroyed_session_scope"), std::string::npos);
+    EXPECT_NE(hotspots->table().find("destroyed_session_scope"), std::string::npos);
+    // top_down_tree() dereferences the scope tree lazily, not just at
+    // construction -- the specific case that needed real shared ownership.
+    EXPECT_FALSE(hotspots->top_down_tree().empty());
 }
 
 // design-review.md sections 6.3/6.5: no capture-generation identity existed

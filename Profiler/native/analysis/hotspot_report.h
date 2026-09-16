@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -63,9 +64,15 @@ class PROFILER_VISIBILITY hotspot_report
 public:
     /**
      * @param root Scope tree root (typically the synthetic "ROOT" node from
-     *             build_scope_tree()). Nullptr yields an empty report.
+     *             build_scope_tree_shared()). Null yields an empty report.
+     *             Held by shared_ptr rather than a raw pointer so this report
+     *             stays valid independently of the session that produced the
+     *             tree (design-review.md finding 5) -- top_down_tree() reads
+     *             it lazily, not just at construction, so a borrowed raw
+     *             pointer would be a real dangling-reference risk once the
+     *             owning session is destroyed or restarted.
      */
-    PROFILER_API explicit hotspot_report(const profiler_scope_data* root);
+    PROFILER_API explicit hotspot_report(std::shared_ptr<const profiler_scope_data> root);
 
     /// Indented top-down call tree: name, self/total, % of root total, calls.
     PROFILER_API std::string top_down_tree() const;
@@ -90,7 +97,7 @@ public:
     const std::vector<hotspot_entry>& hotspots() const { return hotspots_; }
 
 private:
-    const profiler_scope_data*                                root_ = nullptr;
+    std::shared_ptr<const profiler_scope_data>                root_;
     std::vector<hotspot_entry>                                hotspots_;
     std::unordered_map<std::string, std::vector<std::string>> call_stacks_;
 };

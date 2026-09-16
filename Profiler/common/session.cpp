@@ -336,17 +336,11 @@ std::shared_ptr<profiler_report> session::generate_report() const
     {
         return nullptr;
     }
-    std::unique_ptr<profiler_report> report = native_->generate_report();
-    if (!report)
-    {
-        return nullptr;
-    }
-    // The report holds a reference into *native_; keep that native_session alive
-    // for as long as the report is, even if this session's native_ is later
-    // replaced (start()) or the session itself is destroyed.
-    std::shared_ptr<profiler_session> keep_alive = native_;
-    return std::shared_ptr<profiler_report>(
-        report.release(), [keep_alive](profiler_report* p) { delete p; });
+    // profiler_report snapshots everything it needs from *native_ at
+    // construction time (design-review.md finding 5) rather than borrowing a
+    // live reference into it, so it no longer needs native_ kept alive
+    // alongside it -- no custom deleter/keep_alive capture required.
+    return native_->generate_report();
 }
 
 std::shared_ptr<hotspot_report> session::generate_hotspot_report() const
@@ -355,15 +349,10 @@ std::shared_ptr<hotspot_report> session::generate_hotspot_report() const
     {
         return nullptr;
     }
-    std::unique_ptr<hotspot_report> report = native_->generate_hotspot_report();
-    if (!report)
-    {
-        return nullptr;
-    }
-    // Same rationale as generate_report(): the hotspot tree is owned by *native_.
-    std::shared_ptr<profiler_session> keep_alive = native_;
-    return std::shared_ptr<hotspot_report>(
-        report.release(), [keep_alive](hotspot_report* p) { delete p; });
+    // Same rationale as generate_report(): hotspot_report now shares
+    // ownership of the scope tree via build_scope_tree_shared() instead of
+    // borrowing a raw pointer into *native_'s cache.
+    return native_->generate_hotspot_report();
 }
 
 void session::export_report(const std::string& path) const

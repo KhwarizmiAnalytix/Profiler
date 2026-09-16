@@ -20,8 +20,10 @@
 
 #include <fstream>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "native/analysis/statistical_analyzer.h"
@@ -36,13 +38,23 @@ namespace profiler
  *
  * Provides comprehensive report generation capabilities with multiple
  * output formats including console, JSON, CSV, and XML formats.
+ *
+ * Captures an immutable snapshot of the session's state at construction time
+ * (design-review.md finding 5 / section 6.2) rather than borrowing a live
+ * reference into it: every real call site constructs a report only after the
+ * session has stopped, at which point the session's own state (XSpace, scope
+ * tree, memory/statistics snapshots) is already frozen, so this is behavior-
+ * identical to the previous live-read-at-call-time design while also making a
+ * report safe to keep using after the session that produced it is restarted
+ * or destroyed.
  */
 class PROFILER_VISIBILITY profiler_report
 {
 public:
     /**
-     * @brief Construct a new profiler report
-     * @param session Reference to the profiler session to generate report from
+     * @brief Construct a new profiler report, snapshotting the session's
+     * current state (see class comment).
+     * @param session Profiler session to snapshot.
      */
     PROFILER_API explicit profiler_report(const profiler::profiler_session& session);
 
@@ -129,7 +141,18 @@ public:
     void set_include_memory_details(bool include) { include_memory_details_ = include; }
 
 private:
-    const profiler::profiler_session& session_;
+    // Immutable snapshot captured once at construction -- see class comment.
+    bool                                               was_active_ = false;
+    profiler::steady_clock_t::time_point               start_time_snapshot_;
+    profiler::steady_clock_t::time_point               end_time_snapshot_;
+    std::shared_ptr<const profiler::profiler_scope_data> scope_tree_snapshot_;
+    bool                                               has_memory_stats_ = false;
+    profiler::memory_stats                             memory_snapshot_;
+    bool                                               has_statistics_ = false;
+    std::unordered_map<std::string, profiler::statistical_metrics> timing_stats_snapshot_;
+    std::unordered_map<std::string, profiler::statistical_metrics> memory_stats_by_name_snapshot_;
+    bool                                               has_xspace_ = false;
+    profiler::x_space                                  xspace_snapshot_;
 
     // Formatting options
     int         precision_                   = 3;
@@ -147,6 +170,15 @@ private:
     static std::string format_thread_label(const std::string& thread_label);
 
     std::string format_double(double value) const;
+
+    // Snapshot readers, replacing what used to be live session_.xxx() calls.
+    // Per-scope-name memory delta stats from the snapshotted analyzer map
+    // (see scope_memory_stats()'s old free-function comment, now here).
+    profiler::statistical_metrics scope_memory_stats(const std::string& scope_name) const;
+    // Offline tabular summary from the snapshotted XSpace; see the old
+    // build_xspace_stats_summary() free function's comment, now inlined here.
+    std::string build_xspace_stats_summary() const;
+
     // Section generators
     std::string generate_header_section() const;
     std::string generate_summary_section() const;
