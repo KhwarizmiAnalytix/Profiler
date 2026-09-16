@@ -34,6 +34,19 @@ target_compile_definitions(
 
 target_link_libraries(ProfilerCxxTests PRIVATE GTest::gtest_main Profiler::Profiler)
 
+# The real-hardware CUDA tests launch a kernel, so this source needs NVCC
+# rather than the host C++ compiler. CUDA::cudart also supplies cuda_runtime_api.h
+# to the test target; Profiler keeps that dependency private in standalone builds.
+if(PROFILER_HAS_CUDA)
+  enable_language(CUDA)
+  set_source_files_properties(TestProfilerGpuRealHardware.cpp PROPERTIES LANGUAGE CUDA)
+  # GitHub-hosted runners install a CUDA Toolkit but do not expose a GPU, so
+  # `native` cannot be used here. sm_75 is supported by the CUDA versions in
+  # CI and emits compatible PTX for newer devices.
+  set_target_properties(ProfilerCxxTests PROPERTIES CUDA_ARCHITECTURES 75)
+  target_link_libraries(ProfilerCxxTests PRIVATE CUDA::cudart)
+endif()
+
 profiler_enable_sanitizer(ProfilerCxxTests)
 
 set(_profiler_torch_found OFF)

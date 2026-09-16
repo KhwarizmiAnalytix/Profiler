@@ -60,6 +60,6 @@ set(PROFILER_SANITIZER
 set(PROFILER_CXX_STANDARD "20" CACHE STRING "C++ standard")
 
 set(PROFILER_THIRD_PARTY_DIR ""
-    CACHE PATH "Directory containing vendored fmt/, kineto/, ittapi/, googletest/ sources; \
+    CACHE PATH "Directory containing vendored fmt/, kineto/, ittapi/, googletest/, benchmark/ sources; \
 defaults to <repo>/third_party when unset"
 )

@@ -54,6 +54,8 @@
 #include <sys/resource.h>
 #endif
 
+#include <benchmark/benchmark.h>
+
 #include "profiler.h"
 
 #ifndef PROFILER_BENCHMARK_GIT_COMMIT
@@ -191,7 +193,9 @@ double matrix_multiply_core(size_t n)
 void matrix_multiply_instrumented(size_t n)
 {
     PROFILER_SCOPE("benchmark_matrix_multiply");
-    g_dont_optimize_sink = matrix_multiply_core(n);
+    double const result = matrix_multiply_core(n);
+    benchmark::DoNotOptimize(result);
+    g_dont_optimize_sink = result;
 }
 
 double monte_carlo_core(uint64_t iterations)
@@ -217,7 +221,9 @@ double monte_carlo_core(uint64_t iterations)
 void monte_carlo_instrumented(uint64_t iterations)
 {
     PROFILER_SCOPE("benchmark_monte_carlo");
-    g_dont_optimize_sink = monte_carlo_core(iterations);
+    double const result = monte_carlo_core(iterations);
+    benchmark::DoNotOptimize(result);
+    g_dont_optimize_sink = result;
 }
 
 // Iterative radix-2 Cooley-Tukey FFT. `n` must be a power of two.
@@ -270,7 +276,9 @@ void fft_instrumented(size_t n)
         c = {dist(rng), 0.0};
     }
     fft_core(data);
-    g_dont_optimize_sink = data[0].real();
+    double const result = data[0].real();
+    benchmark::DoNotOptimize(result);
+    g_dont_optimize_sink = result;
 }
 
 // ---------------------------------------------------------------------------

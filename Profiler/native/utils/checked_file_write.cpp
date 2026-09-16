@@ -21,10 +21,26 @@
 #include <cstdio>
 #include <fstream>
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 namespace profiler
 {
 namespace profiler_impl
 {
+
+namespace
+{
+bool publish_temp_file(const std::string& temp_path, const std::string& path)
+{
+#if defined(_WIN32)
+    return MoveFileExA(temp_path.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING) != 0;
+#else
+    return std::rename(temp_path.c_str(), path.c_str()) == 0;
+#endif
+}
+}  // namespace
 
 bool write_file_checked(const std::string& path, const std::string& content)
 {
@@ -52,11 +68,9 @@ bool write_file_checked(const std::string& path, const std::string& content)
         }
     }
 
-    // Publish atomically: rename replaces the destination in one step (POSIX and
-    // Windows both support same-volume renames), so a reader never observes a
-    // partially-written file, and a failure here leaves any existing valid
-    // destination untouched instead of a half-written one.
-    if (std::rename(temp_path.c_str(), path.c_str()) != 0)
+    // Publish only after the full temp file was written. POSIX rename replaces
+    // an existing file, while Windows requires MOVEFILE_REPLACE_EXISTING.
+    if (!publish_temp_file(temp_path, path))
     {
         std::remove(temp_path.c_str());
         return false;
@@ -76,7 +90,7 @@ bool publish_external_temp_file(const std::string& path)
         }
     }
 
-    if (std::rename(temp_path.c_str(), path.c_str()) != 0)
+    if (!publish_temp_file(temp_path, path))
     {
         std::remove(temp_path.c_str());
         return false;

@@ -4,6 +4,8 @@
 # measurement tool, not something every consumer needs.
 cmake_minimum_required(VERSION 3.16)
 
+profiler_setup_benchmark()
+
 add_executable(profiler_benchmark profiler_benchmark.cpp)
 
 if(PROFILER_CXX_STANDARD)
@@ -18,7 +20,7 @@ set_target_properties(
                                                                               ON CXX_EXTENSIONS OFF
 )
 
-target_link_libraries(profiler_benchmark PRIVATE Profiler::Profiler)
+target_link_libraries(profiler_benchmark PRIVATE Profiler::Profiler benchmark::benchmark)
 
 if(COMMAND profiler_set_target_output_directories)
     profiler_set_target_output_directories(profiler_benchmark)
