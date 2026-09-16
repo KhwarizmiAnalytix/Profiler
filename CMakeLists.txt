@@ -334,27 +334,54 @@ if(PROFILER_ENABLE_INSTALL)
         FILES_MATCHING
         PATTERN "*.h"
     )
+    # The imported target's kind (SHARED vs STATIC) and properties must match
+    # how this build actually compiled Profiler -- a STATIC build described as
+    # SHARED IMPORTED doesn't link correctly for a consumer, and only a STATIC
+    # consumer needs the whole-archive treatment below at all.
+    if(BUILD_SHARED_LIBS)
+        set(_profiler_imported_kind "SHARED")
+        if(WIN32)
+            set(_profiler_imported_props
+                "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/bin/$<TARGET_FILE_NAME:Profiler>\"
+      IMPORTED_IMPLIB \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_LINKER_FILE_NAME:Profiler>\"
+      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
+            )
+        else()
+            set(_profiler_imported_props
+                "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:Profiler>\"
+      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
+            )
+        endif()
+    else()
+        set(_profiler_imported_kind "STATIC")
+        set(_profiler_imported_props
+            "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:Profiler>\"
+      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
+        )
+    endif()
     file(
         GENERATE
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
         CONTENT
             "get_filename_component(PACKAGE_PREFIX_DIR \"\${CMAKE_CURRENT_LIST_DIR}/../../..\" ABSOLUTE)
 if(NOT TARGET Profiler::Profiler)
-  add_library(Profiler::Profiler SHARED IMPORTED)
-  if(WIN32)
-    set_target_properties(Profiler::Profiler PROPERTIES
-      IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/bin/$<TARGET_FILE_NAME:Profiler>\"
-      IMPORTED_IMPLIB \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_LINKER_FILE_NAME:Profiler>\"
-      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\")
-  else()
-    set_target_properties(Profiler::Profiler PROPERTIES
-      IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:Profiler>\"
-      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\")
-  endif()
+  add_library(Profiler::Profiler ${_profiler_imported_kind} IMPORTED)
+  set_target_properties(Profiler::Profiler PROPERTIES
+      ${_profiler_imported_props})
 endif()
+# A STATIC Profiler::Profiler needs the same whole-archive treatment the
+# in-tree Profiler target gets (see ProfilerLinking.cmake) -- an ordinary
+# archive link silently drops the self-registering GPU/host/python tracer
+# and CUDA/ITT stub translation units otherwise, since nothing else in the
+# archive references a symbol from them.
+include(\"\${CMAKE_CURRENT_LIST_DIR}/ProfilerLinking.cmake\")
+profiler_keep_static_registrations(Profiler::Profiler)
 "
     )
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake" DESTINATION lib/cmake/Profiler)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProfilerLinking.cmake"
+            DESTINATION lib/cmake/Profiler
+    )
 endif()
 
 message(STATUS "Profiler: backend=${PROFILER_BACKEND} gpu=${PROFILER_GPU_BACKEND} "

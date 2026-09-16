@@ -101,6 +101,53 @@ jobs:
             ./build-consumer/Release/profiler_consumer.exe
           fi
 
+  static-link:
+    name: static-link registration survives archive linking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Several sources (native/gpu/gpu_tracer_factory.cpp, native/cpu/
+      # host_tracer_factory.cpp, native/cpu/python_tracer_factory.cpp,
+      # native/cpu/metadata_collector.cpp, and CUDA/ITT stub registration)
+      # register purely via a file-scope static initializer with no other
+      # symbol referenced elsewhere in the library. The rest of the CI matrix
+      # only ever builds BUILD_SHARED_LIBS=ON (the default), where a shared
+      # library always links every object file in, so it never exercises the
+      # archive-linking path where an unreferenced .o member -- and its
+      # registration -- can be silently dropped (docs/design-review.md
+      # finding 13; cmake/ProfilerLinking.cmake's whole-archive fix).
+      - name: Configure (static)
+        run: |
+          cmake -S . -B build-static -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON
+
+      - name: Build (static)
+        run: cmake --build build-static --config Release --parallel
+
+      # ProfilerCxxTests links against the *in-tree* static Profiler target
+      # (not an installed find_package package), which is exactly the archive-
+      # linking path profiler_keep_static_registrations(Profiler) protects --
+      # this is the real proof that registration survives.
+      - name: Test (static)
+        run: ctest --test-dir build-static -C Release --output-on-failure --timeout 180
+
+      # Note: a STATIC install + external find_package(Profiler) consumer is
+      # not exercised here. Unlike the SHARED case (where Kineto/fmt are
+      # already linked into libProfiler.so and a consumer needs nothing else),
+      # a STATIC libProfiler.a is only object files -- an external consumer
+      # would also need to link Profiler's own third-party static archives
+      # itself, and this package doesn't export/re-bundle those today. That's
+      # a separate, real packaging gap from the one this job proves fixed
+      # (in-tree static-link registration), tracked for the options/dependency
+      # simplification phase rather than solved here.
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest
