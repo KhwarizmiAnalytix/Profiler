@@ -34,8 +34,8 @@ set(PROFILER_GPU_BACKEND "${_profiler_gpu_default}" CACHE STRING "GPU backend: n
 set_property(CACHE PROFILER_GPU_BACKEND PROPERTY STRINGS none cuda hip)
 unset(_profiler_gpu_default)
 if(NOT PROFILER_GPU_BACKEND MATCHES "^(none|cuda|hip)$")
-    message(FATAL_ERROR
-            "PROFILER_GPU_BACKEND must be none, cuda, or hip (Metal support was removed)"
+    message(
+        FATAL_ERROR "PROFILER_GPU_BACKEND must be none, cuda, or hip (Metal support was removed)"
     )
 endif()
 

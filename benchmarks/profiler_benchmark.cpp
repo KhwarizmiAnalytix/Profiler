@@ -94,15 +94,30 @@ void* operator new(std::size_t size)
     throw std::bad_alloc();
 }
 
-void* operator new[](std::size_t size) { return ::operator new(size); }
+void* operator new[](std::size_t size)
+{
+    return ::operator new(size);
+}
 
-void operator delete(void* ptr) noexcept { std::free(ptr); }
+void operator delete(void* ptr) noexcept
+{
+    std::free(ptr);
+}
 
-void operator delete(void* ptr, std::size_t) noexcept { std::free(ptr); }
+void operator delete(void* ptr, std::size_t) noexcept
+{
+    std::free(ptr);
+}
 
-void operator delete[](void* ptr) noexcept { std::free(ptr); }
+void operator delete[](void* ptr) noexcept
+{
+    std::free(ptr);
+}
 
-void operator delete[](void* ptr, std::size_t) noexcept { std::free(ptr); }
+void operator delete[](void* ptr, std::size_t) noexcept
+{
+    std::free(ptr);
+}
 
 namespace
 {
@@ -117,9 +132,7 @@ uint64_t peak_rss_bytes()
     }
     return 0;
 #else
-    struct rusage usage
-    {
-    };
+    struct rusage usage{};
     if (getrusage(RUSAGE_SELF, &usage) != 0)
     {
         return 0;
@@ -144,8 +157,8 @@ uint64_t peak_rss_bytes()
 
 double matrix_multiply_core(size_t n)
 {
-    std::vector<double>                    a(n * n);
-    std::vector<double>                    b(n * n);
+    std::vector<double> a(n * n);
+    std::vector<double> b(n * n);
     // Deliberately fixed: identical input data across trials/runs is what
     // makes durations comparable.
     // NOLINTNEXTLINE(bugprone-random-generator-seed)
@@ -246,7 +259,7 @@ void fft_core(std::vector<std::complex<double>>& data)
 void fft_instrumented(size_t n)
 {
     PROFILER_SCOPE("benchmark_fft");
-    std::vector<std::complex<double>>      data(n);
+    std::vector<std::complex<double>> data(n);
     // Deliberately fixed: identical input data across trials/runs is what
     // makes durations comparable.
     // NOLINTNEXTLINE(bugprone-random-generator-seed)
@@ -314,7 +327,7 @@ trial_stats run_trials(const std::function<void()>& workload, int trials)
     stats.peak_rss_bytes = peak_rss_bytes();
 
     double const sum = std::accumulate(durations_ns.begin(), durations_ns.end(), 0.0);
-    stats.mean_ns     = sum / static_cast<double>(durations_ns.size());
+    stats.mean_ns    = sum / static_cast<double>(durations_ns.size());
 
     double variance_sum = 0.0;
     for (double const d : durations_ns)
@@ -362,11 +375,16 @@ void print_machine_fingerprint()
 void print_row(
     const char* workload, const char* config, const trial_stats& stats, double slowdown_pct)
 {
-    std::printf(
-        "%-24s %-10s mean=%10.1fns p50=%10.1fns p95=%10.1fns p99=%10.1fns stddev=%9.1fns "
-        "allocs=%6llu peak_rss=%8llukB",
-        workload, config, stats.mean_ns, stats.p50_ns, stats.p95_ns, stats.p99_ns,
-        stats.stddev_ns, static_cast<unsigned long long>(stats.alloc_count),
+    std::printf("%-24s %-10s mean=%10.1fns p50=%10.1fns p95=%10.1fns p99=%10.1fns stddev=%9.1fns "
+                "allocs=%6llu peak_rss=%8llukB",
+        workload,
+        config,
+        stats.mean_ns,
+        stats.p50_ns,
+        stats.p95_ns,
+        stats.p99_ns,
+        stats.stddev_ns,
+        static_cast<unsigned long long>(stats.alloc_count),
         static_cast<unsigned long long>(stats.peak_rss_bytes / 1024));
     if (!std::isnan(slowdown_pct))
     {
@@ -377,9 +395,9 @@ void print_row(
 
 struct workload_spec
 {
-    const char*            name;
-    std::function<void()>  baseline;
-    std::function<void()>  instrumented;
+    const char*           name;
+    std::function<void()> baseline;
+    std::function<void()> instrumented;
 };
 
 struct result_row
@@ -396,8 +414,8 @@ int main(int argc, char** argv)
     int trials = 30;
     if (argc > 1)
     {
-        char* parse_end   = nullptr;
-        long const parsed = std::strtol(argv[1], &parse_end, 10);
+        char*      parse_end = nullptr;
+        long const parsed    = std::strtol(argv[1], &parse_end, 10);
         if (parse_end != argv[1] && parsed > 0)
         {
             trials = std::max(3, static_cast<int>(parsed));
@@ -415,12 +433,15 @@ int main(int argc, char** argv)
     constexpr size_t   kFftN        = 1 << 14;  // 16384, power of two
 
     std::vector<workload_spec> const workloads = {
-        {"matrix_multiply", [] { g_dont_optimize_sink = matrix_multiply_core(kMatrixN); },
+        {"matrix_multiply",
+            [] { g_dont_optimize_sink = matrix_multiply_core(kMatrixN); },
             [] { matrix_multiply_instrumented(kMatrixN); }},
-        {"monte_carlo", [] { g_dont_optimize_sink = monte_carlo_core(kMonteCarloN); },
+        {"monte_carlo",
+            [] { g_dont_optimize_sink = monte_carlo_core(kMonteCarloN); },
             [] { monte_carlo_instrumented(kMonteCarloN); }},
         {"fft",
-            [] {
+            []
+            {
                 std::vector<std::complex<double>> data(kFftN, std::complex<double>(1.0, 0.0));
                 fft_core(data);
                 g_dont_optimize_sink = data[0].real();
@@ -449,13 +470,13 @@ int main(int argc, char** argv)
             profiler::session         session(opts);
             if (!session.start())
             {
-                std::fprintf(stderr, "warning: %s active-capture session failed to start\n",
-                    workload.name);
+                std::fprintf(
+                    stderr, "warning: %s active-capture session failed to start\n", workload.name);
                 continue;
             }
-            trial_stats const active_stats     = run_trials(workload.instrumented, trials);
-            double const      active_slowdown  = 100.0 *
-                (active_stats.mean_ns - baseline_stats.mean_ns) / baseline_stats.mean_ns;
+            trial_stats const active_stats = run_trials(workload.instrumented, trials);
+            double const      active_slowdown =
+                100.0 * (active_stats.mean_ns - baseline_stats.mean_ns) / baseline_stats.mean_ns;
             print_row(workload.name, "active", active_stats, active_slowdown);
             results.push_back({workload.name, "active", active_stats});
             (void)session.stop();
@@ -467,9 +488,14 @@ int main(int argc, char** argv)
     std::printf("workload,config,mean_ns,p50_ns,p95_ns,p99_ns,stddev_ns,allocs,peak_rss_bytes\n");
     for (const auto& row : results)
     {
-        std::printf("%s,%s,%.1f,%.1f,%.1f,%.1f,%.1f,%llu,%llu\n", row.workload.c_str(),
-            row.config.c_str(), row.stats.mean_ns, row.stats.p50_ns, row.stats.p95_ns,
-            row.stats.p99_ns, row.stats.stddev_ns,
+        std::printf("%s,%s,%.1f,%.1f,%.1f,%.1f,%.1f,%llu,%llu\n",
+            row.workload.c_str(),
+            row.config.c_str(),
+            row.stats.mean_ns,
+            row.stats.p50_ns,
+            row.stats.p95_ns,
+            row.stats.p99_ns,
+            row.stats.stddev_ns,
             static_cast<unsigned long long>(row.stats.alloc_count),
             static_cast<unsigned long long>(row.stats.peak_rss_bytes));
     }

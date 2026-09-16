@@ -14,8 +14,8 @@ else()
     set(_profiler_benchmark_cxx_std 20)
 endif()
 set_target_properties(
-    profiler_benchmark PROPERTIES CXX_STANDARD ${_profiler_benchmark_cxx_std}
-                                   CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF
+    profiler_benchmark PROPERTIES CXX_STANDARD ${_profiler_benchmark_cxx_std} CXX_STANDARD_REQUIRED
+                                                                              ON CXX_EXTENSIONS OFF
 )
 
 target_link_libraries(profiler_benchmark PRIVATE Profiler::Profiler)
@@ -39,8 +39,7 @@ if(Git_FOUND)
         COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         OUTPUT_VARIABLE PROFILER_BENCHMARK_GIT_COMMIT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
         RESULT_VARIABLE _profiler_benchmark_git_result
     )
     if(NOT _profiler_benchmark_git_result EQUAL 0)
