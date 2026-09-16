@@ -243,8 +243,17 @@ std::string profiler_report::generate_console_report() const
     }
 
     ss << generate_timing_section();
-    ss << generate_memory_section();
-    ss << generate_statistical_section();
+
+    if (include_memory_details_)
+    {
+        ss << generate_memory_section();
+    }
+
+    if (include_statistical_analysis_)
+    {
+        ss << generate_statistical_section();
+    }
+
     ss << generate_hotspot_section();
 
     if (include_thread_info_)
@@ -400,8 +409,16 @@ std::string profiler_report::generate_xml_report() const
     }
 
     ss << "  <timing>\n" << generate_timing_section() << "  </timing>\n";
-    ss << "  <memory>\n" << generate_memory_section() << "  </memory>\n";
-    ss << "  <statistics>\n" << generate_statistical_section() << "  </statistics>\n";
+
+    if (include_memory_details_)
+    {
+        ss << "  <memory>\n" << generate_memory_section() << "  </memory>\n";
+    }
+
+    if (include_statistical_analysis_)
+    {
+        ss << "  <statistics>\n" << generate_statistical_section() << "  </statistics>\n";
+    }
     ss << "  <hotspots>\n" << generate_hotspot_section() << "  </hotspots>\n";
 
     if (include_thread_info_)
@@ -1025,6 +1042,8 @@ std::unique_ptr<profiler::profiler_report> profiler_report_builder::build() cons
     report->set_memory_unit(memory_unit_);
     report->set_include_thread_info(include_thread_info_);
     report->set_include_hierarchical_data(include_hierarchical_data_);
+    report->set_include_statistical_analysis(include_statistical_analysis_);
+    report->set_include_memory_details(include_memory_details_);
     return report;
 }
 

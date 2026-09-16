@@ -303,6 +303,46 @@ PROFILERTEST(BackendOutput, structured_xml_report)
 }
 
 // -----------------------------------------------------------------------------
+// Regression (Phase 3 options cleanup): profiler_report_builder's
+// include_statistical_analysis()/include_memory_details() switches were never
+// forwarded by build() -- profiler_report had no matching member at all, so
+// the memory/statistics sections appeared regardless of what the caller asked
+// for. Default (unset) behavior must stay unchanged (matches every other test
+// in this file, which never touches the builder).
+// -----------------------------------------------------------------------------
+PROFILERTEST(BackendOutput, report_builder_honors_include_switches)
+{
+    profiler_session session(make_report_options(profiler_options::output_format_enum::CONSOLE));
+    ASSERT_TRUE(session.start());
+    run_nested_workload(session);
+    ASSERT_TRUE(session.stop());
+
+    profiler_report_builder builder(session);
+    builder.include_statistical_analysis(false);
+    builder.include_memory_details(false);
+    auto report = builder.build();
+    ASSERT_NE(report, nullptr);
+
+    const std::string console = report->generate_console_report();
+    EXPECT_EQ(console.find("=== Statistical Analysis ==="), std::string::npos)
+        << "statistical section must be omitted when include_statistical_analysis(false)";
+    EXPECT_EQ(console.find("=== Memory Analysis ==="), std::string::npos)
+        << "memory section must be omitted when include_memory_details(false)";
+
+    const std::string xml = report->generate_xml_report();
+    EXPECT_EQ(xml.find("<statistics>"), std::string::npos);
+    EXPECT_EQ(xml.find("<memory>"), std::string::npos);
+
+    // Default (no builder switches touched) still includes both sections.
+    profiler_report_builder default_builder(session);
+    auto                    default_report = default_builder.build();
+    ASSERT_NE(default_report, nullptr);
+    const std::string default_console = default_report->generate_console_report();
+    EXPECT_NE(default_console.find("=== Statistical Analysis ==="), std::string::npos);
+    EXPECT_NE(default_console.find("=== Memory Analysis ==="), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
 // Use case: all formats from one stopped session
 // Ensures generate_report() can emit every string format without re-profiling,
 // which is the typical "stop once, export many" workflow.

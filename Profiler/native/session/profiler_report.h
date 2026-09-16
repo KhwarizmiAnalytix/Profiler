@@ -125,16 +125,20 @@ public:
     void set_memory_unit(const std::string& unit) { memory_unit_ = unit; }
     void set_include_thread_info(bool include) { include_thread_info_ = include; }
     void set_include_hierarchical_data(bool include) { include_hierarchical_data_ = include; }
+    void set_include_statistical_analysis(bool include) { include_statistical_analysis_ = include; }
+    void set_include_memory_details(bool include) { include_memory_details_ = include; }
 
 private:
     const profiler::profiler_session& session_;
 
     // Formatting options
-    int         precision_                 = 3;
-    std::string time_unit_                 = "ms";
-    std::string memory_unit_               = "MB";
-    bool        include_thread_info_       = true;
-    bool        include_hierarchical_data_ = true;
+    int         precision_                   = 3;
+    std::string time_unit_                   = "ms";
+    std::string memory_unit_                 = "MB";
+    bool        include_thread_info_         = true;
+    bool        include_hierarchical_data_   = true;
+    bool        include_statistical_analysis_ = true;
+    bool        include_memory_details_       = true;
 
     // Helper methods for report generation
     std::string        format_duration(double duration_ns) const;
