@@ -126,6 +126,34 @@ PROFILERTEST(LifecycleRegressions, restart_does_not_leak_previous_run_events)
     ASSERT_TRUE(session.stop());
 }
 
+// Phase 3 Part B: events() used to read only the instrumentation (Kineto/ITT)
+// capture result, always returning empty for a native-only session
+// (instrumentation=false) even though that session captured real XSpace data.
+// It now falls back to a conversion from XSpace, matching write_trace()'s
+// existing Kineto-then-XSpace fallback order.
+PROFILERTEST(LifecycleRegressions, events_falls_back_to_xspace_for_native_only_session)
+{
+    profiler::session_options opts;
+    opts.native          = true;
+    opts.instrumentation = false;
+
+    profiler::session session(opts);
+    ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("native_only_events_scope"); }
+    ASSERT_TRUE(session.stop());
+
+    bool found = false;
+    for (const auto& event : session.events())
+    {
+        if (event.name == "native_only_events_scope")
+        {
+            found = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(found);
+}
+
 // Finding 5: profiler_report/hotspot_report held a raw reference/pointer into
 // the native profiler_session; session::start() replaces its native session
 // on every call (a fresh profiler_session, not a reused one), which used to

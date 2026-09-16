@@ -99,6 +99,9 @@ public:
     /// nullptr if native profiling isn't enabled/started, or memory tracking wasn't requested.
     PROFILER_API memory_tracker* get_memory_tracker();
 
+    /// Prefers the instrumentation (Kineto/ITT) capture when present; falls back to the
+    /// native XSpace capture (e.g. for a native-only, instrumentation=false session)
+    /// instead of always being empty -- matches write_trace()'s existing fallback order.
     PROFILER_API const std::vector<capture_event>& events() const;
 
     PROFILER_API static void enable_in_child_thread();
@@ -109,6 +112,8 @@ private:
     std::shared_ptr<profiler_session> native_;
     std::unique_ptr<capture>          inst_;
     std::unique_ptr<capture_result>   inst_result_;
+    mutable std::vector<capture_event> xspace_events_cache_;
+    mutable bool                       xspace_events_cached_ = false;
     std::string                       last_error_;
     bool                              active_ = false;
 };

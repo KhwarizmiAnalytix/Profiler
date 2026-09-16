@@ -54,10 +54,71 @@ capture_config to_capture_config(const session_options& options)
     return cfg;
 }
 
-const std::vector<capture_event>& empty_events()
+// Builds the same flat capture_event list write_chrome_trace()/generate_chrome_trace_json()
+// already expose from XSpace (see export_to_chrome_trace_json()'s equivalent iteration in
+// native/exporters/chrome_trace_exporter.cpp, which this mirrors), so events() has a real
+// answer for a native-only session (instrumentation=false) instead of always being empty.
+// `stack` is left empty for XSpace-sourced events: XSpace doesn't carry a call stack in the
+// same representation the Kineto path's with_stack source locations do -- a known,
+// backend-dependent detail gap, not fabricated data.
+std::vector<capture_event> events_from_xspace(const x_space& space)
 {
-    static const std::vector<capture_event> kEmpty;
-    return kEmpty;
+    std::vector<capture_event> events;
+    for (const auto& plane : space.planes())
+    {
+        const auto& event_metadata_map = plane.event_metadata();
+        const auto& stat_metadata_map  = plane.stat_metadata();
+        for (size_t line_idx = 0; line_idx < plane.lines_size(); ++line_idx)
+        {
+            const auto& line = plane.lines(line_idx);
+            for (const auto& event : line.events())
+            {
+                capture_event out;
+                if (auto it = event_metadata_map.find(event.metadata_id());
+                    it != event_metadata_map.end())
+                {
+                    out.name = it->second.name();
+                }
+                out.start_ns =
+                    static_cast<uint64_t>(line.timestamp_ns()) +
+                    static_cast<uint64_t>(event.offset_ps()) / 1000;
+                out.duration_ns = static_cast<uint64_t>(event.duration_ps()) / 1000;
+                for (const auto& stat : event.stats())
+                {
+                    std::string stat_name = "stat_" + std::to_string(stat.metadata_id());
+                    if (auto it = stat_metadata_map.find(stat.metadata_id());
+                        it != stat_metadata_map.end())
+                    {
+                        stat_name = it->second.name();
+                    }
+                    std::string value;
+                    switch (stat.value_case())
+                    {
+                    case xstat::value_case_type::kInt64Value:
+                        value = std::to_string(stat.int64_value());
+                        break;
+                    case xstat::value_case_type::kUint64Value:
+                        value = std::to_string(stat.uint64_value());
+                        break;
+                    case xstat::value_case_type::kDoubleValue:
+                        value = std::to_string(stat.double_value());
+                        break;
+                    case xstat::value_case_type::kStrValue:
+                        value = stat.str_value();
+                        break;
+                    case xstat::value_case_type::kRefValue:
+                        value = std::to_string(stat.ref_value());
+                        break;
+                    default:
+                        break;
+                    }
+                    out.metadata.emplace(std::move(stat_name), std::move(value));
+                }
+                events.push_back(std::move(out));
+            }
+        }
+    }
+    return events;
 }
 
 }  // namespace
@@ -77,9 +138,12 @@ session::~session()
 session::session(session&& other) noexcept
     : options_(std::move(other.options_)), native_(std::move(other.native_)),
       inst_(std::move(other.inst_)), inst_result_(std::move(other.inst_result_)),
+      xspace_events_cache_(std::move(other.xspace_events_cache_)),
+      xspace_events_cached_(other.xspace_events_cached_),
       last_error_(std::move(other.last_error_)), active_(other.active_)
 {
-    other.active_ = false;
+    other.xspace_events_cached_ = false;
+    other.active_               = false;
 }
 
 session& session::operator=(session&& other) noexcept
@@ -92,13 +156,16 @@ session& session::operator=(session&& other) noexcept
     {
         (void)stop();
     }
-    options_      = std::move(other.options_);
-    native_       = std::move(other.native_);
-    inst_         = std::move(other.inst_);
-    inst_result_  = std::move(other.inst_result_);
-    last_error_   = std::move(other.last_error_);
-    active_       = other.active_;
-    other.active_ = false;
+    options_               = std::move(other.options_);
+    native_                = std::move(other.native_);
+    inst_                  = std::move(other.inst_);
+    inst_result_           = std::move(other.inst_result_);
+    xspace_events_cache_   = std::move(other.xspace_events_cache_);
+    xspace_events_cached_  = other.xspace_events_cached_;
+    last_error_            = std::move(other.last_error_);
+    active_                = other.active_;
+    other.xspace_events_cached_ = false;
+    other.active_                = false;
     return *this;
 }
 
@@ -112,6 +179,8 @@ bool session::start()
     // Drop the previous run's instrumentation result so events()/write_trace() during
     // (or after) this new run can't observe stale data left over from the last one.
     inst_result_.reset();
+    xspace_events_cache_.clear();
+    xspace_events_cached_ = false;
     last_error_.clear();
 
     bool started_any = false;
@@ -260,7 +329,18 @@ memory_tracker* session::get_memory_tracker()
 
 const std::vector<capture_event>& session::events() const
 {
-    return inst_result_ ? inst_result_->events() : empty_events();
+    if (inst_result_)
+    {
+        return inst_result_->events();
+    }
+    if (!xspace_events_cached_)
+    {
+        xspace_events_cache_ = (native_ && native_->has_collected_xspace())
+                                    ? events_from_xspace(native_->collected_xspace())
+                                    : std::vector<capture_event>{};
+        xspace_events_cached_ = true;
+    }
+    return xspace_events_cache_;
 }
 
 void session::enable_in_child_thread()
