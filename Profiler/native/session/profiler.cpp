@@ -247,6 +247,7 @@ bool profiler_session::start()
     }
 
     set_current_session(this);
+    generation_.fetch_add(1, std::memory_order_relaxed);
 
     return true;
 }

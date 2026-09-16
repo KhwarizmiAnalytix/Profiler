@@ -68,6 +68,13 @@ struct gpu_tracer_event
     uint64_t              end_time_ns    = 0;
     std::string           name;
     std::string           annotation;
+
+    /// Integrity (design-review.md section 6.3): whether this record's fields
+    /// were fully populated by the device activity backend. Defaults to true
+    /// (today's only producer, the synthetic/CUPTI collectors, always fills
+    /// every field); reserved for a future partial/estimated record rather
+    /// than fabricating one now.
+    bool complete = true;
 };
 
 }  // namespace profiler::profiler_impl

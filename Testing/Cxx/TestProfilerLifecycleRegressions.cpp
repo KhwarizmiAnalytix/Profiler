@@ -226,6 +226,31 @@ PROFILERTEST(LifecycleRegressions, report_outlives_a_session_restart)
     EXPECT_NE(hotspots->table().find("report_lifetime_scope"), std::string::npos);
 }
 
+// design-review.md sections 6.3/6.5: no capture-generation identity existed
+// anywhere in the session lifecycle, so late data (a delayed callback, a
+// stale reference) couldn't be told apart from the current run except by the
+// stale-results bug class finding 4 already fixed once (restart_does_not_
+// leak_previous_run_events above). profiler_session::generation() gives every
+// successful start() a distinct, monotonically increasing id.
+PROFILERTEST(LifecycleRegressions, generation_increments_on_each_restart)
+{
+    profiler::profiler_options opts;
+    opts.enable_timing_ = true;
+    profiler::profiler_session session(opts);
+
+    EXPECT_EQ(session.generation(), 0U);
+
+    ASSERT_TRUE(session.start());
+    uint64_t const first_generation = session.generation();
+    EXPECT_GT(first_generation, 0U);
+    ASSERT_TRUE(session.stop());
+    EXPECT_EQ(session.generation(), first_generation) << "generation must not change on stop()";
+
+    ASSERT_TRUE(session.start());
+    EXPECT_GT(session.generation(), first_generation);
+    ASSERT_TRUE(session.stop());
+}
+
 // Finding 6: session::get_memory_tracker() dereferenced native_/memory_tracker_
 // unconditionally, crashing before start() or when memory_tracking wasn't
 // requested (the default).

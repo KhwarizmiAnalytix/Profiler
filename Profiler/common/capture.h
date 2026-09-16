@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/device.h"
 #include "common/profiler_export.h"
 
 namespace profiler
@@ -91,6 +92,45 @@ struct capture_event
     uint64_t                                     duration_ns = 0;
     std::unordered_map<std::string, std::string> metadata;
     std::vector<std::string>                     stack;
+
+    // Execution location (design-review.md section 6.3's "Execution location"
+    // field group). thread_id is the recording thread's OS id; device_type/
+    // device_index/resource_id identify which device/stream/queue produced a
+    // GPU-side event and stay at their construction-time defaults (CPU, -1, 0)
+    // for CPU-side events.
+    uint64_t    thread_id     = 0;
+    device_enum device_type   = device_enum::CPU;
+    int         device_index  = -1;
+    int64_t     resource_id   = 0;
+
+    // Correlation/async: kept at their source's native 64-bit width rather
+    // than truncated (section 6.3 explicitly forbids truncating native
+    // annotation/correlation IDs to 32 bits). 0 means "no correlation known",
+    // matching the source KinetoEvent's own convention.
+    uint64_t correlation_id        = 0;
+    uint64_t linked_correlation_id = 0;
+    bool     is_async              = false;
+
+    // Kind: the source backend's raw activity-type byte (KinetoEvent::
+    // activityType()). Interpretation is still backend-specific -- a
+    // normalized, backend-independent kind enum is a larger migration this
+    // does not attempt -- but the value is no longer silently dropped.
+    uint8_t activity_type = 0;
+
+    // Data: transfer size for a GPU memcpy/memset event; 0 for anything else.
+    int64_t transfer_bytes = 0;
+
+    // Measurement: an explicitly measured GPU-fallback interval (the CUDA/HIP
+    // event-pair timing path, not a device-activity record), when this event
+    // came from that path. -1 means "not applicable" -- distinct from a
+    // measured 0us interval.
+    int64_t gpu_fallback_elapsed_us = -1;
+
+    // Integrity: whether every field above (that the source could in
+    // principle supply) was actually populated. Always true for a Kineto-
+    // sourced event today; reserved for a future less-complete source
+    // (section 6.3's "Integrity" field group) rather than fabricating data.
+    bool complete = true;
 };
 
 /**

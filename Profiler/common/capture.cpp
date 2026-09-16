@@ -265,6 +265,31 @@ std::unique_ptr<capture_result> capture::stop()
             copied.duration_ns = event.durationNs();
             copied.metadata    = event.extraMeta();
             copied.stack       = event.stack();
+
+            copied.thread_id    = event.startThreadId();
+            copied.device_type  = event.deviceType();
+            copied.device_index = event.deviceIndex();
+            copied.resource_id  = event.deviceResourceId();
+
+            copied.correlation_id        = event.correlationId();
+            copied.linked_correlation_id = event.linkedCorrelationId();
+            copied.is_async               = event.isAsync();
+
+            copied.activity_type = event.activityType();
+            copied.transfer_bytes = event.nBytes();
+
+            // cudaElapsedUs() covers whichever GPU vendor is actually
+            // registered (CUDAOrHIPMethods serves both CUDA and HIP, see
+            // bespoke/base/cuda.cpp); privateuse1ElapsedUs() is a separate,
+            // generic third-party-backend extension point (bespoke/common/
+            // standalone/privateuse1_observer.cpp), unrelated to HIP. Both
+            // return -1 (KinetoEvent's own sentinel) when this specific event
+            // has no fallback event pair on that path -- prefer whichever
+            // actually does.
+            int64_t const cuda_elapsed        = event.cudaElapsedUs();
+            int64_t const privateuse1_elapsed = event.privateuse1ElapsedUs();
+            copied.gpu_fallback_elapsed_us = (cuda_elapsed >= 0) ? cuda_elapsed : privateuse1_elapsed;
+
             result->events_.push_back(std::move(copied));
         }
         result->impl_->kineto = std::move(kineto);

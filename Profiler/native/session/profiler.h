@@ -343,6 +343,17 @@ public:
     bool is_active() const { return active_.load(); }
 
     /**
+     * @brief Identity of the current (or most recent) run of this session
+     * object, bumped once per successful start(). Lets a consumer that holds
+     * onto data produced by an earlier run (e.g. a late GPU callback, or a
+     * stale event racing a restart) tell it apart from the current run's data
+     * instead of conflating them (design-review.md section 6.3's "capture
+     * generation + event ID" identity requirement; section 6.5's generation
+     * isolation). 0 before the first start().
+     */
+    uint64_t generation() const { return generation_.load(); }
+
+    /**
      * @brief Create a new profiling scope
      * @param name Human-readable name for the scope
      * @return Unique pointer to the created profiler scope
@@ -480,6 +491,9 @@ private:
 
     /// Atomic flag indicating if profiling is currently active
     std::atomic<bool> active_{false};
+
+    /// Bumped once per successful start(); see generation()'s comment.
+    std::atomic<uint64_t> generation_{0};
 
     /// High-resolution timestamp when profiling session started
     std::chrono::high_resolution_clock::time_point start_time_;

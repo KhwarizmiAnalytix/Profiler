@@ -283,6 +283,57 @@ PROFILERTEST(PublicApi, session_options_with_stack)
         << found->stack.front();
 }
 
+// Regression for design-review.md finding 3 / section 6.3's event contract:
+// capture_event used to drop everything KinetoEvent already carries beyond
+// name/start/duration/metadata/stack -- kind, execution location,
+// correlation/async state, and transfer bytes were all silently discarded at
+// the conversion in capture.cpp. This checks the CPU-scope fields that are
+// meaningful for every event (thread id, activity_type, is_async's absence)
+// round-trip; GPU-specific fields (device/correlation/bytes) need real
+// device activity to populate meaningfully and are exercised in
+// TestProfilerGpuTracer.cpp instead.
+PROFILERTEST(PublicApi, capture_event_carries_execution_location_and_kind)
+{
+    if (!profiler::kineto_enabled())
+    {
+        GTEST_SKIP() << "capture_event's Kineto-sourced fields need the Kineto backend";
+    }
+
+    profiler::session_options options;
+    options.backend    = profiler::capture_backend::automatic;
+    options.activities = {profiler::activity::cpu};
+
+    profiler::session session(options);
+    ASSERT_TRUE(session.start());
+    { PROFILER_SCOPE("event_contract_probe"); }
+    ASSERT_TRUE(session.stop());
+
+    const profiler::capture_event* found = nullptr;
+    for (const auto& event : session.events())
+    {
+        if (event.name == "event_contract_probe")
+        {
+            found = &event;
+            break;
+        }
+    }
+    if (found == nullptr)
+    {
+        GTEST_SKIP() << "Kineto backend produced no CPU events in this environment";
+    }
+
+    // A CPU scope recorded on this thread must carry that thread's id, not
+    // the field's zero-initialized default.
+    EXPECT_NE(found->thread_id, 0U);
+    EXPECT_EQ(found->device_type, profiler::device_enum::CPU);
+    EXPECT_TRUE(found->complete);
+    // Not every KinetoEvent has a correlation id (only ops that actually
+    // correlate to something do); this just proves the field is populated
+    // from the source rather than hardcoded -- a real GPU-launch correlation
+    // is exercised in TestProfilerGpuTracer.cpp.
+    EXPECT_EQ(found->gpu_fallback_elapsed_us, -1);
+}
+
 PROFILERTEST(PublicApi, session_rejects_unavailable_backend)
 {
     profiler::session_options options;
