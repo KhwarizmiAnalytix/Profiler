@@ -30,6 +30,7 @@
  */
 
 #include <cstdint>
+#include <functional>
 
 #include "ProfilerTest.h"
 #include "native/session/profiler.h"
@@ -70,4 +71,87 @@ PROFILERTEST(ScopeOverhead, statistical_analysis_is_opt_in_by_default)
 {
     EXPECT_FALSE(session_options{}.statistical_analysis);
     EXPECT_FALSE(profiler_options{}.enable_statistical_analysis_);
+}
+
+namespace
+{
+profiler_session make_active_session()
+{
+    profiler_options opts;
+    opts.enable_timing_                 = true;
+    opts.enable_memory_tracking_        = false;
+    opts.enable_hierarchical_profiling_ = true;
+    opts.enable_statistical_analysis_   = false;
+    return profiler_session(opts);
+}
+}  // namespace
+
+// Regression test for the deferred Phase 2 item: the active path used to call
+// std::make_unique<annotation::impl> on every PROFILER_SCOPE, i.e. one heap
+// allocation per scope even on a registered, warmed-up static-label path.
+// annotation.cpp now recycles impl storage through a thread-local freelist;
+// two sequential (non-overlapping) active scopes on the same thread must
+// reuse the same block instead of allocating a fresh one each time.
+PROFILERTEST(ScopeOverhead, active_scope_impl_storage_is_recycled)
+{
+    auto session = make_active_session();
+    ASSERT_TRUE(session.start());
+
+    const void* first_address = nullptr;
+    {
+        annotation scope("pool_probe_1", /*is_function=*/false, __FILE__, __LINE__);
+        first_address = scope.debug_impl_address();
+        ASSERT_NE(first_address, nullptr);  // session active -> impl_ must be constructed
+    }
+
+    const void* second_address = nullptr;
+    {
+        annotation scope("pool_probe_2", /*is_function=*/false, __FILE__, __LINE__);
+        second_address = scope.debug_impl_address();
+        ASSERT_NE(second_address, nullptr);
+    }
+
+    EXPECT_EQ(first_address, second_address);
+
+    ASSERT_TRUE(session.stop());
+}
+
+// Mirrors inactive_scope_bulk_calls_do_not_crash: doesn't measure allocation
+// count directly, but exercises repeated pool acquire/release at volume under
+// ASan/UBSan to catch any use-after-free/double-free/leak in the recycling path.
+PROFILERTEST(ScopeOverhead, active_scope_bulk_calls_recycle_and_do_not_crash)
+{
+    auto session = make_active_session();
+    ASSERT_TRUE(session.start());
+
+    for (int i = 0; i < 10000; ++i)
+    {
+        PROFILER_SCOPE("active_bulk_scope");
+    }
+
+    ASSERT_TRUE(session.stop());
+}
+
+// Forces the pool's overflow path on both ends: enough simultaneously alive
+// scopes exhausts the freelist on the way down (acquire falls back to
+// ::operator new) and overflows its cap on the way back up (release falls
+// back to ::operator delete instead of growing the freelist unboundedly).
+// The cap itself is an annotation.cpp implementation detail, not asserted on
+// directly here; 200 comfortably exceeds it.
+PROFILERTEST(ScopeOverhead, active_scope_deep_nesting_stresses_pool_growth_and_shrink)
+{
+    auto session = make_active_session();
+    ASSERT_TRUE(session.start());
+
+    std::function<void(int)> recurse = [&](int depth) {
+        if (depth == 0)
+        {
+            return;
+        }
+        PROFILER_SCOPE("deep_nesting_probe");
+        recurse(depth - 1);
+    };
+    recurse(200);
+
+    ASSERT_TRUE(session.stop());
 }

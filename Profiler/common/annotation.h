@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 
 #include "common/profiler_export.h"
@@ -42,9 +41,21 @@ public:
     annotation(annotation&&)                 = delete;
     annotation& operator=(annotation&&)      = delete;
 
+    // Test-only observability hook (mirrors profiler_scope::data()): exposes the
+    // pooled impl's address so tests can confirm construct/destroy cycles recycle
+    // the same block instead of calling the global allocator every time. nullptr
+    // when this annotation is inactive (impl_ was never constructed).
+    const void* debug_impl_address() const noexcept { return static_cast<const void*>(impl_); }
+
 private:
     class impl;
-    std::unique_ptr<impl> impl_;
+    // Pool-owned raw pointer (see annotation.cpp's thread-local freelist): impl
+    // storage is recycled rather than heap-allocated per scope, so ownership here
+    // is manual instead of via unique_ptr. Deliberate exception to this project's
+    // RAII/smart-pointer-first policy -- impl_ is exclusively owned by this
+    // annotation and released in ~annotation(), never a general-purpose
+    // non-owning pointer.
+    impl* impl_ = nullptr;
 };
 
 }  // namespace profiler
