@@ -53,6 +53,7 @@
 #include "native/memory/memory_tracker.h"
 #include "native/session/profiler_report.h"
 #include "native/session/scope_tree_builder.h"
+#include "native/tracing/traceme_recorder.h"
 
 // Prevent Windows min/max macros from interfering with std::numeric_limits
 #ifdef _WIN32
@@ -470,8 +471,7 @@ profiler_scope::profiler_scope(const std::string& name, profiler::profiler_sessi
     : name_(name),
       session_((session != nullptr) ? session : profiler::profiler_session::current_session())
 {
-    // Auto-start if session is active. If not, data_ is never allocated at all --
-    // see start() for where it's lazily constructed.
+    // Auto-start if session is active.
     if ((session_ != nullptr) && session_->is_active())
     {
         start();
@@ -504,14 +504,8 @@ void profiler_scope::start()
         return;
     }
 
-    started_ = true;
-    if (!data_)
-    {
-        data_             = std::make_unique<profiler::profiler_scope_data>();
-        data_->name_      = name_;
-        data_->thread_id_ = std::this_thread::get_id();
-    }
-    data_->start_time_ = std::chrono::high_resolution_clock::now();
+    started_    = true;
+    start_time_ = std::chrono::high_resolution_clock::now();
 
     // Back this scope with a real traceme event -- this is what host_tracer reads from,
     // so PROFILER_PROFILE_SCOPE rides the same lock-free, thread-local recording path as
@@ -520,11 +514,11 @@ void profiler_scope::start()
     // cppcheck-suppress knownConditionTrueFalse
     if (session_ != nullptr)
     {
-        traceme_.emplace(std::string_view(data_->name_));
+        traceme_.emplace(std::string_view(name_));
 
         if (profiler_impl::annotation_stack::is_enabled())
         {
-            profiler_impl::annotation_stack::push_annotation(data_->name_);
+            profiler_impl::annotation_stack::push_annotation(name_);
             pushed_gpu_annotation_ = true;
         }
 
@@ -533,10 +527,8 @@ void profiler_scope::start()
         // default preset, matching every other optional-detail feature.
         if (session_->options_.enable_memory_tracking_ && session_->memory_tracker_)
         {
-            memory_annotation_ =
-                std::make_unique<scoped_memory_debug_annotation>(data_->name_.c_str());
+            memory_annotation_      = std::make_unique<scoped_memory_debug_annotation>(name_.c_str());
             start_memory_stats_     = session_->memory_tracker_->get_current_stats();
-            data_->memory_stats_    = start_memory_stats_;
             has_start_memory_stats_ = true;
         }
     }
@@ -566,46 +558,32 @@ void profiler_scope::stop()
         return;
     }
 
-    stopped_         = true;
-    data_->end_time_ = std::chrono::high_resolution_clock::now();
+    stopped_             = true;
+    auto const end_time  = std::chrono::high_resolution_clock::now();
+    double const duration_ms =
+        std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_).count() /
+        1000.0;
 
-    double const duration_ms = data_->get_duration_ms();
-    // timing_stats_ (mean/variance/percentiles) is nowhere read outside the statistical-
-    // analysis path below, so computing it -- including the percentile sort when
-    // calculate_percentiles_ is on -- is opt-in detail, not default-preset work.
-    if (session_->options_.enable_statistical_analysis_)
-    {
-        data_->timing_stats_.add_sample(duration_ms);
-        data_->timing_stats_.calculate_statistics(session_->options_.calculate_percentiles_);
-    }
-
-    // Update memory statistics
-    // session_ is guaranteed non-null here due to check at line 821
+    // session_ is guaranteed non-null here due to the early-return check above
     // cppcheck-suppress knownConditionTrueFalse
     if (session_ != nullptr)
     {
+        // Only computed to feed statistical_analyzer_ below -- nothing else reads a
+        // per-scope memory snapshot after this point (profiler_report's memory section
+        // reads memory_tracker_'s own live stats directly; see generate_memory_section()).
+        int64_t delta_since_start  = 0;
+        bool    have_current_stats = false;
         if (session_->options_.enable_memory_tracking_ && session_->memory_tracker_)
         {
-            auto current_stats   = session_->memory_tracker_->get_current_stats();
-            data_->memory_stats_ = current_stats;
-            if (session_->options_.track_memory_deltas_)
-            {
-                data_->memory_stats_.delta_since_start_ =
-                    has_start_memory_stats_
-                        ? static_cast<int64_t>(current_stats.current_usage_) -
-                              static_cast<int64_t>(start_memory_stats_.current_usage_)
-                        : static_cast<int64_t>(current_stats.current_usage_);
-            }
-            else
-            {
-                data_->memory_stats_.delta_since_start_ = 0;
-            }
-
-            if (session_->options_.track_peak_memory_)
-            {
-                data_->memory_stats_.peak_usage_ =
-                    (std::max)(current_stats.peak_usage_, start_memory_stats_.peak_usage_);
-            }
+            auto const current_stats = session_->memory_tracker_->get_current_stats();
+            have_current_stats       = true;
+            delta_since_start =
+                session_->options_.track_memory_deltas_
+                    ? (has_start_memory_stats_
+                              ? static_cast<int64_t>(current_stats.current_usage_) -
+                                    static_cast<int64_t>(start_memory_stats_.current_usage_)
+                              : static_cast<int64_t>(current_stats.current_usage_))
+                    : 0;
         }
 
         // Add timing/memory samples to the statistical analyzer, keyed by scope name. This is
@@ -615,12 +593,11 @@ void profiler_scope::stop()
         // here (by name) rather than from tree nodes; see generate_memory_section().
         if (session_->options_.enable_statistical_analysis_ && session_->statistical_analyzer_)
         {
-            session_->statistical_analyzer_->add_timing_sample(data_->name_, duration_ms);
-            if (session_->options_.enable_memory_tracking_ && session_->memory_tracker_)
+            session_->statistical_analyzer_->add_timing_sample(name_, duration_ms);
+            if (have_current_stats)
             {
                 session_->statistical_analyzer_->add_memory_sample(
-                    data_->name_,
-                    static_cast<size_t>(std::abs(data_->memory_stats_.delta_since_start_)));
+                    name_, static_cast<size_t>(std::abs(delta_since_start)));
             }
         }
     }
@@ -628,6 +605,11 @@ void profiler_scope::stop()
     // Ends the traceme event, recording it into traceme_recorder for host_tracer to collect.
     traceme_.reset();
     memory_annotation_.reset();
+}
+
+uint64_t profiler_session::dropped_event_count() const
+{
+    return traceme_recorder::dropped_event_count();
 }
 
 std::string profiler_session::generate_chrome_trace_json() const

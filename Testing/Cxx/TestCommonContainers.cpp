@@ -225,6 +225,53 @@ PROFILERTEST(LockFreeQueue, single_producer_single_consumer_threads_see_all_elem
     }
 }
 
+// Regression for design-review.md Phase 2's "bounded and visible" overflow
+// requirement: push() used to grow by allocating a new block forever, with no
+// capacity ceiling and no loss accounting anywhere. With max_blocks=2, the
+// last slot that would need a third block is dropped instead (and counted),
+// every push after that also drops (the check is live, re-evaluated each
+// call) -- and capacity recovers once draining frees a block.
+PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
+{
+    using Queue = profiler::LockFreeQueue<int, kTestQueueBlockSize>;
+    constexpr size_t kMaxBlocks = 2;
+    Queue            queue(kMaxBlocks);
+
+    // Filling exactly max_blocks blocks needs one fewer than max_blocks*kNumSlots
+    // pushes to succeed: the element that would complete the *last* allowed
+    // block is the one push() drops (see lock_free_queue.h's push() comment).
+    size_t const capacity = kMaxBlocks * Queue::kNumSlotsPerBlockForTesting - 1;
+    for (size_t i = 0; i < capacity; ++i)
+    {
+        int value = static_cast<int>(i);
+        ASSERT_TRUE(queue.push(std::move(value))) << "push " << i << " of " << capacity;
+    }
+    EXPECT_EQ(queue.dropped_count(), 0u);
+
+    // Further pushes are dropped, and counted, without crashing/corrupting anything.
+    int overflow_a = 111;
+    int overflow_b = 222;
+    EXPECT_FALSE(queue.push(std::move(overflow_a)));
+    EXPECT_FALSE(queue.push(std::move(overflow_b)));
+    EXPECT_EQ(queue.dropped_count(), 2u);
+
+    // Draining everything frees a block; capacity recovers automatically.
+    for (size_t i = 0; i < capacity; ++i)
+    {
+        auto popped = queue.pop();
+        ASSERT_TRUE(popped.has_value());
+        EXPECT_EQ(*popped, static_cast<int>(i));
+    }
+    EXPECT_FALSE(queue.pop().has_value());
+
+    int recovered = 42;
+    EXPECT_TRUE(queue.push(std::move(recovered)));
+    EXPECT_EQ(queue.dropped_count(), 2u);  // unchanged: this push succeeded
+    auto popped = queue.pop();
+    ASSERT_TRUE(popped.has_value());
+    EXPECT_EQ(*popped, 42);
+}
+
 // ---------------------------------------------------------------------------
 // per_thread
 // ---------------------------------------------------------------------------

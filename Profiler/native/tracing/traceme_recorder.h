@@ -212,6 +212,13 @@ public:
     PROFILER_API static bool start(int level, uint64_t filter_mask);
 
     /**
+     * @brief Count of events dropped because a thread's recording queue hit its
+     * capacity (see common/lock_free_queue.h) since the last start(). Aggregated
+     * across every recording thread.
+     */
+    PROFILER_API static uint64_t dropped_event_count();
+
+    /**
      * @brief Stops trace recording and returns all collected events.
      *
      * Ends the current tracing session and returns all events collected since

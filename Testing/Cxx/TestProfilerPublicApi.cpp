@@ -31,6 +31,22 @@ PROFILERTEST(PublicApi, session_from_umbrella_header)
     EXPECT_NE(chrome.find("external_app_scope"), std::string::npos);
 }
 
+// Smoke test for the new dropped_event_count() accessor (design-review.md
+// Phase 2's bounded/visible overflow requirement). Forcing a real overflow
+// isn't practical at the default 64 MiB/thread queue capacity in a fast unit
+// test (see TestCommonContainers.cpp's LockFreeQueue test for that); this
+// just confirms the query exists and reports no loss for a normal capture.
+PROFILERTEST(PublicApi, dropped_event_count_is_zero_for_a_normal_capture)
+{
+    profiler::profiler_session session;
+    ASSERT_TRUE(session.start());
+    {
+        PROFILER_PROFILE_SCOPE("dropped_event_count_probe");
+    }
+    ASSERT_TRUE(session.stop());
+    EXPECT_EQ(session.dropped_event_count(), 0u);
+}
+
 PROFILERTEST(PublicApi, write_chrome_trace_from_umbrella_header)
 {
     profiler::profiler_session session;

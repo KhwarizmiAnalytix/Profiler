@@ -79,6 +79,17 @@ namespace QueueBaseInternal
 //   * LockFreeQueue's PopAll() will generate a BlockedQueue efficiently
 //   * BlockedQueue support move constructor/assignment and iterators
 
+// Swaps two std::atomic<T> values (std::atomic itself has no swap()). Only used
+// for single-threaded bookkeeping (move-assignment of a not-yet-shared queue),
+// so relaxed loads/stores are fine.
+template <typename T>
+void swap_atomic(std::atomic<T>& a, std::atomic<T>& b)
+{
+    T const a_value = a.load(std::memory_order_relaxed);
+    a.store(b.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    b.store(a_value, std::memory_order_relaxed);
+}
+
 template <typename T, size_t kBlockSize>
 struct InternalBlock
 {
@@ -123,8 +134,15 @@ class blocked_queue_base
 public:
     static constexpr size_t kNumSlotsPerBlockForTesting = Block::kNumSlots;
 
-    blocked_queue_base()
-        : start_block_(new Block{/*start=*/0, /*next=*/nullptr, /*slots=*/{}}),
+    // Default: kDefaultMaxBlocks blocks of kBlockSize bytes each before push()
+    // starts dropping -- 1024 * 64 KiB = 64 MiB per queue at the library-wide
+    // default kBlockSize, bounding a single long-running, undrained producer
+    // instead of growing forever (see push()/dropped_count()).
+    static constexpr size_t kDefaultMaxBlocks = 1024;
+
+    explicit blocked_queue_base(size_t max_blocks = kDefaultMaxBlocks)
+        : max_blocks_(max_blocks),
+          start_block_(new Block{/*start=*/0, /*next=*/nullptr, /*slots=*/{}}),
           start_(start_block_->start),
           end_block_(start_block_),
           end_(end_block_->start)
@@ -145,19 +163,47 @@ public:
         delete end_block_;
     }
 
-    // Adds a new element to the back of the queue. Fast and lock-free.
-    void push(T&& element)
+    // Adds a new element to the back of the queue. Fast and lock-free on the
+    // producer thread. Returns false (and counts the drop -- see
+    // dropped_count()) instead of growing past max_blocks_ live blocks; capacity
+    // frees up automatically as the consumer thread drains blocks (pop_impl()),
+    // so this is a live check, not a one-shot/permanent cutoff.
+    //
+    // Capacity is checked *before* a write that would fill the current block,
+    // and only that write is dropped -- end_block_ never reaches "full with no
+    // successor block" (pop_impl()'s existing delete-on-drain logic relies on a
+    // full block always having one). The element that would have filled it is
+    // re-attempted on every subsequent push() (the check re-reads block_count_
+    // live each time), so a block is completed and rotated normally as soon as
+    // the consumer frees enough capacity.
+    bool push(T&& element)
     {
-        size_t end  = get_end();
-        auto&  slot = end_block_->slots[end++ - end_block_->start];
-        slot.emplace(std::move(element));
-        if PROFILER_LIKELY (end - end_block_->start == Block::kNumSlots)
+        size_t const end            = get_end();
+        bool const   would_fill_block = (end - end_block_->start + 1 == Block::kNumSlots);
+        if PROFILER_UNLIKELY (would_fill_block &&
+                               block_count_.load(std::memory_order_relaxed) >= max_blocks_)
         {
-            auto* new_block = new Block{/*start=*/end, /*next=*/nullptr, /*slots=*/{}};
-            end_block_      = (end_block_->next = new_block);
+            dropped_count_.fetch_add(1, std::memory_order_relaxed);
+            return false;
         }
-        set_end(end);  // Write index after contents.
+        auto& slot = end_block_->slots[end - end_block_->start];
+        slot.emplace(std::move(element));
+        size_t const new_end = end + 1;
+        if PROFILER_LIKELY (new_end - end_block_->start == Block::kNumSlots)
+        {
+            auto* new_block = new Block{/*start=*/new_end, /*next=*/nullptr, /*slots=*/{}};
+            end_block_      = (end_block_->next = new_block);
+            block_count_.fetch_add(1, std::memory_order_relaxed);
+        }
+        set_end(new_end);  // Write index after contents.
+        return true;
     }
+
+    // Producer-thread-only counter of push() calls dropped due to max_blocks_.
+    // Relaxed: this is a diagnostic count, not a synchronization point -- the
+    // pre-existing start_/end_ protocol above is what actually orders the
+    // stored elements between producer and consumer.
+    uint64_t dropped_count() const { return dropped_count_.load(std::memory_order_relaxed); }
 
     // Removes all elements from the queue.
     void clear()
@@ -199,21 +245,26 @@ protected:
         auto& slot    = start_block_->slots[start_++ - start_block_->start];
         T     element = std::move(slot).consume();
         // If we reach the end of a block, we own it and should delete it.
-        // The next block is present: end_ always points to something.
+        // The next block is present: end_ always points to something -- push()
+        // never lets a block fill without linking a successor (see push()).
         if PROFILER_UNLIKELY (start_ - start_block_->start == Block::kNumSlots)
         {
             auto* old_block = std::exchange(start_block_, start_block_->next);
             delete old_block;
+            block_count_.fetch_sub(1, std::memory_order_relaxed);
             // PROFILER_CHECK_DEBUG(
             // start_ == start_block_->start, "start_ is not equal to start_block_->start");
         }
         return element;
     }
 
-    Block*            start_block_;  // Head: updated only by consumer thread.
-    size_t            start_;        // Non-atomic: read only by consumer thread.
-    Block*            end_block_;    // Tail: updated only by producer thread.
-    Index<kAtomicEnd> end_;          // Maybe atomic: read also by consumer thread.
+    size_t                max_blocks_;       // Set at construction; never changes.
+    std::atomic<size_t>   block_count_{1};   // Live blocks; constructor allocates the first.
+    std::atomic<uint64_t> dropped_count_{0}; // See dropped_count().
+    Block*                start_block_;      // Head: updated only by consumer thread.
+    size_t                start_;            // Non-atomic: read only by consumer thread.
+    Block*                end_block_;        // Tail: updated only by producer thread.
+    Index<kAtomicEnd>     end_;              // Maybe atomic: read also by consumer thread.
 };
 
 }  // namespace QueueBaseInternal
@@ -230,11 +281,19 @@ class BlockedQueue final : public QueueBaseInternal::blocked_queue_base<T, kBloc
 public:
     BlockedQueue() = default;
 
+    explicit BlockedQueue(size_t max_blocks)
+        : QueueBaseInternal::blocked_queue_base<T, kBlockSize, false>(max_blocks)
+    {
+    }
+
     BlockedQueue(BlockedQueue&& src) { *this = std::move(src); }
 
     BlockedQueue& operator=(BlockedQueue&& src)
     {
         this->clear();
+        std::swap(this->max_blocks_, src.max_blocks_);
+        QueueBaseInternal::swap_atomic(this->block_count_, src.block_count_);
+        QueueBaseInternal::swap_atomic(this->dropped_count_, src.dropped_count_);
         std::swap(this->start_block_, src.start_block_);
         std::swap(this->start_, src.start_);
         std::swap(this->end_block_, src.end_block_);
@@ -327,6 +386,13 @@ class LockFreeQueue final : public QueueBaseInternal::blocked_queue_base<T, kBlo
     using Block = QueueBaseInternal::InternalBlock<T, kBlockSize>;
 
 public:
+    LockFreeQueue() = default;
+
+    explicit LockFreeQueue(size_t max_blocks)
+        : QueueBaseInternal::blocked_queue_base<T, kBlockSize, true>(max_blocks)
+    {
+    }
+
     // Pop all events into an normal block storage queue, blocks are directly
     // moved into new queue except the last block. Those events
     // that are in the last block are in fact copied one by one.
@@ -344,6 +410,7 @@ public:
             auto* old_block = std::exchange(this->start_block_, this->start_block_->next);
             this->start_    = this->start_block_->start;
             old_block->next = nullptr;
+            this->block_count_.fetch_sub(1, std::memory_order_relaxed);
             if (result.end_block_)
             {
                 result.end_block_->next = old_block;

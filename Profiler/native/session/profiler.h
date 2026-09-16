@@ -383,6 +383,13 @@ public:
     bool has_collected_xspace() const { return xspace_ready_; }
 
     /**
+     * @brief Count of CPU scope/instrumentation events dropped because a
+     * recording queue hit capacity (see traceme_recorder::dropped_event_count()).
+     * A process-wide count, not scoped to just this session.
+     */
+    PROFILER_API uint64_t dropped_event_count() const;
+
+    /**
      * @brief Generate a Chrome trace (JSON) representation of collected profiler data.
      */
     PROFILER_API std::string generate_chrome_trace_json() const;
@@ -739,7 +746,7 @@ public:
     const profiler::profiler_scope_data& data() const
     {
         static const profiler::profiler_scope_data empty{};
-        return data_ ? *data_ : empty;
+        return empty;
     }
 
     /// Disable copy constructor to ensure RAII semantics
@@ -755,13 +762,14 @@ public:
     profiler_scope& operator=(profiler_scope&&) = delete;
 
 private:
-    /// Scope data containing timing and memory measurements. Allocated lazily by
-    /// start() -- an inactive scope (no active, hierarchical-profiling session)
-    /// never allocates it at all. See name_ for the value stashed until then.
-    std::unique_ptr<profiler::profiler_scope_data> data_;
-
-    /// Scope name, held here (not yet in data_) until start() actually needs it.
+    /// Scope name. Nothing reads profiler_scope_data's live tree (reports/hotspots/
+    /// exports all read scope_tree_builder's separate XSpace-based reconstruction --
+    /// see profiler_scope_data's own comments), so this scope keeps only the plain,
+    /// non-heap-allocated state it actually needs: a name and a start time.
     std::string name_;
+
+    /// High-resolution timestamp when this scope started. Only meaningful once started_.
+    std::chrono::high_resolution_clock::time_point start_time_;
 
     /// Pointer to the profiler session managing this scope
     profiler::profiler_session* session_;

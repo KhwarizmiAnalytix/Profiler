@@ -132,6 +132,13 @@ private:
     std::vector<traceme_recorder::Event*> end_events_;
 };
 
+// Count of Record() calls dropped because a thread's queue hit its capacity
+// (LockFreeQueue::push() returning false -- see common/lock_free_queue.h).
+// Aggregated across every thread's queue, since traceme_recorder is a
+// process-wide facility rather than a per-session one. Relaxed: a diagnostic
+// counter, not a synchronization point.
+std::atomic<uint64_t> g_dropped_events{0};
+
 // To avoid unnecessary synchronization between threads, each thread has a
 // ThreadLocalRecorder that independently records its events.
 class ThreadLocalRecorder
@@ -168,7 +175,13 @@ public:
     PROFILER_NODISCARD const traceme_recorder::ThreadInfo& Info() const { return info_; }
 
     // Record is only called from the producer thread.
-    void Record(traceme_recorder::Event&& event) { queue_.push(std::move(event)); }
+    void Record(traceme_recorder::Event&& event)
+    {
+        if (!queue_.push(std::move(event)))
+        {
+            g_dropped_events.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
 
     // Clear is called from the control thread when tracing starts to remove any
     // elements added due to Record racing with Consume.
@@ -252,8 +265,14 @@ private:
     {
         // We may have old events in buffers because Record() raced with Stop().
         clear();
+        g_dropped_events.store(0, std::memory_order_relaxed);
     }
     return started;
+}
+
+/* static */ uint64_t traceme_recorder::dropped_event_count()
+{
+    return g_dropped_events.load(std::memory_order_relaxed);
 }
 
 /* static */ void traceme_recorder::record(Event&& event)
