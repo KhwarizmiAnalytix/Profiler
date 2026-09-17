@@ -27,6 +27,10 @@
 #include "bespoke/kineto/profiler_kineto.h"
 #endif
 
+#if PROFILER_HAS_CUDA
+#include "common/clock_calibration.h"
+#endif
+
 namespace profiler
 {
 namespace
@@ -277,6 +281,18 @@ std::unique_ptr<capture_result> capture::stop()
 
             copied.activity_type = event.activityType();
             copied.transfer_bytes = event.nBytes();
+
+#if PROFILER_HAS_CUDA
+            // Populate device clock uncertainty (design-review.md section 6.3
+            // "Measurement" field group) for CUDA device-side events, from a
+            // per-device calibration computed once and cached for the process
+            // (common/clock_calibration.h).
+            if (copied.device_type == device_enum::CUDA)
+            {
+                copied.clock_uncertainty_ns = static_cast<int64_t>(
+                    cached_cuda_device_calibration(copied.device_index).uncertainty_ns);
+            }
+#endif
 
             // cudaElapsedUs() covers whichever GPU vendor is actually
             // registered (CUDAOrHIPMethods serves both CUDA and HIP, see

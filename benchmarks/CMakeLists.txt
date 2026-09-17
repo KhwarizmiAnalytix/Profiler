@@ -22,6 +22,23 @@ set_target_properties(
 
 target_link_libraries(profiler_benchmark PRIVATE Profiler::Profiler benchmark::benchmark)
 
+# Phase 4.E: a GPU-active workload (kernel + transfer) needs a __global__
+# kernel, which needs NVCC rather than the host C++ compiler. Unlike
+# Testing/Cxx/CMakeLists.txt's TestProfilerGpuRealHardware.cpp (a small file
+# that's *only* CUDA test code), profiler_benchmark.cpp also overrides
+# global operator new/delete with exception-throwing host code, which nvcc
+# rejects ("device code does not support exception handling") if the whole
+# file is compiled as CUDA -- so the kernel lives in its own small .cu
+# instead, called from the host-compiled .cpp through a plain C++ wrapper.
+if(PROFILER_HAS_CUDA)
+    enable_language(CUDA)
+    target_sources(profiler_benchmark PRIVATE profiler_benchmark_gpu_kernel.cu)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "")
+        set_target_properties(profiler_benchmark PROPERTIES CUDA_ARCHITECTURES 75)
+    endif()
+    target_link_libraries(profiler_benchmark PRIVATE CUDA::cudart)
+endif()
+
 if(COMMAND profiler_set_target_output_directories)
     profiler_set_target_output_directories(profiler_benchmark)
 else()

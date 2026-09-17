@@ -4,6 +4,7 @@
 #endif
 #endif
 
+#include <atomic>
 #include <sstream>
 
 #include "bespoke/base/base.h"
@@ -37,10 +38,20 @@ namespace profiler::profiler_impl::impl
 namespace
 {
 
+// Phase 4.C (design-review.md section 6.7): sticky flag set whenever
+// cudaCheck() below swallows a real runtime error, so a caller with a
+// profiler_status to report through (gpu_tracer::collect_data()) can find
+// out a failure happened instead of always seeing success. Process-wide by
+// design -- CUDA errors below are already logged process-wide, not scoped to
+// a session, and this only needs to answer "did anything go wrong since I
+// last asked".
+std::atomic<bool> g_cuda_error_since_check{false};
+
 void cudaCheck(cudaError_t result, const char* file, int line)
 {
     if (result != cudaSuccess)
     {
+        g_cuda_error_since_check.store(true, std::memory_order_relaxed);
         std::stringstream ss;
         ss << file << ":" << line << ": ";
         if (result == cudaErrorInitializationError)
@@ -248,6 +259,11 @@ struct CUDAOrHIPMethods : public ProfilerStubs
             return err == cudaSuccess && device_count > 0;
         }();
         return has_device;
+    }
+
+    bool consume_error_since_last_check() const override
+    {
+        return g_cuda_error_since_check.exchange(false, std::memory_order_relaxed);
     }
 };
 

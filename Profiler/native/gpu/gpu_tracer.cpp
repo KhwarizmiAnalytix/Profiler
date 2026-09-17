@@ -35,10 +35,15 @@ limitations under the License.
 
 #include <memory>
 
+#include "bespoke/base/base.h"
 #include "native/cpu/annotation_stack.h"
 #include "native/gpu/gpu_event_collector.h"
 #include "native/session/profiler.h"
 #include "native/tracing/traceme.h"
+
+#if PROFILER_HAS_CUDA
+#include "common/clock_calibration.h"
+#endif
 
 namespace profiler::profiler_impl
 {
@@ -62,6 +67,12 @@ public:
             collector_.reset();
             return profiler_status::Error("Another profile session running.");
         }
+#if PROFILER_HAS_CUDA
+        // Warm the per-device calibration cache (common/clock_calibration.h)
+        // at session start rather than paying its device round-trip cost
+        // lazily during event export.
+        cached_cuda_device_calibration(/*device_index=*/0);
+#endif
         annotation_stack::enable(true);
         recording_ = true;
         return profiler_status::Ok();
@@ -99,6 +110,20 @@ public:
         if (!collector_->export_xspace(space, end_ns, current_generation))
         {
             return profiler_status::Error("Failed to export GPU XPlane");
+        }
+        // Phase 4.C (design-review.md section 6.7): a CUDA/HIP runtime call
+        // may have failed silently during this capture (impl::cudaCheck()
+        // only logs by default, since a profiler must not throw/abort the
+        // host app over a backend error) -- surface that here so the caller
+        // can tell "capture completed cleanly" from "some backend call
+        // failed and this capture may be missing data" instead of always
+        // reporting success.
+        if (impl::cudaStubs()->consume_error_since_last_check())
+        {
+            return profiler_status::Error(
+                "GPU capture completed with at least one CUDA/HIP runtime error during the "
+                "session; exported data may be incomplete. See log output for the specific "
+                "error(s).");
         }
         return profiler_status::Ok();
     }

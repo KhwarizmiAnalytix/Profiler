@@ -48,6 +48,9 @@
 #include <vector>
 
 #if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 // clang-format off
 #include <windows.h>
 #include <psapi.h>
@@ -59,6 +62,12 @@
 #include <benchmark/benchmark.h>
 
 #include "profiler.h"
+
+#if PROFILER_HAS_CUDA
+#include <cuda_runtime_api.h>
+
+#include "profiler_benchmark_gpu_kernel.h"
+#endif
 
 #ifndef PROFILER_BENCHMARK_GIT_COMMIT
 #define PROFILER_BENCHMARK_GIT_COMMIT ""
@@ -283,6 +292,70 @@ void fft_instrumented(size_t n)
     g_dont_optimize_sink = result;
 }
 
+#if PROFILER_HAS_CUDA
+// Phase 4.E: a GPU-active workload (design-review.md section 1.1's 5% target
+// is specifically "for the default CPU/GPU timeline on the designated
+// compute/transfer workloads") -- this is the only machine in this project
+// with a GPU, so the only place a real GPU-path overhead number can be
+// produced at all. The trivial elementwise kernel itself
+// (launch_benchmark_add_kernel) lives in profiler_benchmark_gpu_kernel.cu --
+// see benchmarks/CMakeLists.txt's comment for why it can't live in this
+// file (this file overrides global operator new/delete with
+// exception-throwing host code, which nvcc rejects as device code).
+
+// H2D transfer + kernel + D2H transfer, synchronized before returning so a
+// trial's measured duration includes the whole round trip, not just launch
+// overhead. Returns the count of failed trials (skipped rather than
+// crashing the whole benchmark run) via *out_failed.
+double gpu_kernel_and_transfer_core(int n, float* h_a, float* h_b, float* h_out, bool* out_ok)
+{
+    *out_ok = false;
+    float*      d_a   = nullptr;
+    float*      d_b   = nullptr;
+    float*      d_out = nullptr;
+    size_t const bytes = static_cast<size_t>(n) * sizeof(float);
+    if (cudaMalloc(reinterpret_cast<void**>(&d_a), bytes) != cudaSuccess)
+    {
+        return 0.0;
+    }
+    if (cudaMalloc(reinterpret_cast<void**>(&d_b), bytes) != cudaSuccess)
+    {
+        cudaFree(d_a);
+        return 0.0;
+    }
+    if (cudaMalloc(reinterpret_cast<void**>(&d_out), bytes) != cudaSuccess)
+    {
+        cudaFree(d_a);
+        cudaFree(d_b);
+        return 0.0;
+    }
+
+    bool ok = cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice) == cudaSuccess &&
+              cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice) == cudaSuccess;
+    if (ok)
+    {
+        launch_benchmark_add_kernel(d_out, d_a, d_b, n);
+        ok = cudaPeekAtLastError() == cudaSuccess && cudaDeviceSynchronize() == cudaSuccess &&
+             cudaMemcpy(h_out, d_out, bytes, cudaMemcpyDeviceToHost) == cudaSuccess;
+    }
+
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_out);
+    *out_ok = ok;
+    return ok ? static_cast<double>(h_out[0]) : 0.0;
+}
+
+void gpu_kernel_and_transfer_instrumented(int n, float* h_a, float* h_b, float* h_out)
+{
+    PROFILER_SCOPE("benchmark_gpu_kernel_and_transfer");
+    bool         ok     = false;
+    double const result = gpu_kernel_and_transfer_core(n, h_a, h_b, h_out, &ok);
+    benchmark::DoNotOptimize(result);
+    g_dont_optimize_sink = result;
+}
+#endif  // PROFILER_HAS_CUDA
+
 // ---------------------------------------------------------------------------
 // Trial harness
 // ---------------------------------------------------------------------------
@@ -442,7 +515,7 @@ int main(int argc, char** argv)
     constexpr uint64_t kMonteCarloN = 2'000'000;
     constexpr size_t   kFftN        = 1 << 14;  // 16384, power of two
 
-    std::vector<workload_spec> const workloads = {
+    std::vector<workload_spec> workloads = {
         {"matrix_multiply",
             [] { g_dont_optimize_sink = matrix_multiply_core(kMatrixN); },
             [] { matrix_multiply_instrumented(kMatrixN); }},
@@ -458,6 +531,45 @@ int main(int argc, char** argv)
             },
             [] { fft_instrumented(kFftN); }},
     };
+
+#if PROFILER_HAS_CUDA
+    // Only add the GPU workload when a real device is present -- a CUDA
+    // toolkit compiled in without a device (e.g. a CI runner) would just
+    // fail every trial, per the same distinction backend_capabilities.cpp's
+    // gpu_device_available draws between "toolkit compiled in" and "device
+    // actually usable".
+    constexpr int kGpuN = 1 << 16;  // 65536
+    int           gpu_device_count = 0;
+    auto          gpu_h_a          = std::shared_ptr<float[]>(new float[kGpuN]);
+    auto          gpu_h_b          = std::shared_ptr<float[]>(new float[kGpuN]);
+    auto          gpu_h_out        = std::shared_ptr<float[]>(new float[kGpuN]);
+    if (cudaGetDeviceCount(&gpu_device_count) == cudaSuccess && gpu_device_count > 0)
+    {
+        for (int i = 0; i < kGpuN; ++i)
+        {
+            gpu_h_a[i] = static_cast<float>(i);
+            gpu_h_b[i] = static_cast<float>(i * 2);
+        }
+        workloads.push_back(
+            {"gpu_kernel_and_transfer",
+                [gpu_h_a, gpu_h_b, gpu_h_out]
+                {
+                    bool ok = false;
+                    g_dont_optimize_sink = gpu_kernel_and_transfer_core(
+                        kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get(), &ok);
+                },
+                [gpu_h_a, gpu_h_b, gpu_h_out]
+                {
+                    gpu_kernel_and_transfer_instrumented(
+                        kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get());
+                }});
+    }
+    else
+    {
+        std::printf("NOTE: no CUDA device detected -- skipping gpu_kernel_and_transfer "
+                     "workload.\n\n");
+    }
+#endif  // PROFILER_HAS_CUDA
 
     std::vector<result_row> results;
 
@@ -477,7 +589,15 @@ int main(int argc, char** argv)
 
         {
             profiler::session_options opts;
-            profiler::session         session(opts);
+#if PROFILER_HAS_CUDA
+            // Only meaningfully affects the gpu_kernel_and_transfer workload
+            // (harmless no-op for the CPU-only workloads without a device);
+            // without this, "active" would measure PROFILER_SCOPE overhead
+            // alone and never actually exercise the GPU device-tracing path
+            // this workload exists to measure.
+            opts.gpu_tracing = true;
+#endif
+            profiler::session session(opts);
             if (!session.start())
             {
                 std::fprintf(

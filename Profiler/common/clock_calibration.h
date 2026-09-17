@@ -50,6 +50,12 @@ struct clock_calibration
 /// parameters and uncertainty estimate.
 /// Requires gpu_device_available == true; returns default (scale=1.0) on error.
 PROFILER_API clock_calibration calibrate_cuda_device(int device_index);
+
+/// Process-wide cache over calibrate_cuda_device(): each device_index is
+/// calibrated at most once (subsequent calls for the same device return the
+/// cached result), since calibration involves a device round-trip per sample
+/// and the mapping is stable for the process's lifetime. Thread-safe.
+PROFILER_API clock_calibration cached_cuda_device_calibration(int device_index);
 #endif
 
 }  // namespace profiler

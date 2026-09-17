@@ -56,7 +56,7 @@ namespace profiler::profiler_impl
  * Producer: device activity backend (`AddEvent`).
  * Consumer: `gpu_tracer::collect_data`.
  */
-class PROFILER_VISIBILITY gpu_trace_collector
+class PROFILER_API gpu_trace_collector
 {
 public:
     gpu_trace_collector() = default;

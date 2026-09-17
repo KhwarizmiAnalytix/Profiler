@@ -67,6 +67,14 @@ struct PROFILER_VISIBILITY ProfilerStubs
         return -1.0f;
     }
 
+    /// Phase 4.C (design-review.md section 6.7): true if a backend API call
+    /// has failed (e.g. a CUDA/HIP runtime error) since the last call to this
+    /// method, and clears that sticky flag. Lets a caller (gpu_tracer::
+    /// collect_data()) distinguish "capture completed cleanly" from "some
+    /// backend call silently failed" instead of always reporting success.
+    /// Default: no failure tracking (CPU-only / non-CUDA-HIP backends).
+    virtual bool consume_error_since_last_check() const { return false; }
+
     virtual ~ProfilerStubs() = default;
 };
 

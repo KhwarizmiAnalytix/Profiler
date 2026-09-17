@@ -22,7 +22,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 #include <numeric>
+#include <unordered_map>
 
 #include "bespoke/base/gpu_runtime.h"
 #include "common/approximate_clock.h"
@@ -106,56 +108,68 @@ clock_calibration calibrate_cuda_device(int device_index)
         return result;
     }
 
-    // Collect N paired samples of (CPU time, device timestamp).
+    // A single fixed device-side epoch event: every sample's device_ns is the
+    // real device clock's elapsed time (via cudaEventElapsedTime, which reads
+    // actual device timestamps) since this epoch, paired with the CPU time at
+    // the same synchronization point. This replaces the previous
+    // always-0.0 stand-in, which made the least-squares fit below degenerate.
+    CUevent_st* epoch_event = nullptr;
+    if (cudaEventCreate(&epoch_event) != cudaSuccess)
+    {
+        cudaSetDevice(prev_device);
+        return result;
+    }
+    if (cudaEventRecord(epoch_event, nullptr) != cudaSuccess ||
+        cudaEventSynchronize(epoch_event) != cudaSuccess)
+    {
+        cudaEventDestroy(epoch_event);
+        cudaSetDevice(prev_device);
+        return result;
+    }
+
+    // Collect N paired samples of (CPU time, device timestamp since epoch).
     std::vector<Sample> samples;
     const int          N_samples = 10;
 
     for (int i = 0; i < N_samples; ++i)
     {
-        CUevent_st* start_event = nullptr;
-        CUevent_st* end_event   = nullptr;
-        if (cudaEventCreate(&start_event) != cudaSuccess ||
-            cudaEventCreate(&end_event) != cudaSuccess)
+        CUevent_st* sample_event = nullptr;
+        if (cudaEventCreate(&sample_event) != cudaSuccess)
         {
-            if (start_event)
-            {
-                cudaEventDestroy(start_event);
-            }
-            if (end_event)
-            {
-                cudaEventDestroy(end_event);
-            }
+            cudaEventDestroy(epoch_event);
             cudaSetDevice(prev_device);
             return result;
         }
 
-        uint64_t cpu_ns_start = getTime();
-        if (cudaEventRecord(start_event, nullptr) != cudaSuccess)
+        if (cudaEventRecord(sample_event, nullptr) != cudaSuccess ||
+            cudaEventSynchronize(sample_event) != cudaSuccess)
         {
-            cudaEventDestroy(start_event);
-            cudaEventDestroy(end_event);
+            cudaEventDestroy(sample_event);
+            cudaEventDestroy(epoch_event);
             cudaSetDevice(prev_device);
             return result;
         }
-        if (cudaEventSynchronize(start_event) != cudaSuccess)
-        {
-            cudaEventDestroy(start_event);
-            cudaEventDestroy(end_event);
-            cudaSetDevice(prev_device);
-            return result;
-        }
-        uint64_t cpu_ns_end = getTime();
+        // CPU time at the same synchronization point the device event fired.
+        uint64_t cpu_ns_sync = getTime();
 
-        // Nominal device time for the synchronization point (0 since events
-        // record at the same logical device time when back-to-back).
+        float elapsed_ms = 0.0f;
+        if (cudaEventElapsedTime(&elapsed_ms, epoch_event, sample_event) != cudaSuccess)
+        {
+            cudaEventDestroy(sample_event);
+            cudaEventDestroy(epoch_event);
+            cudaSetDevice(prev_device);
+            return result;
+        }
+
         samples.push_back(Sample{
-            .cpu_ns    = static_cast<double>(cpu_ns_start + cpu_ns_end) / 2.0,
-            .device_ns = 0.0,
+            .cpu_ns    = static_cast<double>(cpu_ns_sync),
+            .device_ns = static_cast<double>(elapsed_ms) * 1.0e6,
         });
 
-        cudaEventDestroy(start_event);
-        cudaEventDestroy(end_event);
+        cudaEventDestroy(sample_event);
     }
+
+    cudaEventDestroy(epoch_event);
 
     if (samples.empty())
     {
@@ -172,6 +186,22 @@ clock_calibration calibrate_cuda_device(int device_index)
 
     cudaSetDevice(prev_device);
     return result;
+}
+
+clock_calibration cached_cuda_device_calibration(int device_index)
+{
+    static std::mutex                              mu;
+    static std::unordered_map<int, clock_calibration> cache;
+
+    std::lock_guard<std::mutex> lock(mu);
+    auto                        it = cache.find(device_index);
+    if (it != cache.end())
+    {
+        return it->second;
+    }
+    clock_calibration calibration = calibrate_cuda_device(device_index);
+    cache.emplace(device_index, calibration);
+    return calibration;
 }
 
 }  // namespace profiler
