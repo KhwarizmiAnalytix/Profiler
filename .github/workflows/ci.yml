@@ -30,6 +30,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Show toolchain
         shell: bash
@@ -124,6 +131,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       # design-review.md section 7's Phase 3 bullet: "allow a native-only
       # build" -- no Kineto or ITT instrumentation backend compiled in at
@@ -152,6 +166,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       # Several sources (native/gpu/gpu_tracer_factory.cpp, native/cpu/
       # host_tracer_factory.cpp, native/cpu/python_tracer_factory.cpp,
@@ -208,6 +229,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
@@ -251,6 +279,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize benchmark dependencies
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+
+          test -f third_party/benchmark/CMakeLists.txt || {
+            echo "Google Benchmark submodule is missing"
+            git submodule status --recursive
+            exit 1
+          }
 
       # Phase 0's reference-workload/budget-gated overhead measurement
       # (design-review.md section 1.1), see docs/benchmarking.md. This job
@@ -298,6 +339,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Configure
         run: |
@@ -326,6 +374,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
 
       - name: Configure
         run: |
