@@ -29,8 +29,8 @@
 #include <cuda_runtime_api.h>
 
 #include "common/backend_capabilities.h"
+#include "native/session/profiler.h"
 #include "native/session/profiler_report.h"
-#include "native/session/profiler_session.h"
 
 namespace
 {
