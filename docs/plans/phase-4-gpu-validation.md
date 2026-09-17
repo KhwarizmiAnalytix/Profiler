@@ -263,7 +263,16 @@ leaving it silently gone.
         of unconditional `Ok()`) when a CUDA/HIP call failed during the
         session, surfaced to callers through the existing
         `profiler_session::stop()` (now returns `false`) /
-        `last_error()` path — no new public API needed.
+        `last_error()` path — no new public API needed. **CI regression found
+        and fixed after initial push** (`c9616ee` → follow-up commit): this
+        check must be guarded by `PROFILER_HAS_KINETO || PROFILER_HAS_ITT`,
+        not left unguarded — `impl::cudaStubs()` is only *compiled* at all
+        when `bespoke/base` is part of the build (under Kineto or ITT per
+        `CMakeLists.txt`), so CI's `native-only (PROFILER_BACKEND=NONE)` job,
+        which this session never built or tested locally, failed to link
+        with an undefined-symbol error. Not caught before pushing because
+        local verification only covered the CUDA/Kineto-backend build this
+        machine's GPU actually needs.
       - New real-hardware test `session_reports_failure_after_cuda_runtime_error`
         (`TestProfilerGpuRealHardware.cpp`) injects a real failure (queries
         `elapsed()` on an unrecorded/invalid `cudaEvent_t`, which

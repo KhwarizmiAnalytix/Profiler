@@ -35,11 +35,14 @@ limitations under the License.
 
 #include <memory>
 
-#include "bespoke/base/base.h"
 #include "native/cpu/annotation_stack.h"
 #include "native/gpu/gpu_event_collector.h"
 #include "native/session/profiler.h"
 #include "native/tracing/traceme.h"
+
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
+#include "bespoke/base/base.h"
+#endif
 
 #if PROFILER_HAS_CUDA
 #include "common/clock_calibration.h"
@@ -111,13 +114,20 @@ public:
         {
             return profiler_status::Error("Failed to export GPU XPlane");
         }
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
         // Phase 4.C (design-review.md section 6.7): a CUDA/HIP runtime call
         // may have failed silently during this capture (impl::cudaCheck()
         // only logs by default, since a profiler must not throw/abort the
         // host app over a backend error) -- surface that here so the caller
         // can tell "capture completed cleanly" from "some backend call
         // failed and this capture may be missing data" instead of always
-        // reporting success.
+        // reporting success. Guarded on PROFILER_HAS_KINETO/_ITT (not
+        // PROFILER_HAS_CUDA) because impl::cudaStubs() itself -- always a
+        // valid no-op DefaultStubs without a real CUDA/HIP backend, see
+        // bespoke/base/base.cpp -- is only *compiled* at all when
+        // bespoke/base is part of the build, i.e. under Kineto or ITT
+        // (CMakeLists.txt); a PROFILER_BACKEND=NONE build never compiles
+        // bespoke/base, so the symbol doesn't exist there at all.
         if (impl::cudaStubs()->consume_error_since_last_check())
         {
             return profiler_status::Error(
@@ -125,6 +135,7 @@ public:
                 "session; exported data may be incomplete. See log output for the specific "
                 "error(s).");
         }
+#endif
         return profiler_status::Ok();
     }
 
