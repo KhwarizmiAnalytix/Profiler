@@ -16,7 +16,12 @@
 # error. BUILD.bazel already avoids this via alwayslink = True; this is the
 # CMake equivalent.
 function(profiler_keep_static_registrations target)
-    if(BUILD_SHARED_LIBS)
+    # BUILD_SHARED_LIBS belongs to the consuming project when this function is
+    # loaded from an installed package.  Inspect the actual target instead so
+    # a shared imported Profiler is never passed to a whole-archive linker
+    # option merely because the consumer's default is static.
+    get_target_property(_profiler_target_type ${target} TYPE)
+    if(NOT _profiler_target_type STREQUAL "STATIC_LIBRARY")
         return()
     endif()
 

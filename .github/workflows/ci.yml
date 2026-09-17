@@ -43,7 +43,7 @@ jobs:
         with:
           cuda: '12.8.1'
           method: network
-          sub-packages: '["nvcc","cudart","cupti","nvtx"]'
+          sub-packages: '["nvcc","cudart","cupti","nvtx","visual_studio_integration"]'
           use-github-cache: false
 
       - name: Configure

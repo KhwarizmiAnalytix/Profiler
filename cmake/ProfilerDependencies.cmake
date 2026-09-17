@@ -19,7 +19,7 @@ function(profiler_fetch_git name url tag dest_subdir)
     ${name}
     GIT_REPOSITORY "${url}"
     GIT_TAG "${tag}"
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/${dest_subdir}"
+    SOURCE_DIR "${_PROFILER_CMAKE_DIR}/../third_party/${dest_subdir}"
   )
   FetchContent_GetProperties(${name})
   if(NOT ${_lc}_POPULATED)
