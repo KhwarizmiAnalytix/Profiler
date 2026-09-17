@@ -29,8 +29,7 @@
 #include <cuda_runtime_api.h>
 
 #include "common/backend_capabilities.h"
-#include "native/session/profiler.h"
-#include "native/session/profiler_report.h"
+#include "common/capture.h"
 
 namespace
 {
@@ -103,13 +102,12 @@ PROFILERTEST(GpuRealHardware, kernel_and_transfers_captured)
     } cleanup{d_a, d_b, d_out, h_a, h_b, h_out};
 
     // Start profiling capture with CUDA activity enabled.
-    profiler::profiler_impl::profiler_options opts;
-    opts.enable_timing_                 = true;
-    opts.enable_hierarchical_profiling_ = true;
-    opts.enable_gpu_tracing_            = true;
+    profiler::capture_config config;
+    config.activities = {profiler::activity::cpu, profiler::activity::cuda};
 
-    profiler::profiler_impl::profiler_session session(opts);
-    ASSERT_TRUE(session.start());
+    profiler::capture cap(config);
+    ASSERT_TRUE(cap.prepare());
+    ASSERT_TRUE(cap.start());
 
     // Host-to-device transfer.
     ASSERT_EQ(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice), cudaSuccess);
@@ -128,8 +126,7 @@ PROFILERTEST(GpuRealHardware, kernel_and_transfers_captured)
     ASSERT_EQ(cudaMemcpy(h_out, d_out, bytes, cudaMemcpyDeviceToHost), cudaSuccess);
 
     // Stop and collect.
-    ASSERT_TRUE(session.stop());
-    auto capture_result = session.collect_data();
+    auto capture_result = cap.stop();
     ASSERT_NE(capture_result, nullptr);
     const auto& events = capture_result->events();
 
@@ -218,13 +215,12 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
         cudaStream_t stream2;
     } cleanup{d_in, d_out1, d_out2, stream1, stream2};
 
-    profiler::profiler_impl::profiler_options opts;
-    opts.enable_timing_                 = true;
-    opts.enable_hierarchical_profiling_ = true;
-    opts.enable_gpu_tracing_            = true;
+    profiler::capture_config config;
+    config.activities = {profiler::activity::cpu, profiler::activity::cuda};
 
-    profiler::profiler_impl::profiler_session session(opts);
-    ASSERT_TRUE(session.start());
+    profiler::capture cap(config);
+    ASSERT_TRUE(cap.prepare());
+    ASSERT_TRUE(cap.start());
 
     // Launch work on both streams concurrently.
     // Stream 1: device-to-device copy.
@@ -240,8 +236,7 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
     ASSERT_EQ(cudaStreamSynchronize(stream2), cudaSuccess);
 
     // Stop and collect.
-    ASSERT_TRUE(session.stop());
-    auto capture_result = session.collect_data();
+    auto capture_result = cap.stop();
     ASSERT_NE(capture_result, nullptr);
     const auto& events = capture_result->events();
 
