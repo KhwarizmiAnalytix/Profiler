@@ -69,6 +69,12 @@ namespace profiler
 // Static current session management with atomic operations for thread safety
 static std::atomic<profiler::profiler_session*> g_current_session{nullptr};
 
+// Process-wide capture identity; see profiler_session::current_capture_generation().
+// Separate from each session object's own generation_ member: that one resets
+// to 0 per object, so two different fresh objects would otherwise collide on
+// generation() == 1 for their respective first runs.
+static std::atomic<uint64_t> g_capture_generation{0};
+
 //=============================================================================
 // timing_stats Implementation
 //=============================================================================
@@ -271,6 +277,7 @@ bool profiler_session::start()
 
     set_current_session(this);
     generation_.fetch_add(1, std::memory_order_relaxed);
+    g_capture_generation.fetch_add(1, std::memory_order_relaxed);
 
     return true;
 }
@@ -401,6 +408,11 @@ profiler_session* profiler_session::current_session()
 void profiler_session::set_current_session(profiler::profiler_session* session)
 {
     g_current_session.store(session);
+}
+
+uint64_t profiler_session::current_capture_generation()
+{
+    return g_capture_generation.load();
 }
 
 void profiler_session::initialize_components()

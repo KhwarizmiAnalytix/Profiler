@@ -381,15 +381,34 @@ public:
     bool is_active() const { return active_.load(); }
 
     /**
-     * @brief Identity of the current (or most recent) run of this session
-     * object, bumped once per successful start(). Lets a consumer that holds
-     * onto data produced by an earlier run (e.g. a late GPU callback, or a
-     * stale event racing a restart) tell it apart from the current run's data
-     * instead of conflating them (design-review.md section 6.3's "capture
-     * generation + event ID" identity requirement; section 6.5's generation
-     * isolation). 0 before the first start().
+     * @brief Identity of the current (or most recent) run of *this session
+     * object*, bumped once per successful start(). Lets a consumer that holds
+     * onto data produced by an earlier run of the same object tell it apart
+     * from the current run's data. 0 before the first start().
+     *
+     * This does NOT distinguish two different profiler_session objects from
+     * each other -- both report generation() == 1 on their first run. Most
+     * callers (examples/, Testing/Cxx/) construct a fresh session per
+     * capture rather than reusing one object, so cross-capture GPU callback
+     * attribution (design-review.md section 6.3/6.5) uses the process-wide
+     * current_capture_generation() below instead of this.
      */
     uint64_t generation() const { return generation_.load(); }
+
+    /**
+     * @brief Process-wide identity of the most recently started capture,
+     * across every profiler_session object, not just this one. Bumped once
+     * per successful start() of any session (mirroring generation()'s own
+     * per-object bump). A GPU device-activity callback that fires late --
+     * after its own capture has already stopped and a new one has started,
+     * possibly on a different profiler_session object -- can be stamped with
+     * the value current at the time it was queued and compared against the
+     * value current at export time, to detect and drop it instead of
+     * misattributing it to the new capture (design-review.md section 6.3's
+     * "capture generation + event ID" identity requirement; section 6.5's
+     * generation isolation). 0 before the first start() of any session.
+     */
+    PROFILER_API static uint64_t current_capture_generation();
 
     /**
      * @brief Create a new profiling scope

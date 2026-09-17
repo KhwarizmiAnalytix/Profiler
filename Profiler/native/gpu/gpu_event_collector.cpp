@@ -44,6 +44,7 @@ limitations under the License.
 #include "native/exporters/xplane/xplane_builder.h"
 #include "native/exporters/xplane/xplane_schema.h"
 #include "native/exporters/xplane/xplane_utils.h"
+#include "native/session/profiler.h"
 
 namespace profiler::profiler_impl
 {
@@ -269,15 +270,14 @@ void add_gpu_tracer_event(gpu_tracer_event event)
     {
         event.annotation = annotation_stack::get();
     }
-    // Stamp with the current session generation to detect late callbacks
+    // Stamp with the process-wide capture generation to detect late callbacks
     // from a prior/aborted run (design-review.md section 6.3/6.5).
-    // Note: This reads a static atomic generation counter from the last
-    // active profiler_session, not the active session's instance generation.
-    // This is a TLS-like state shared across all GPU callbacks; correctness
-    // relies on all callbacks quiescing before the next session starts
-    // (enforced by profiler_controller/profiler_session lifecycle).
-    // A future multi-session design may need per-session generation context.
-    // For now, we accept single-session semantics.
+    // current_capture_generation() (not the per-object generation()) is used
+    // because most captures use a fresh profiler_session object rather than
+    // restarting one, and two different fresh objects would otherwise both
+    // report generation() == 1 for their first run -- see
+    // current_capture_generation()'s doc comment.
+    event.generation = profiler_session::current_capture_generation();
     collector->add_event(std::move(event));
 }
 

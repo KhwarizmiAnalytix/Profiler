@@ -47,6 +47,7 @@
 
 using namespace profiler;
 using profiler::profiler_impl::add_gpu_tracer_event;
+using profiler::profiler_impl::gpu_trace_collector;
 using profiler::profiler_impl::gpu_tracer_event;
 using profiler::profiler_impl::gpu_tracer_event_type;
 using profiler::profiler_impl::gpu_tracer_is_recording;
@@ -282,49 +283,95 @@ PROFILERTEST(BackendGpuTracer, concurrent_producer_survives_start_stop_churn)
     producer.join();
 }
 
-// Regression for design-review.md finding 4 (session reuse exposes stale results)
-// and section 6.5 lifecycle handling: late GPU callbacks from a prior/aborted run
-// (with a stale generation ID) must not appear in the next run's capture.
-// Phase 4: gpu_tracer_event now carries a generation field, and export_xspace
-// filters them when generation doesn't match the current session's generation.
-// This synthetic test verifies the infrastructure is in place; full generation
-// tracking requires TLS generation context wired through add_gpu_tracer_event.
-PROFILERTEST(BackendGpuTracer, generation_infrastructure_in_place)
+// Regression for design-review.md finding 4 (session reuse exposes stale
+// results) and section 6.5 lifecycle handling: a GPU event stamped with a
+// prior/aborted run's generation must not appear in a later run's export --
+// the real-world case is a device-activity callback that fires late, after
+// its own session's collector has already been swapped out for the next
+// session's. This exercises gpu_trace_collector::export_xspace() directly
+// (rather than through add_gpu_tracer_event()/profiler_session) because the
+// actual race is an asynchronous timing condition a unit test can't
+// reproduce deterministically through the public session API; export_xspace()
+// is the actual enforcement point, so testing it directly with a
+// deliberately mismatched generation is the faithful regression check.
+PROFILERTEST(BackendGpuTracer, export_xspace_filters_stale_generation)
+{
+    gpu_trace_collector collector;
+
+    gpu_tracer_event stale_event;
+    stale_event.type          = gpu_tracer_event_type::kernel;
+    stale_event.name          = "stale_kernel";
+    stale_event.device_id     = 0;
+    stale_event.stream_id     = 1;
+    stale_event.start_time_ns = 1000;
+    stale_event.end_time_ns   = 2000;
+    stale_event.generation    = 1;  // belongs to a prior/aborted run
+    collector.add_event(std::move(stale_event));
+
+    gpu_tracer_event live_event;
+    live_event.type          = gpu_tracer_event_type::kernel;
+    live_event.name          = "live_kernel";
+    live_event.device_id     = 0;
+    live_event.stream_id     = 1;
+    live_event.start_time_ns = 3000;
+    live_event.end_time_ns   = 4000;
+    live_event.generation    = 2;  // belongs to the run being exported
+    collector.add_event(std::move(live_event));
+
+    x_space  space;
+    uint64_t stale_count = 0;
+    ASSERT_TRUE(collector.export_xspace(
+        &space, /*end_gpu_ns=*/5000, /*current_generation=*/2, &stale_count));
+    EXPECT_EQ(stale_count, 1u);
+
+    const xplane* gpu = find_plane_with_name(space, GpuPlaneName(0));
+    ASSERT_NE(gpu, nullptr);
+    EXPECT_EQ(count_events(*gpu), 1u);
+
+    bool                  saw_live = false;
+    xplane_visitor const  visitor  = CreateTfXPlaneVisitor(gpu);
+    visitor.for_each_line(
+        [&](const xline_visitor& line)
+        {
+            line.for_each_event(
+                [&](const xevent_visitor& event)
+                {
+                    EXPECT_NE(event.name(), "stale_kernel");
+                    if (event.name() == "live_kernel")
+                    {
+                        saw_live = true;
+                    }
+                });
+        });
+    EXPECT_TRUE(saw_live);
+}
+
+// Companion regression proving the production wiring, not just export_xspace()
+// in isolation: add_gpu_tracer_event() stamps each event with
+// profiler_session::current_capture_generation(), and gpu_tracer's
+// collect_data() passes that same counter's value as export_xspace()'s
+// current_generation (native/gpu/gpu_event_collector.cpp,
+// native/gpu/gpu_tracer.cpp). Deliberately exercises two independent, fresh
+// profiler_session objects rather than restarting one -- that's the dominant
+// real usage pattern (examples/, most of Testing/Cxx/) -- to prove the fix
+// actually covers it: per-object generation() alone would NOT, since two
+// fresh objects both report generation() == 1 on their first run.
+PROFILERTEST(BackendGpuTracer, distinct_captures_get_distinct_generations)
 {
     profiler_session session1(make_gpu_options());
     ASSERT_TRUE(session1.start());
-
-    // Queue a synthetic event.
-    gpu_tracer_event event1;
-    event1.type          = gpu_tracer_event_type::kernel;
-    event1.name          = "kernel1";
-    event1.device_id     = 0;
-    event1.stream_id     = 1;
-    event1.start_time_ns = 1000;
-    event1.end_time_ns   = 2000;
-    add_gpu_tracer_event(std::move(event1));
-
+    const uint64_t capture1 = profiler_session::current_capture_generation();
     ASSERT_TRUE(session1.stop());
 
-    // Start a second session.
     profiler_session session2(make_gpu_options());
     ASSERT_TRUE(session2.start());
-
-    // Queue another event.
-    gpu_tracer_event event2;
-    event2.type          = gpu_tracer_event_type::kernel;
-    event2.name          = "kernel2";
-    event2.device_id     = 0;
-    event2.stream_id     = 1;
-    event2.start_time_ns = 3000;
-    event2.end_time_ns   = 4000;
-    add_gpu_tracer_event(std::move(event2));
-
+    const uint64_t capture2 = profiler_session::current_capture_generation();
     ASSERT_TRUE(session2.stop());
 
-    // Verify: gpu_tracer_event now has a generation field (infrastructure check).
-    // Full generation tracking via TLS is marked TODO for future implementation
-    // once per-session generation context is available to GPU callbacks.
-    gpu_tracer_event test_event;
-    EXPECT_EQ(test_event.generation, 0);  // Verify field exists, default 0
+    EXPECT_EQ(session1.generation(), session2.generation())
+        << "sanity check: per-object generation() collides across fresh objects, "
+           "which is exactly why current_capture_generation() exists";
+    EXPECT_NE(capture1, 0u);
+    EXPECT_NE(capture2, 0u);
+    EXPECT_NE(capture1, capture2);
 }

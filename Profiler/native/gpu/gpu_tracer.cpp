@@ -37,6 +37,7 @@ limitations under the License.
 
 #include "native/cpu/annotation_stack.h"
 #include "native/gpu/gpu_event_collector.h"
+#include "native/session/profiler.h"
 #include "native/tracing/traceme.h"
 
 namespace profiler::profiler_impl
@@ -89,7 +90,13 @@ public:
             return profiler_status::Ok();
         }
         auto const end_ns = static_cast<uint64_t>(get_current_time_nanos());
-        if (!collector_->export_xspace(space, end_ns))
+        // The same process-wide counter add_gpu_tracer_event() stamped every
+        // event of this run with (native/gpu/gpu_event_collector.cpp);
+        // profiler_session::stop() calls collect_data() before starting any
+        // other session, so this is still the generation of the run being
+        // exported here.
+        uint64_t const current_generation = profiler_session::current_capture_generation();
+        if (!collector_->export_xspace(space, end_ns, current_generation))
         {
             return profiler_status::Error("Failed to export GPU XPlane");
         }
