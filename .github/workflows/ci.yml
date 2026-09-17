@@ -18,10 +18,17 @@ jobs:
         backend: [KINETO, ITT]
         gpu: [none]
         include:
-          - os: windows-latest
+          # Pinned to windows-2022 (not windows-latest): CUDA 12.8.1's
+          # cudafe++ preprocessor segfaults (0xC0000005) parsing headers
+          # under the newer MSVC toolset windows-latest currently defaults
+          # to -- not just a version-check rejection that
+          # -allow-unsupported-compiler could paper over, a real parser
+          # crash. windows-2022 still ships the VS2022 toolset CUDA 12.8 was
+          # validated against.
+          - os: windows-2022
             backend: KINETO
             gpu: cuda
-          - os: windows-latest
+          - os: windows-2022
             backend: ITT
             gpu: cuda
 
