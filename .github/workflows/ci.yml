@@ -46,18 +46,33 @@ jobs:
           sub-packages: '["nvcc","cudart","cupti","nvtx","visual_studio_integration"]'
           use-github-cache: false
 
+      - name: Initialize MSVC
+        if: matrix.gpu == 'cuda'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure
         shell: bash
         run: |
           extra=()
           if [[ "${{ matrix.gpu }}" == "cuda" ]]; then
-            extra+=(-DPROFILER_REQUIRE_CUDA=ON -DPROFILER_REQUIRE_NVTX=ON)
+            extra+=(
+              -DPROFILER_REQUIRE_CUDA=ON
+              -DPROFILER_REQUIRE_NVTX=ON
+              -DCMAKE_CUDA_ARCHITECTURES=75
+            )
             if [[ -n "${CUDA_PATH:-}" ]]; then
-              extra+=(-DCUDAToolkit_ROOT="${CUDA_PATH}")
+              extra+=(
+                "-DCUDAToolkit_ROOT=${CUDA_PATH}"
+                "-DCMAKE_CUDA_COMPILER=${CUDA_PATH}/bin/nvcc.exe"
+              )
               export PATH="${CUDA_PATH}/bin:${CUDA_PATH}/extras/CUPTI/lib64:${PATH}"
             fi
           fi
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DPROFILER_BACKEND=${{ matrix.backend }} \
             -DPROFILER_GPU_BACKEND=${{ matrix.gpu }} \
             -DPROFILER_ENABLE_TESTING=ON \
