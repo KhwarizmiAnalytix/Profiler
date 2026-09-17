@@ -64,10 +64,26 @@ jobs:
         run: |
           extra=()
           if [[ "${{ matrix.gpu }}" == "cuda" ]]; then
+            # Ninja avoids CMake's Visual Studio CUDA-toolset discovery path
+            # (see the CUDA CI fix history), but it must stay scoped to CUDA
+            # jobs: on windows-latest, Ninja with no compiler specified picks
+            # up the runner's bundled MinGW GCC instead of MSVC, which is a
+            # different toolchain than the non-CUDA Windows jobs are meant to
+            # exercise and has already broken a link (gethostname) and a test
+            # (heap corruption) that pass fine under MSVC.
             extra+=(
+              -G Ninja
               -DPROFILER_REQUIRE_CUDA=ON
               -DPROFILER_REQUIRE_NVTX=ON
               -DCMAKE_CUDA_ARCHITECTURES=75
+              # CUDA 12.8.1 rejects MSVC toolsets newer than it shipped
+              # against (github's windows-latest image has since moved to a
+              # newer Visual Studio release) with a hard host_config.h
+              # version-check error. This must be set on the initial
+              # configure invocation, not added later, since
+              # enable_language(CUDA)'s compiler-id probe reads
+              # CMAKE_CUDA_FLAGS immediately.
+              -DCMAKE_CUDA_FLAGS=-allow-unsupported-compiler
             )
             if [[ -n "${CUDA_PATH:-}" ]]; then
               extra+=(
@@ -78,7 +94,6 @@ jobs:
             fi
           fi
           cmake -S . -B build \
-            -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DPROFILER_BACKEND=${{ matrix.backend }} \
             -DPROFILER_GPU_BACKEND=${{ matrix.gpu }} \
