@@ -12,6 +12,7 @@ All build paths and examples refer to this standalone repository.
 | [Dependencies](../third_party/README.md) | Vendored libraries and alternative dependency locations |
 | [Design review and CPU/GPU plan](design-review.md) | Efficiency/reliability requirements, Metal removal, architecture findings, backend tradeoffs, and implementation/release gates |
 | [Benchmarking](benchmarking.md) | The `profiler_benchmark` overhead-measurement tool, reference workloads, and how to gate against design-review.md's overhead budgets on a dedicated machine |
+| [Phase 4 GPU validation plan](plans/phase-4-gpu-validation.md) | What's done and what's missing for real-hardware CUDA/HIP validation, for execution on a machine with a physical GPU |
 
 Profiler has a C++ API. The optional HTA script analyzes exported files in Python;
 it does not provide Python bindings to the Profiler library.
