@@ -273,6 +273,25 @@ leaving it silently gone.
         with an undefined-symbol error. Not caught before pushing because
         local verification only covered the CUDA/Kineto-backend build this
         machine's GPU actually needs.
+
+        **Second CI regression found and fixed** (`18a1176` → follow-up
+        commit): the sticky error flag (`g_cuda_error_since_check` in
+        `cuda.cpp`) is process-wide, not scoped to one session — on the
+        `windows-2022 ITT cuda` CI runner (CUDA toolkit present, no real
+        device, so CUDA calls fail with a real driver/device error rather
+        than a clean "0 devices"), an earlier, unrelated test's CUDA call
+        set the flag, and `BackendGpuTracer.collector_kernel_on_device_plane`
+        (`TestProfilerGpuTracer.cpp:150`) — a synthetic test that makes no
+        real CUDA calls itself — failed because its `session.stop()` saw
+        that stale flag and reported an error that had nothing to do with
+        it. Fixed by clearing the flag at `gpu_tracer::start()` (discarding
+        any error from before this session began), so `collect_data()` at
+        `stop()` only ever attributes errors that happened *during* this
+        session's own active window, not anywhere earlier in the process.
+        This is a real gap this session's local testing couldn't have
+        caught: this machine's real GPU never hits the
+        toolkit-without-driver error path CI's compile-only CUDA runner
+        does.
       - New real-hardware test `session_reports_failure_after_cuda_runtime_error`
         (`TestProfilerGpuRealHardware.cpp`) injects a real failure (queries
         `elapsed()` on an unrecorded/invalid `cudaEvent_t`, which

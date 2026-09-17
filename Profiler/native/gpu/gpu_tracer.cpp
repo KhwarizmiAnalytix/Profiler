@@ -70,6 +70,14 @@ public:
             collector_.reset();
             return profiler_status::Error("Another profile session running.");
         }
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
+        // Discard any CUDA/HIP error flagged before this session started
+        // (impl::cudaStubs()'s sticky flag is process-wide, not scoped to a
+        // session -- see collect_data() below): otherwise a failure from a
+        // completely unrelated, already-finished capture would get
+        // attributed to this one the next time collect_data() checks it.
+        impl::cudaStubs()->consume_error_since_last_check();
+#endif
 #if PROFILER_HAS_CUDA
         // Warm the per-device calibration cache (common/clock_calibration.h)
         // at session start rather than paying its device round-trip cost
