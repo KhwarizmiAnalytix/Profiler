@@ -256,7 +256,12 @@ set_target_properties(
 )
 
 if(MSVC)
-    target_compile_options(Profiler PRIVATE /WX)
+    # C4392 is a false positive inside MSVC's own zmmintrin.h (AVX-512 FP16
+    # intrinsic declarations disagree with their own arg count) on newer
+    # toolsets (reproduced with VS 2026's 14.51.36231); it fires from the
+    # system header itself, not from anything Profiler controls, so /WX
+    # would otherwise fail the build on a toolset bug rather than our code.
+    target_compile_options(Profiler PRIVATE /WX /wd4392)
 endif()
 
 target_include_directories(
