@@ -233,6 +233,22 @@ private:
     traceme_recorder::Events result;
     SplitEventTracker        split_event_tracker;
     auto                     recorders = per_thread<ThreadLocalRecorder>::StopRecording();
+    // Phase 6.F (design-review.md section 7): SplitEventTracker::AddEnd()
+    // (called from each recorder->Consume() below) stores raw Event*
+    // pointers into that recorder's own ThreadEvents::events deque, kept in
+    // end_events_ until HandleCrossThreadEvents() runs after this loop. If
+    // `result` (a std::vector) reallocates partway through the loop, every
+    // ThreadEvents already pushed -- and the Event objects its deque
+    // owns -- gets relocated to new storage, leaving any pointer already
+    // captured in end_events_ dangling by the time HandleCrossThreadEvents()
+    // dereferences it. Reserving up front means this loop's push_back()
+    // calls never reallocate, so those pointers stay valid for the
+    // lifetime they're actually used. Reproduced via ThreadSanitizer under
+    // Phase 6.F's soak test (many start/stop cycles with many threads,
+    // WSL/Ubuntu since TSan has no Windows target): a real, use-after-free-
+    // shaped race in native/tracing/traceme_recorder.cpp's own reallocation
+    // path, independent of and pre-existing this session's other changes.
+    result.reserve(recorders.size());
     for (auto& recorder : recorders)
     {
         auto events = recorder->Consume(&split_event_tracker);

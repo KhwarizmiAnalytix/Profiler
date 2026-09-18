@@ -29,6 +29,21 @@ namespace profiler
 namespace profiler_impl
 {
 
+// Phase 6.H (design-review.md section 7, Phase 6 / section 6.7: "Record
+// schema/library/SDK versions... for reproducibility" / "Treat event
+// schema/version and export compatibility as contracts"). Bumps only when
+// this exporter's own emitted JSON *structure* changes in a way a consumer
+// parsing it would need to know about (a field is renamed, removed, or
+// changes meaning) -- not on every profiler library release. Consumers can
+// read `metadata.profilerChromeTraceSchemaVersion` in the exported JSON
+// (see export_to_chrome_trace_json()'s own doc comment for where it's
+// emitted) to detect a format they don't understand instead of silently
+// misparsing it. See TestProfilerXPlanePipeline.cpp's schema-version
+// assertion, which fails if this constant changes without a corresponding,
+// deliberate test update -- a compatibility change should never land
+// silently.
+inline constexpr int kChromeTraceSchemaVersion = 1;
+
 /**
  * @brief Export profiling data to Chrome Trace Event Format (JSON).
  *
@@ -52,7 +67,8 @@ namespace profiler_impl
  *     {"name": "compute", "ph": "X", "pid": 1, "tid": 100, "ts": 1000, "dur": 500},
  *     {"name": "event", "ph": "i", "pid": 1, "tid": 100, "ts": 1500, "s": "t"}
  *   ],
- *   "displayTimeUnit": "ns"
+ *   "displayTimeUnit": "ns",
+ *   "metadata": {"profilerChromeTraceSchemaVersion": 1}
  * }
  * ```
  *

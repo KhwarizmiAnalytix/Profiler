@@ -230,7 +230,11 @@ std::string export_to_chrome_trace_json(const x_space& space, bool pretty_print)
     }
 
     json << newline << indent << "]," << newline;
-    json << indent << R"("displayTimeUnit": "ns")" << newline;
+    json << indent << R"("displayTimeUnit": "ns",)" << newline;
+    // Phase 6.H: chrome_trace_exporter.h's kChromeTraceSchemaVersion doc
+    // comment explains what this is and when it bumps.
+    json << indent << R"("metadata": {"profilerChromeTraceSchemaVersion": )"
+         << kChromeTraceSchemaVersion << "}" << newline;
     json << "}" << newline;
 
     return json.str();

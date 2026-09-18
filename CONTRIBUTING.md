@@ -79,6 +79,18 @@ comment at the top of that file).
 - Update `docs/` when behavior, build options, or APIs change.
 - Ensure `ctest` passes locally before opening a PR; CI re-runs the full
   matrix regardless.
+- **Bumping a CUDA/ROCm toolkit version, the pinned Windows image, or a
+  compiler minimum** (design-review.md section 7, Phase 6: "rerun affected
+  hardware conformance on upgrades"): update
+  [docs/capability-matrix.md](docs/capability-matrix.md)'s version-pinning
+  table in the same PR, and re-run the real-hardware conformance suite on
+  the affected backend(s) before merging — CI's toolkit-only legs (see that
+  document's "GPU backends" section) prove compilation, not device
+  correctness, so they can't substitute for this. Record what was run, on
+  what hardware, with what result, the same way
+  `docs/plans/phase-4-gpu-validation.md` and
+  `docs/plans/phase-5-api-simplification.md`'s Windows follow-up session
+  already did.
 
 ## Reporting bugs and requesting features
 

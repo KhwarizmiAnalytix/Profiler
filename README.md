@@ -27,7 +27,8 @@ runtime, or Python dependency is required for the C++ library — Python is only
 used for the optional, offline Holistic Trace Analysis (HTA) workflow.
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
-[Output examples](docs/outputs.md) · [Runnable examples](examples/README.md)
+[Output examples](docs/outputs.md) · [Runnable examples](examples/README.md) ·
+[Capability matrix](docs/capability-matrix.md)
 
 ## Get it
 

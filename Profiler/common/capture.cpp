@@ -263,12 +263,32 @@ std::unique_ptr<capture_result> capture::stop()
         result->events_.reserve(kineto->events().size());
         for (const auto& event : kineto->events())
         {
-            capture_event copied;
-            copied.name        = event.name();
-            copied.start_ns    = event.startNs();
-            copied.duration_ns = event.durationNs();
-            copied.metadata    = event.extraMeta();
-            copied.stack       = event.stack();
+            // Phase 6.F (design-review.md section 7): construct the event
+            // directly in its final vector slot rather than building a
+            // local `capture_event` and push_back(std::move(...))-ing it.
+            // events_.reserve() above already guarantees this loop never
+            // reallocates, so this reference stays valid for the whole
+            // loop. This sidesteps a real, reproduced libstdc++ footgun:
+            // std::unordered_map's "single bucket" optimization for an
+            // empty/near-empty map stores a pointer *inside the container
+            // object itself* rather than a heap allocation: after
+            // metadata = event.extraMeta() (often empty for non-FunctionOp
+            // events), moving that local capture_event into the vector can
+            // leave copied.metadata's internal bucket pointer referencing
+            // this function's own (by-then-returned) stack frame instead of
+            // being correctly re-pointed to the moved-to object. Reproduced
+            // under AddressSanitizer (stack-use-after-return, pinned to
+            // this exact `copied` variable) via Phase 6.F's soak test
+            // (many session start/stop cycles) -- the corrupted event
+            // crashes whenever it's eventually destroyed, which can be many
+            // cycles later, explaining why this surfaced as several
+            // differently-shaped crashes before being isolated here.
+            capture_event& copied = result->events_.emplace_back();
+            copied.name           = event.name();
+            copied.start_ns       = event.startNs();
+            copied.duration_ns    = event.durationNs();
+            copied.metadata       = event.extraMeta();
+            copied.stack          = event.stack();
 
             copied.thread_id    = event.startThreadId();
             copied.device_type  = event.deviceType();
@@ -277,9 +297,9 @@ std::unique_ptr<capture_result> capture::stop()
 
             copied.correlation_id        = event.correlationId();
             copied.linked_correlation_id = event.linkedCorrelationId();
-            copied.is_async               = event.isAsync();
+            copied.is_async              = event.isAsync();
 
-            copied.activity_type = event.activityType();
+            copied.activity_type  = event.activityType();
             copied.transfer_bytes = event.nBytes();
 
 #if PROFILER_HAS_CUDA
@@ -304,9 +324,8 @@ std::unique_ptr<capture_result> capture::stop()
             // actually does.
             int64_t const cuda_elapsed        = event.cudaElapsedUs();
             int64_t const privateuse1_elapsed = event.privateuse1ElapsedUs();
-            copied.gpu_fallback_elapsed_us = (cuda_elapsed >= 0) ? cuda_elapsed : privateuse1_elapsed;
-
-            result->events_.push_back(std::move(copied));
+            copied.gpu_fallback_elapsed_us =
+                (cuda_elapsed >= 0) ? cuda_elapsed : privateuse1_elapsed;
         }
         result->impl_->kineto = std::move(kineto);
     }

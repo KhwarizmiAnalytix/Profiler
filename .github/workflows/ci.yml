@@ -8,6 +8,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  architecture-checks:
+    # Phase 6.A (design-review.md section 7): regression guard for two
+    # properties that already hold on this tree -- public headers must not
+    # transitively depend on backend-specific code, and "common" report
+    # logic must not contain backend conditionals. Fast and build-free, so
+    # it runs on every push/PR without waiting on a full matrix build.
+    name: architecture checks (public/backend dependency leakage)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Phase 6.A architecture checks
+        run: python3 Scripts/check_architecture.py
+
   build-test:
     name: ${{ matrix.os }} ${{ matrix.backend }} ${{ matrix.gpu }}
     runs-on: ${{ matrix.os }}

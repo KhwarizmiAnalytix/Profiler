@@ -57,6 +57,28 @@ PROFILERTEST(Profiler, chrome_trace_uses_microseconds)
     }
 }
 
+// Phase 6.H (design-review.md section 6.7 / Phase 6): "Treat event
+// schema/version and export compatibility as contracts." This test exists
+// to fail loudly if chrome_trace_exporter.h's kChromeTraceSchemaVersion
+// changes without a deliberate update here -- a schema-affecting change
+// should never land silently. If this test fails because the constant was
+// bumped on purpose, update the expected value below (and confirm the
+// bump was actually warranted by a real structural change to the emitted
+// JSON, not just an unrelated edit).
+PROFILERTEST(Profiler, chrome_trace_json_publishes_its_schema_version)
+{
+    x_space const space;  // Even an empty capture must carry the version.
+    const auto    json = profiler_impl::export_to_chrome_trace_json(space);
+    const auto    key  = json.find("\"profilerChromeTraceSchemaVersion\":");
+    ASSERT_NE(key, std::string::npos)
+        << "exported JSON is missing the schema-version field entirely";
+    const auto value_start = key + std::string("\"profilerChromeTraceSchemaVersion\":").size();
+    EXPECT_EQ(std::stoi(json.substr(value_start)), profiler_impl::kChromeTraceSchemaVersion);
+    // Pin the actual current value too, not just self-consistency with the
+    // constant -- catches the constant itself drifting unnoticed.
+    EXPECT_EQ(profiler_impl::kChromeTraceSchemaVersion, 1);
+}
+
 PROFILERTEST(Profiler, chrome_trace_hierarchical_single_scope)
 {
     profiler_options opts;

@@ -35,6 +35,7 @@ limitations under the License.
 #include <memory>  // for unique_ptr
 #include <vector>  // for vector
 
+#include "common/profiler_export.h"          // for PROFILER_API, PROFILER_VISIBILITY
 #include "native/core/profiler_interface.h"  // for profiler_interface
 namespace profiler
 {
@@ -45,17 +46,21 @@ namespace profiler
 {
 
 // profiler_collection multiplexes profiler_interface calls into a collection of
-// profilers.
-class profiler_collection : public profiler_interface
+// profilers. Exported (unlike a purely internal implementation detail) so
+// first-party failure-injection tests can construct one directly with a
+// test-only profiler_interface -- see
+// Testing/Cxx/TestProfilerFailureInjection.cpp.
+class PROFILER_VISIBILITY profiler_collection : public profiler_interface
 {
 public:
-    explicit profiler_collection(std::vector<std::unique_ptr<profiler_interface>> profilers);
+    PROFILER_API explicit profiler_collection(
+        std::vector<std::unique_ptr<profiler_interface>> profilers);
 
-    profiler_status start() override;
+    PROFILER_API profiler_status start() override;
 
-    profiler_status stop() override;
+    PROFILER_API profiler_status stop() override;
 
-    profiler_status collect_data(x_space* space) override;
+    PROFILER_API profiler_status collect_data(x_space* space) override;
 
 private:
     std::vector<std::unique_ptr<profiler_interface>> profilers_;

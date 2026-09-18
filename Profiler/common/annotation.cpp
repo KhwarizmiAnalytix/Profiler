@@ -75,17 +75,37 @@ struct annotation_pool_node
     annotation_pool_node* next_;
 };
 
-// Mirrors bespoke/common/collection.cpp's `thread_local SubQueueThreadCache
-// sub_queue_cache_`: a single trivial, no-destructor POD. If thread-exit
-// teardown order ever skips or reorders this thread_local's destruction,
-// nothing dangerous happens -- worst case is a benign, bounded leak of
-// already-freed blocks, never a dangling access, because nothing else in the
-// codebase keys behavior off this object's lifetime or off impl's address
-// (profiler_scope/RecordFunction do not maintain an address-keyed registry).
+// Frees any blocks still pooled when this thread exits (Phase 6.F,
+// design-review.md section 7's soak-testing ask: "Check post-warmup memory
+// plateaus, handle/resource leaks"). kAnnotationPoolCap bounds worst-case
+// retained memory *per thread*, but a process that creates many short-lived
+// threads (e.g. a thread-pool-per-request pattern) previously leaked up to
+// kAnnotationPoolCap * sizeof(impl) for every thread that ever used
+// PROFILER_SCOPE, for the life of the process -- "bounded per thread" is not
+// "bounded overall." Reproduced directly by a soak test spawning ~16,000
+// ephemeral threads across 2,000 session start/stop cycles (RSS grew ~10MB;
+// the same total PROFILER_SCOPE call volume across only 4 threads showed no
+// growth, isolating thread count -- not call volume -- as the cause). The
+// destructor only touches this object's own freelist and calls
+// ::operator delete(), a globally available function with no dependency on
+// any other thread_local's state, so it introduces no teardown-order hazard
+// with sibling thread_locals (unlike bespoke/common/collection.cpp's
+// `sub_queue_cache_`, which stays a trivial no-destructor POD -- that one's
+// tradeoff is unchanged by this fix and not itself soak-tested here).
 struct annotation_pool_state
 {
     annotation_pool_node* head_;
     std::size_t           size_;
+
+    ~annotation_pool_state()
+    {
+        while (head_ != nullptr)
+        {
+            annotation_pool_node* next = head_->next_;
+            ::operator delete(head_);
+            head_ = next;
+        }
+    }
 };
 
 thread_local annotation_pool_state annotation_pool_cache_{nullptr, 0};
