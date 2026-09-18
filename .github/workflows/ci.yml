@@ -439,10 +439,11 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     env:
       # detect_leaks=1 hangs at exit on macOS: LeakSanitizer's stop-the-world
-      # scan is not reliably supported on Darwin. Kept off on both platforms
-      # so the recipe stays identical; enable it in a Linux-only job if leak
-      # detection is wanted later.
-      ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+      # scan is not reliably supported on Darwin, so it stays Linux-only.
+      # LeakSanitizer is supported on the Linux runner and catches actual
+      # unreleased allocations. macOS keeps it disabled because its
+      # stop-the-world scan can hang during process teardown.
+      ASAN_OPTIONS: detect_leaks=${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}:halt_on_error=1
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
       - name: Checkout

@@ -593,11 +593,11 @@ Use `-DPROFILER_SANITIZER=thread` (a separate build directory; ThreadSanitizer
 cannot combine with AddressSanitizer) for data-race detection across the
 lock-free queue, thread-local storage, and RecordFunction callback paths.
 
-`ASAN_OPTIONS=detect_leaks=0` is intentional on every platform: LeakSanitizer's
-exit-time stop-the-world scan is not reliably supported on macOS and has been
-observed to hang there indefinitely with no diagnostic output, after every
-test already passed. CI therefore runs ASan+UBSan on Ubuntu and macOS with
-leak detection off, and restricts ThreadSanitizer to Ubuntu only — TSan's
-macOS support has independently shown toolchain-specific crashes during its
-own runtime initialization (before any Profiler code executes), which Linux's
-mature glibc/TSan integration does not exhibit.
+LeakSanitizer is enabled for CI's Ubuntu ASan+UBSan job, where it catches
+unreleased heap allocations. `ASAN_OPTIONS=detect_leaks=0` remains intentional
+on macOS: LeakSanitizer's exit-time stop-the-world scan is not reliably
+supported there and has been observed to hang indefinitely with no diagnostic
+output after every test already passed. CI restricts ThreadSanitizer to Ubuntu
+only because macOS TSan has independently shown toolchain-specific crashes
+during its own runtime initialization (before any Profiler code executes),
+which Linux's mature glibc/TSan integration does not exhibit.
