@@ -215,7 +215,6 @@ PROFILERTEST(BackendMemory, native_profiles_memory)
     opts.enable_timing_                 = true;
     opts.enable_memory_tracking_        = true;
     opts.track_memory_deltas_           = true;
-    opts.track_peak_memory_             = true;
     opts.enable_hierarchical_profiling_ = true;
     opts.enable_statistical_analysis_   = true;
 

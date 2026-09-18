@@ -268,12 +268,10 @@ replaces the previous session's collected XSpace.
 | `with_hierarchical_profiling(bool)` | Enable hierarchy collection |
 | `with_memory_tracking(bool)` | Enable the session memory tracker |
 | `with_statistical_analysis(bool)` | Collect online statistical samples |
-| `with_thread_safety(bool)` | Enable synchronized session operations |
 | `with_gpu_tracing(bool)` | Enable the native GPU collector; backend support is required |
 | `with_max_samples(size_t)` | Set the statistical sample limit |
-| `with_percentiles(bool)` | Enable percentile calculations |
-| `with_peak_memory_tracking(bool)` / `with_memory_deltas(bool)` | Configure memory statistics |
-| `with_output_format(format)` / `with_output_file(path)` | Configure session report export |
+| `with_memory_deltas(bool)` | Configure memory delta statistics |
+| `with_output_format(format)` | Select the report format; pass the destination path to `export_report()`/`export_to_file()` directly |
 | `build()` | Return a `std::unique_ptr<profiler_session>` |
 
 Lower-level native tracing is implemented under `Profiler/native/tracing/` and

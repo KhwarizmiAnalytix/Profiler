@@ -35,20 +35,9 @@
  * @date 2024
  */
 
-// Prevent Windows min/max macros from interfering with std::numeric_limits
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#endif
-
-#include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <cmath>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -114,11 +103,6 @@ struct profiler_options
     /// per-scope stats computation (incl. a percentile sort) to every scope stop().
     bool enable_statistical_analysis_ = false;
 
-    /// Not currently consumed anywhere -- setting this has no effect. Multi-threaded
-    /// recording safety today comes from the always-on thread-local/lock-free paths
-    /// (traceme_recorder, annotation), not from a toggle.
-    bool enable_thread_safety_ = true;
-
     /// Enable native GPU device tracing (`/device:GPU:N`).
     bool enable_gpu_tracing_ = false;
 
@@ -137,25 +121,11 @@ struct profiler_options
     /// Selected output format for reports
     output_format_enum output_format_ = output_format_enum::CONSOLE;
 
-    /// File path for report output (when using FILE format)
-    std::string output_file_path_;
-
     /// Maximum number of samples to collect for statistical analysis
     size_t max_samples_ = 1000;
 
-    /// Whether to calculate percentile statistics (25th, 50th, 75th, 90th, 95th, 99th)
-    bool calculate_percentiles_ = true;
-
-    /// Whether to track peak memory usage
-    bool track_peak_memory_ = true;
-
     /// Whether to track memory usage deltas between measurements
     bool track_memory_deltas_ = true;
-
-    /// Forwarded to statistical_analyzer::worker_threads_hint_ (see
-    /// set_worker_threads_hint()), but that hint is only stored there, never read --
-    /// no worker pool is ever created from it. Not currently consumed.
-    size_t thread_pool_size_ = std::thread::hardware_concurrency();
 };
 
 /**
@@ -209,55 +179,6 @@ struct memory_stats
 };
 
 /**
- * @brief Timing statistics for repeated measurements
- *
- * Collects and calculates statistical metrics for timing measurements,
- * including min/max/mean times, standard deviation, and percentiles.
- */
-struct timing_stats
-{
-    /// Minimum time observed in milliseconds
-    double min_time_ = (std::numeric_limits<double>::max)();
-
-    /// Maximum time observed in milliseconds
-    double max_time_ = 0.0;
-
-    /// Total accumulated time in milliseconds
-    double total_time_ = 0.0;
-
-    /// Mean (average) time in milliseconds
-    double mean_time_ = 0.0;
-
-    /// Standard deviation of timing measurements
-    double std_deviation_ = 0.0;
-
-    /// Number of timing samples collected
-    size_t sample_count_ = 0;
-
-    /// Percentile values: 25th, 50th, 75th, 90th, 95th, 99th
-    std::vector<double> percentiles_;
-
-    /// Raw timing samples collected for this scope
-    std::vector<double> samples_;
-
-    /**
-     * @brief Add a new timing sample to the statistics
-     * @param time_ms Time measurement in milliseconds
-     */
-    void add_sample(double time_ms);
-
-    /**
-     * @brief Calculate statistical metrics from collected samples
-     */
-    void calculate_statistics(bool include_percentiles = true);
-
-    /**
-     * @brief Reset all timing statistics to initial state
-     */
-    void reset();
-};
-
-/**
  * @brief Profiler scope data for hierarchical profiling
  *
  * Contains all data associated with a profiling scope, including timing information,
@@ -276,9 +197,6 @@ struct profiler_scope_data
 
     /// Memory usage statistics for this scope
     profiler::memory_stats memory_stats_;
-
-    /// Timing statistics for this scope
-    profiler::timing_stats timing_stats_;
 
     /// ID of the thread that executed this scope. Only meaningful on a live (not yet reconstructed
     /// from XSpace) instance -- see thread_label_ for the field reports should read.
@@ -678,17 +596,6 @@ public:
     }
 
     /**
-     * @brief Set enable_thread_safety_ -- not currently consumed anywhere; has no effect.
-     * @param enable Stored on options_.enable_thread_safety_ only.
-     * @return Reference to this profiler_session_builder for method chaining
-     */
-    profiler_session_builder& with_thread_safety(bool enable = true)
-    {
-        options_.enable_thread_safety_ = enable;
-        return *this;
-    }
-
-    /**
      * @brief Enable native GPU device tracing (GPU intervals on `/device:GPU:N`)
      * @param enable true to start the native GPU device tracer with the session
      * @return Reference to this profiler_session_builder for method chaining
@@ -712,17 +619,6 @@ public:
     }
 
     /**
-     * @brief Set the output file path for reports
-     * @param path File path for report output
-     * @return Reference to this profiler_session_builder for method chaining
-     */
-    profiler_session_builder& with_output_file(const std::string& path)
-    {
-        options_.output_file_path_ = path;
-        return *this;
-    }
-
-    /**
      * @brief Set maximum number of samples for statistical analysis
      * @param max_samples Maximum number of samples to collect
      * @return Reference to this profiler_session_builder for method chaining
@@ -734,28 +630,6 @@ public:
     }
 
     /**
-     * @brief Enable or disable percentile calculations
-     * @param enable true to calculate percentiles, false to disable
-     * @return Reference to this profiler_session_builder for method chaining
-     */
-    profiler_session_builder& with_percentiles(bool enable = true)
-    {
-        options_.calculate_percentiles_ = enable;
-        return *this;
-    }
-
-    /**
-     * @brief Enable or disable peak memory tracking
-     * @param enable true to track peak memory, false to disable
-     * @return Reference to this profiler_session_builder for method chaining
-     */
-    profiler_session_builder& with_peak_memory_tracking(bool enable = true)
-    {
-        options_.track_peak_memory_ = enable;
-        return *this;
-    }
-
-    /**
      * @brief Enable or disable memory delta tracking
      * @param enable true to track memory deltas, false to disable
      * @return Reference to this profiler_session_builder for method chaining
@@ -763,19 +637,6 @@ public:
     profiler_session_builder& with_memory_deltas(bool enable = true)
     {
         options_.track_memory_deltas_ = enable;
-        return *this;
-    }
-
-    /**
-     * @brief Set thread_pool_size_ -- forwarded to the statistical analyzer's
-     * worker_threads_hint_, which is stored but never read; no worker pool is
-     * created from it. Not currently consumed.
-     * @param size Number of threads in the thread pool
-     * @return Reference to this profiler_session_builder for method chaining
-     */
-    profiler_session_builder& with_thread_pool_size(size_t size)
-    {
-        options_.thread_pool_size_ = size;
         return *this;
     }
 

@@ -146,7 +146,7 @@ cc_library(
         "//conditions:default": [],
     }),
     # native/core/profiler_factory.h's registered profilers (host_tracer_factory,
-    # python_tracer_factory, gpu_tracer_factory, metadata_collector) and the
+    # python_tracer_factory, gpu_tracer_factory) and the
     # bespoke stub registrations (cuda.cpp's RegisterCUDAOrHIPMethods, itt.cpp's
     # RegisterITTMethods) self-register via static-init -- no other code references
     # a symbol in those translation units. Bazel links this target as a static

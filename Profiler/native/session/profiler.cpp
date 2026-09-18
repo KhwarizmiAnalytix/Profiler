@@ -31,7 +31,6 @@
 #include "profiler.h"
 
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -42,7 +41,6 @@
 #include <utility>
 
 #include "common/profiler_macros.h"
-////#include "logger/logger.h"
 #include "native/analysis/statistical_analyzer.h"
 #include "native/core/profiler_collection.h"
 #include "native/core/profiler_factory.h"
@@ -55,15 +53,6 @@
 #include "native/session/scope_tree_builder.h"
 #include "native/tracing/traceme_recorder.h"
 
-// Prevent Windows min/max macros from interfering with std::numeric_limits
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#endif
-
-#include <limits>
-
 namespace profiler
 {
 // Static current session management with atomic operations for thread safety
@@ -74,84 +63,6 @@ static std::atomic<profiler::profiler_session*> g_current_session{nullptr};
 // to 0 per object, so two different fresh objects would otherwise collide on
 // generation() == 1 for their respective first runs.
 static std::atomic<uint64_t> g_capture_generation{0};
-
-//=============================================================================
-// timing_stats Implementation
-//=============================================================================
-
-void timing_stats::add_sample(double time_ms)
-{
-    min_time_ = std::min(time_ms, min_time_);
-    max_time_ = std::max(time_ms, max_time_);
-    total_time_ += time_ms;
-    ++sample_count_;
-    samples_.push_back(time_ms);
-}
-
-void timing_stats::calculate_statistics(bool include_percentiles)
-{
-    if (sample_count_ == 0)
-    {
-        return;
-    }
-
-    mean_time_ = total_time_ / sample_count_;
-
-    // Compute variance/standard deviation using collected samples
-    double variance_sum = 0.0;
-    for (double const sample : samples_)
-    {
-        double const diff = sample - mean_time_;
-        variance_sum += diff * diff;
-    }
-    // sample_count_ is guaranteed > 0 here due to check at line 346
-    // cppcheck-suppress knownConditionTrueFalse
-    std_deviation_ = sample_count_ > 0 ? std::sqrt(variance_sum / sample_count_) : 0.0;
-
-    // Optionally compute percentiles (25th, 50th, 75th, 90th, 95th, 99th)
-    percentiles_.clear();
-    if (include_percentiles)
-    {
-        std::array<double, 6> percentile_targets = {25.0, 50.0, 75.0, 90.0, 95.0, 99.0};
-        std::vector<double>   sorted_samples     = samples_;
-        std::sort(sorted_samples.begin(), sorted_samples.end());
-        percentiles_.assign(percentile_targets.begin(), percentile_targets.end());
-        for (size_t i = 0; i < percentile_targets.size(); ++i)
-        {
-            double const percentile = percentile_targets[i];
-            if (sorted_samples.empty())
-            {
-                percentiles_[i] = 0.0;
-                continue;
-            }
-            double const index = (percentile / 100.0) * (sorted_samples.size() - 1);
-            auto const   lower = static_cast<size_t>(std::floor(index));
-            auto const   upper = static_cast<size_t>(std::ceil(index));
-            if (lower == upper)
-            {
-                percentiles_[i] = sorted_samples[lower];
-            }
-            else
-            {
-                double const weight = index - lower;
-                percentiles_[i] =
-                    (sorted_samples[lower] * (1.0 - weight)) + (sorted_samples[upper] * weight);
-            }
-        }
-    }
-}
-
-void timing_stats::reset()
-{
-    min_time_      = (std::numeric_limits<double>::max)();
-    max_time_      = 0.0;
-    total_time_    = 0.0;
-    mean_time_     = 0.0;
-    std_deviation_ = 0.0;
-    sample_count_  = 0;
-    percentiles_.clear();
-    samples_.clear();
-}
 
 //=============================================================================
 // profiler_scope_data Implementation
@@ -426,7 +337,6 @@ void profiler_session::initialize_components()
     {
         statistical_analyzer_ = std::make_unique<profiler::statistical_analyzer>();
         statistical_analyzer_->set_max_samples_per_series(options_.max_samples_);
-        statistical_analyzer_->set_worker_threads_hint(options_.thread_pool_size_);
     }
 
     backend_profile_options_ = build_backend_profile_options();
@@ -453,7 +363,6 @@ profile_options profiler_session::build_backend_profile_options() const
     profile_options opts;
     opts.set_version(5);
     opts.set_device_type(profile_options::device_type_enum::CPU);
-    opts.set_include_dataset_ops(false);
     // host_tracer must run whenever hierarchical profiling is requested, not only when timing is
     // -- profiler_scope::start() backs every scope with a traceme_ event, and traceme events are
     // only recorded while traceme_recorder is active at this level (see host_tracer.cpp), so
@@ -467,8 +376,6 @@ profile_options profiler_session::build_backend_profile_options() const
         opts.set_device_type(profile_options::device_type_enum::GPU);
     }
     opts.set_python_tracer_level(0);
-    opts.set_enable_hlo_proto(false);
-    opts.set_duration_ms(0);
     return opts;
 }
 

@@ -291,7 +291,6 @@ PROFILERTEST(Profiler, heavy_function_comprehensive_computational_profiling)
     opts.enable_memory_tracking_        = true;
     opts.enable_hierarchical_profiling_ = true;
     opts.enable_statistical_analysis_   = true;
-    opts.enable_thread_safety_          = true;
     opts.output_format_                 = profiler_options::output_format_enum::CONSOLE;
 
     profiler_session session(opts);
@@ -636,7 +635,6 @@ PROFILERTEST(Profiler, itt_api_heavy_function_profiling)
     opts.enable_timing_               = true;
     opts.enable_memory_tracking_      = false;
     opts.enable_statistical_analysis_ = false;
-    opts.enable_thread_safety_        = true;
     opts.output_format_               = profiler_options::output_format_enum::JSON;
 
     profiler_session session(opts);

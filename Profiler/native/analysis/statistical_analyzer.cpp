@@ -463,11 +463,6 @@ void statistical_analyzer::set_percentiles(const std::vector<double>& percentile
     percentiles_ = percentiles;
 }
 
-void statistical_analyzer::set_worker_threads_hint(size_t threads)
-{
-    worker_threads_hint_ = threads;
-}
-
 profiler::statistical_metrics statistical_analyzer::calculate_metrics(
     const std::vector<double>& data) const
 {

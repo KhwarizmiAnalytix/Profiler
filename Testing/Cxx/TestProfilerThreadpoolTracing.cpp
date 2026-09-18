@@ -237,7 +237,6 @@ profiler_options make_options()
     opts.enable_hierarchical_profiling_ = true;
     opts.enable_statistical_analysis_   = true;
     opts.track_memory_deltas_           = true;
-    opts.track_peak_memory_             = true;
     opts.output_format_                 = profiler_options::output_format_enum::JSON;
     return opts;
 }

@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- Phase 5 (design-review.md) API simplification: remove dead/unreachable public
+  surface identified in section 4's inventory instead of leaving it as a
+  permanent "has no effect" comment.
+  - Removed `timing_stats` (native/session/profiler.h) and the unused
+    `profiler_scope_data::timing_stats_` field -- zero call sites anywhere;
+    `statistical_analyzer`'s `statistical_metrics` is the one live timing
+    accumulator.
+  - Removed `remote_profiler_session_manager_options` -- declaration-only,
+    no implementation ever existed.
+  - Removed `MetadataCollector` and `profile_options::enable_hlo_proto` --
+    the collector's only gate was hardcoded `false` at its one production
+    call site, so it was never reachable in any configuration.
+  - Removed `profile_options::include_dataset_ops`, `duration_ms`,
+    `repository_path` -- TF/XLA-era fields with no consumer in this native
+    port.
+  - Removed `profiler_options::enable_thread_safety_`,
+    `thread_pool_size_` (and the now-unused
+    `statistical_analyzer::set_worker_threads_hint()`),
+    `output_file_path_`, `calculate_percentiles_`, `track_peak_memory_`,
+    and their `profiler_session_builder` methods (`with_thread_safety`,
+    `with_thread_pool_size`, `with_output_file`, `with_percentiles`,
+    `with_peak_memory_tracking`) -- each was a builder call that silently
+    did nothing; pass the export path directly to `export_report()`/
+    `export_to_file()` instead of `with_output_file()`.
+  - Removed the fully disabled (`#if 0`) `native/cpu/python_tracer.{h,cpp}`
+    dead-code shell. The registered `python_tracer_stub` now returns an
+    explicit `profiler_status::Error(...)` instead of silently succeeding
+    with no data when Python tracing is requested.
+  - Removed the unreferenced duplicate `native/utils/timespan.h`
+    (`native/core/timespan.h` is the one actually used).
 - License Profiler under Apache 2.0, with the standard AS IS warranty disclaimer.
   Update project headers and documentation while retaining upstream notices.
 - Include LICENSE and NOTICE in installed packages.

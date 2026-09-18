@@ -31,8 +31,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 #include <memory>  // for unique_ptr
+#include <string>  // for to_string
 
-////#include "logger/logger.h"
 #include "native/core/profiler_factory.h"    // for register_profiler_factory
 #include "native/core/profiler_interface.h"  // for profiler_interface
 #include "native/core/profiler_options.h"    // for profile_options
@@ -44,6 +44,11 @@ namespace profiler_impl
 namespace
 {
 
+// Design-review.md section 4's decision for this row: "Report unsupported; do not
+// advertise a working Python collector." Python tracing has no real implementation in
+// this native port (see the removed `native/cpu/python_tracer.{h,cpp}` disabled shell);
+// a caller that explicitly requests it must get an honest failure, not a silent
+// no-op success indistinguishable from "ran and produced nothing."
 class python_tracer_stub : public profiler_interface
 {
 public:
@@ -51,12 +56,9 @@ public:
 
     profiler_status start() override
     {
-        /* PROFILER_LOG_WARNING(
-            "Python tracing requested at level {}, but Python integration is not available in "
-            "this build.",
-            requested_level_); */
-        (void)requested_level_;
-        return profiler_status::Ok();
+        return profiler_status::Error(
+            "Python tracing was requested at level " + std::to_string(requested_level_) +
+            ", but this build has no Python tracer implementation.");
     }
 
     profiler_status stop() override { return profiler_status::Ok(); }

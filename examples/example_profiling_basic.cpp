@@ -148,7 +148,6 @@ void example_native_profiler()
     opts.enable_timing_               = true;   // Enable timing measurements
     opts.enable_memory_tracking_      = false;  // Disable memory tracking for this example
     opts.enable_statistical_analysis_ = false;  // Disable statistics
-    opts.enable_thread_safety_        = true;   // Thread-safe operations
     opts.output_format_               = profiler_options::output_format_enum::JSON;
 
     // Create and start profiler session

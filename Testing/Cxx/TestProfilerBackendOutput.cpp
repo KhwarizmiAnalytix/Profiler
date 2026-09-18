@@ -96,7 +96,6 @@ profiler_options make_report_options(profiler_options::output_format_enum format
     opts.enable_hierarchical_profiling_ = true;
     opts.enable_statistical_analysis_   = true;
     opts.track_memory_deltas_           = true;
-    opts.track_peak_memory_             = true;
     opts.output_format_                 = format;
     return opts;
 }
@@ -191,15 +190,14 @@ PROFILERTEST(BackendOutput, console_report_text)
 // -----------------------------------------------------------------------------
 PROFILERTEST(BackendOutput, file_format_exports_console_text)
 {
-    profiler_options opts  = make_report_options(profiler_options::output_format_enum::FILE);
-    opts.output_file_path_ = "backend_output_file_report.txt";
+    profiler_options opts = make_report_options(profiler_options::output_format_enum::FILE);
+    const std::string path = "backend_output_file_report.txt";
 
     profiler_session session(opts);
     ASSERT_TRUE(session.start());
     run_nested_workload(session);
     ASSERT_TRUE(session.stop());
 
-    const std::string path = opts.output_file_path_;
     session.export_report(path);
 
     const std::string content = read_file(path);
