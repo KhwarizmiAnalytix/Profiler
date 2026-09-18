@@ -8,7 +8,21 @@ throughout below). **Executed 2026-09-18** (macOS session, commits
 checklist for what was done, what was deliberately scoped out and why, and
 what's left as an honest follow-up (Windows-side `install(EXPORT)`
 migration, CUDA/HIP static `find_dependency()` wiring — both need
-verification this session's machine cannot provide).
+verification this session's machine cannot provide). **Followed up
+2026-09-18** on the Windows/NVIDIA machine itself: the `install(EXPORT)`
+migration and CUDA static `find_dependency()` wiring are now done and
+verified on real hardware, including a full STATIC+ITT build-install-consume
+cycle — see the newest amendments below and `docs/phase-5-remaining.md`'s
+items 2/3/8 for the full record. A real, pre-existing bug in
+`profiler_keep_static_registrations()` (silently dropped static
+registrations for plain `clang++.exe` targeting the MSVC ABI via
+`lld-link`) was also found and fixed. Statistics consolidation (5.A),
+previously declined, is now done too — `stat_with_percentiles` gained a
+second, interpolated percentile mode, and `statistical_analyzer` projects
+from it. `profiler_benchmark` now publishes per-feature
+(stack/memory/marker-sink) cost rows, and a real before/after benchmark run
+confirmed no regression. HIP static consumption remains unverified — no
+HIP/ROCm hardware available.
 
 ## Goal
 
@@ -542,3 +556,289 @@ and ran `consumer/` against a fresh `BUILD_SHARED_LIBS=OFF`,
 then converted the job to a `matrix: backend: [KINETO, ITT]` in
 `.github/workflows/ci.yml`. CUDA/HIP legs are not added to this matrix,
 consistent with step 2 above.
+
+## Amendment, 2026-09-18 (Windows/NVIDIA session) — 5.D steps 1 and 2 done: real `install(EXPORT)` and CUDA static `find_dependency()`, verified on the exact machine the prior amendment named as required
+
+The previous amendment above declined 5.D steps 1 and 2 specifically
+because macOS couldn't verify the Windows `IMPORTED_IMPLIB` path, the
+static whole-archive/registration-preservation trick, or CUDA static
+linking at all ("needs a Windows machine (or CI)... needs a machine with
+the CUDA toolkit"). This session ran on that machine (the same
+Windows/NVIDIA host Phase 4 used, confirmed via `nvidia-smi` and
+`nvcc --version`: an RTX 4060 Ti, CUDA 13.2 toolkit, driver reporting CUDA
+13.1) and did both.
+
+**What changed.** `ProfilerConfig.cmake` generation now uses
+`install(TARGETS Profiler EXPORT ProfilerTargets ...)` +
+`install(EXPORT ProfilerTargets NAMESPACE Profiler:: ...)` +
+`configure_package_config_file()` (from a new `cmake/ProfilerConfig.cmake.in`)
++ `write_basic_package_version_file()`, replacing the old fully hand-rolled
+`file(GENERATE ...)` string. The prior amendment's core worry -- that this
+would require "restructuring how the target itself is defined throughout
+CMakeLists.txt" -- turned out to be only half right: Profiler's include-dir
+usage requirements were *already* real target properties
+(`$<BUILD_INTERFACE:>`/`$<INSTALL_INTERFACE:include>` on
+`target_include_directories`), which is all `install(EXPORT)` needs for the
+primary target. What actually needed fixing, found only by running
+`install(EXPORT)` for real and reading its own refusals:
+
+1. `PROFILER_DEPENDENCY_INCLUDE_DIRS`/`_LIBS` (kineto/fmt/ITT build-tree
+   paths and targets, added `PUBLIC`/`PRIVATE` un-scoped) had to be
+   rewrapped in `$<BUILD_INTERFACE:>`. Without it, `install(EXPORT)` twice
+   refused to export Profiler at all: a source-tree path can't appear in an
+   installed package's `INTERFACE_INCLUDE_DIRECTORIES`, and a STATIC
+   library's PRIVATE link libraries auto-propagate to consumers via
+   `$<LINK_ONLY:...>` (the archive alone can't resolve its own symbols),
+   which requires the referenced target to be part of an export set --
+   fmt/kineto/ittnotify are vendored via FetchContent with no such identity.
+   `$<BUILD_INTERFACE:>` keeps both working for in-tree consumers
+   (tests/examples/benchmarks) while excluding them from what
+   `install(EXPORT)` captures.
+2. `cmake/ProfilerLinking.cmake`'s `profiler_keep_static_registrations()`
+   had the identical self-export problem one level deeper: its
+   `target_link_options(... INTERFACE "/WHOLEARCHIVE:$<TARGET_FILE_NAME:${target}>")`
+   (and the APPLE/GNU equivalents) sets an `INTERFACE_LINK_OPTIONS` property
+   containing a generator expression that names `${target}` itself -- when
+   called in-tree as `profiler_keep_static_registrations(Profiler)`, that
+   property gets exported verbatim by `install(EXPORT)`, but
+   `INTERFACE_LINK_OPTIONS` (unlike `INTERFACE_LINK_LIBRARIES`) is not
+   scanned/rewritten to the namespaced `Profiler::Profiler` export name.
+   Reproduced exactly: a STATIC consumer's `target_link_libraries` failed
+   with `Error evaluating generator expression: $<TARGET_FILE_NAME:Profiler>
+   -- No target "Profiler"`. Fixed the same way, wrapping all three
+   branches' content in `$<BUILD_INTERFACE:>`; `ProfilerConfig.cmake.in`
+   calls `profiler_keep_static_registrations(Profiler::Profiler)` again,
+   correctly, in the consumer's own scope, right after including the
+   generated `ProfilerTargets.cmake`.
+3. The STATIC third-party archive block (fmt/kineto/ittnotify, installed by
+   path since they're not exportable targets) needed a `$<CONFIG>`-suffixed
+   `file(GENERATE)` output collapsed back to one name via
+   `install(FILES ... RENAME ProfilerStaticThirdParty.cmake)`: under the
+   multi-config `Visual Studio 17 2022` generator, `$<TARGET_FILE_NAME:fmt>`
+   genuinely differs per configuration (fmt's own `DEBUG_POSTFIX`), which
+   `file(GENERATE)` requires a distinct `OUTPUT` for -- this only surfaces
+   on a multi-config generator, invisible under Ninja.
+
+5.D step 2 (CUDA/HIP static `find_dependency()`) is now wired into
+`ProfilerConfig.cmake.in`, gated on `@PROFILER_HAS_CUDA@`/`@PROFILER_HAS_HIP@`.
+Verifying it for real (rather than just writing plausible-looking code, the
+exact trap Phase 4's own history warns against) surfaced two further real
+bugs, both only reachable with actual CUDA hardware/toolkit present:
+
+- The STATIC-only include-dir propagation loop originally forwarded *every*
+  entry in `PROFILER_DEPENDENCY_INCLUDE_DIRS` verbatim, including the
+  kineto/fmt build-tree paths that have nothing to do with CUDA -- leaking
+  non-relocatable absolute build-tree paths into an installed STATIC
+  package's `INTERFACE_INCLUDE_DIRECTORIES`. None of the curated public
+  headers actually need those dirs (checked directly). Narrowed to
+  propagate only the one legitimate CUDA-specific entry (the header-only
+  nvtx3 fallback when no `CUDA::nvtx3` target exists), by variable name
+  (`${CUDAToolkit_INCLUDE_DIR}`) so it re-resolves in the consumer's own
+  scope rather than baking in this build's absolute path.
+- kineto links CUPTI itself, inside its own vendored CMakeLists'
+  `find_package(CUDAToolkit)` -- Profiler never calls CUPTI directly, so
+  that dependency never touches `PROFILER_DEPENDENCY_LIBS`. Since kineto is
+  only installed as a raw archive (not a real exported target), that
+  transitive requirement was completely invisible to the static wiring.
+  Reproduced as 21 unresolved `cuptiActivity*`/`cuptiSubscribe`/etc.
+  externals linking a STATIC `find_package()` consumer with a CUPTI-enabled
+  kineto; fixed by also propagating `CUDA::cupti` by name (same
+  `find_dependency(CUDAToolkit)`-recreated-target reasoning as
+  cudart/nvtx3) when present.
+
+An unrelated pre-existing bug surfaced independently, while producing the
+first clean `PROFILER_GPU_BACKEND=none` STATIC build this machine had ever
+exercised (prior Windows sessions' builds all used `gpu=cuda`, which
+transitively pulls in `<windows.h>` early enough in each translation unit to
+mask this): `Profiler/native/memory/memory_tracker.h`/`.cpp` `#include
+<psapi.h>` *before* `<windows.h>` (psapi.h depends on windows.h's typedefs)
+and never defined `NOMINMAX` before including `<windows.h>` in the header
+(only the `.cpp` did) -- reproduced as compile failures on every
+`profiler.h` consumer once nothing upstream had already dragged
+`<windows.h>` in first. Fixed: reordered the includes and added the missing
+`NOMINMAX` guard in the header, matching the pattern
+`benchmarks/profiler_benchmark.cpp` already used correctly.
+
+**Verified end to end**, real MSVC (`Visual Studio 17 2022` generator) and
+LLVM `clang++.exe` (Ninja generator) both:
+
+- SHARED+KINETO, `gpu=none`: configure, build, `ctest` (pass), install to a
+  scratch prefix, `find_package(Profiler)` from `consumer/`, build, run
+  (host tracer registered, ran cleanly).
+- STATIC+KINETO, `gpu=none`: same sequence, all green, including the
+  whole-archive self-registration fix (in-tree and installed).
+- STATIC+KINETO, `gpu=cuda` (real RTX 4060 Ti + CUDA 13.2 toolkit):
+  configure (`cuda=1 nvtx=1`, `CUDA::nvtx3` real target), build, `ctest`
+  (204/211 pass -- 3 `GpuRealHardware` failures traced to a pre-existing,
+  unrelated hardcoded `CUDA_ARCHITECTURES 75` in
+  `Testing/Cxx/CMakeLists.txt`, deliberately pinned for CI's GPU-less
+  runners, hitting a PTX/driver-JIT version mismatch against this machine's
+  newer toolkit -- `cudaErrorUnsupportedPtxVersion`, not a regression),
+  install, `find_package(Profiler)` from `consumer/` (confirmed
+  `find_dependency(CUDAToolkit)` fires and resolves `CUDA::cudart`/
+  `CUDA::nvtx3`), build, run -- real kernel capture path exercised
+  end to end through the installed STATIC package.
+- STATIC+ITT, `gpu=none`: configure, build, `ctest` (pass), install,
+  `find_package(Profiler)` from `consumer/`, build, run -- `consumer/`'s own
+  registration-probe check (verifying the written trace actually contains
+  the probe scope, not just that the API calls returned success) passed,
+  proving the host tracer genuinely registered through the static archive
+  link.
+- Regression check: reconfigured (not rebuilt) every pre-existing build
+  directory on this machine using real `cl.exe`
+  (`build_ninja`/`build_vs22`/`build_vs26`/`build-cuda-ci-fix`/
+  `build-local-kineto-cpu-dev`, spanning SHARED/gpu=none and SHARED/gpu=cuda)
+  -- all reconfigured cleanly with no errors from these changes. Two other
+  pre-existing directories failed to reconfigure, but both use
+  `CMAKE_GENERATOR=Ninja` with `cl.exe` invoked outside a
+  `vcvarsall`-initialized shell (missing `rc.exe`) -- a pre-existing
+  environment issue unrelated to and unaffected by this session's changes.
+
+**A second real bug found and fixed via the clang+Ninja toolchain**
+(originally used only to route around this machine's MSVC-toolset build
+flakiness under the `Visual Studio 17 2022` generator -- itself a real,
+pre-existing, nondeterministic `C1001` internal-compiler-error problem,
+different STL header each retry, typically needing 3-12 retries for a clean
+pass; confirmed pre-existing via `build_vs22`'s own on-disk state, whose
+Release config never produced `Profiler.dll`/`kineto.lib` even before this
+session touched anything). Plain `clang++.exe` invoked directly on Windows
+uses a GNU-style command-line frontend but still targets the MSVC ABI and
+links with `lld-link`. CMake's `MSVC` variable reflects the compiler
+*frontend*, not the actual linker, so it's false here -- `cmake/
+ProfilerLinking.cmake`'s whole-archive branch fell through to the
+`CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"` case and emitted
+`-Wl,--whole-archive ... -Wl,--no-whole-archive`, syntax `lld-link` does not
+understand (it just warns `ignoring unknown argument` and links anyway).
+Reproduced concretely: a STATIC KINETO build compiled and linked with zero
+errors, then failed 36 of `ProfilerCxxTests`' tests -- silently dropping the
+self-registering GPU/host/python tracer and CUDA/ITT stub translation units
+exactly like the scenario this whole function exists to prevent. Fixed with
+a new `WIN32 AND NOT MINGW AND NOT CYGWIN` branch (the native Windows/MSVC
+ABI always links with an MSVC-style linker regardless of compiler frontend)
+between the `MSVC` and `GNU|Clang` branches, forwarding
+`/WHOLEARCHIVE:$<TARGET_FILE:target>>` via `-Xlinker` (clang's GNU frontend
+needs raw linker flags forwarded explicitly) and using the *full* target
+path rather than just the base name (`link.exe` resolves a bare
+`/WHOLEARCHIVE:name` against already-specified link-line libraries by name;
+`lld-link` invoked this way does not -- reproduced as `lld-link: error:
+could not open 'Profiler.lib': no such file or directory` with just the
+base name). Verified: the same STATIC+KINETO build went from 36 failures to
+100% pass; STATIC+ITT's full build-install-consume cycle (above) then
+completed via this same, now-corrected, clang+Ninja path with zero MSVC-ICE
+retries needed. The existing `MSVC` branch (real `cl.exe`/`clang-cl`) is
+untouched -- confirmed separately still working via the SHARED/STATIC
+KINETO and CUDA runs above, all built with `Visual Studio 17 2022`/real
+`cl.exe`. `clang-cl.exe` itself was not available on this machine to test
+directly, but should already take the (unmodified) `MSVC` branch correctly,
+since CMake sets `MSVC` true for that frontend variant too. See
+`docs/phase-5-remaining.md` item 8 for the tracked record.
+
+**What's honestly still not verified.** HIP static consumption remains
+completely unverified -- no HIP/ROCm hardware on this machine either, the
+same constraint Phase 4 and the prior amendment both recorded.
+`docs/phase-5-remaining.md` items 2, 3, and 8 are updated accordingly; item
+7 (`session_options`/`capture_config` audit) was also independently
+re-verified this session with no changes needed.
+
+## Amendment, 2026-09-18 (Windows/NVIDIA session) — 5.A's statistics consolidation completed via the interpolated-percentile mode the original amendment anticipated
+
+The "5.A's full merge is not attempted" amendment above declined the merge
+for one concrete, correct reason: `stat_with_percentiles::percentile()` is
+nearest-rank, `statistical_analyzer::calculate_metrics()`'s
+`calculate_percentiles()` linearly interpolates, and projecting one onto the
+other would silently change existing callers' percentile numbers. That
+amendment's own closing paragraph named the resolution without attempting
+it: "extending `stat_with_percentiles` with a second, interpolated
+percentile mode... at which point it stops being 'reuse' and becomes a
+rewrite... to serve a second, larger, already-well-served consumer" --
+weighed as not worth it for line-count reduction alone, at the time.
+
+Revisited this session: the "rewrite" framing overstated the cost. Only the
+percentile *method itself* needed a second implementation (about 15 lines);
+none of `statistical_analyzer`'s other capabilities (outlier detection, time
+series, trend slope, correlation) needed touching, because the *scalar*
+aggregates it also independently computed -- min, max, mean, variance,
+std_deviation, median -- are not where the nearest-rank/interpolated
+disagreement lives at all. Re-reading `calculate_metrics()` confirmed those
+six fields use ordinary, unambiguous formulas (min/max element, sum/count,
+population variance via sum-of-squared-deviations) that are algebraically
+identical to what `stat<double>` already computes via its one-pass
+`E[x²]-E[x]²` form -- the two formulas can disagree at the level of
+floating-point rounding, but not by construction, and every existing test
+asserting on `calculate_metrics()`'s output already used `EXPECT_NEAR`
+tolerances rather than exact equality (checked directly, not assumed), so
+that harmless a difference doesn't break anything.
+
+**What changed:** `stat_with_percentiles` (`native/analysis/
+stats_calculator.h`) gained `percentile_interpolated(double)` alongside the
+existing nearest-rank `percentile(int)` -- both real, both tested, one not
+shadowing the other. `statistical_analyzer::calculate_metrics()`
+(`native/analysis/statistical_analyzer.cpp`) now builds a
+`stat_with_percentiles<double>` from its input and projects count, sum,
+mean, min, max, variance, std_deviation, median, and every configured
+percentile from it, instead of an independent second implementation;
+`calculate_percentiles()` (now dead) was removed, along with its header
+declaration. Outlier detection and time-series/trend/correlation logic were
+not touched -- the accumulator still has no equivalent of those, and that
+part of the original amendment's reasoning holds.
+
+**Verified:** full `ProfilerCxxTests` suite green both before and after
+(clang+Ninja, `PROFILER_BACKEND=KINETO`, `gpu=none`). Added
+`Testing/Cxx/TestStatisticalAnalysis.cpp` coverage 5.A step 4 always
+wanted but the original session couldn't write without the merge itself:
+`StatisticalAnalyzer.calculate_metrics_agrees_with_an_independent_stat_with_percentiles_accumulator`
+builds a `stat_with_percentiles<double>` by hand and a `statistical_analyzer`
+through its public API from the same eight-value input, then asserts every
+field of `calculate_metrics()`'s output agrees with the accumulator's own
+methods (`EXPECT_NEAR`, 1e-9) -- including all six of the default configured
+percentiles (25/50/75/90/95/99), not just the aggregates. Two more direct
+`stat_with_percentiles` tests cover `percentile_interpolated()` on its own,
+including one that deliberately shows it *disagreeing* with `percentile()`'s
+nearest-rank result on the same data -- proof the two methods are genuinely
+distinct code paths serving distinct semantics, not a merge that quietly
+picked a winner. `docs/phase-5-remaining.md` item 1 is updated accordingly.
+
+## Amendment, 2026-09-18 (Windows/NVIDIA session) — publish costs for optional features (5.C's third bullet) and a real before/after benchmark run
+
+Two more `docs/phase-5-remaining.md` items closed out this session.
+
+**Publish costs (item 5).** `benchmarks/profiler_benchmark.cpp`'s single
+`active` configuration (every optional feature at its default) couldn't
+answer "what does `with_stack` cost," "what does memory tracking cost," or
+"what does the marker sink cost" on its own -- those all bundle into one
+number. Added a small helper, `run_named_active_config()`, and three more
+named configurations run right after `active` for every CPU workload:
+`active+stack` (`with_stack=true`), `active+memory`
+(`memory_tracking=true`, `profile_memory=true`), `active+nomark`
+(`instrumentation=false` -- the Kineto/ITT marker sink off, native pipeline
+only, so the *gap* to `active` is the marker sink's own cost).
+`docs/benchmarking.md`'s "What it measures" section documents all six rows;
+a new "Per-feature cost results" section publishes an actual 30-trial run
+from this machine, with the same shared-machine-noise caveat every other
+number in that document already carries (a couple of rows are visibly noise
+-- `matrix_multiply`'s `active+stack` reading *below* plain `active`, most
+of `monte_carlo`'s four active-family rows within ~0.15 percentage points
+of each other -- called out explicitly rather than presented as if they
+were clean signal). The mechanism is real, tested, and produces the
+requested per-feature breakdown; getting numbers precise enough to be more
+than a rough order of magnitude still needs the dedicated low-noise machine
+`docs/benchmarking.md`'s "Doing real budget gating" section already
+describes as a standing gap, unchanged by this session.
+
+**Benchmark re-verification (item 6).** The original pass never actually
+ran `profiler_benchmark` before/after its own changes. This session did:
+`git stash push` on everything except the (orthogonal, pre-existing)
+`memory_tracker.h`/`.cpp` header-order fix -- needed for a `gpu=none`
+STATIC-adjacent build to compile in this configuration at all, unrelated to
+what's being measured -- built and ran `profiler_benchmark` (50 trials,
+clang+Ninja) against the unmodified tree, then popped the stash and ran it
+again with this session's full changes applied. `matrix_multiply`/
+`monte_carlo`/`fft` `inactive`/`active` slowdown percentages shifted by
+low-single-digit percentage points in both directions between the two runs
+(e.g. `matrix_multiply active`: 13.53% -> 17.38%; `monte_carlo active`:
+-0.58% -> 2.61%) -- within this shared machine's already-documented noise
+floor, not a directional regression, and exactly what's expected given none
+of this session's changes touch the `PROFILER_SCOPE`/session start-stop hot
+path (CMake install machinery, a header-include-order fix, and
+`statistical_analyzer::calculate_metrics()`, which this benchmark never
+calls). `docs/phase-5-remaining.md` items 5 and 6 are updated accordingly.
