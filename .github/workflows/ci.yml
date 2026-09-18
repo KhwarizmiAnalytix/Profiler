@@ -203,8 +203,19 @@ jobs:
           fi
 
   static-link:
-    name: static-link registration survives archive linking
+    name: static-link registration survives archive linking (${{ matrix.backend }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Phase 5.D (design-review.md section 7): the previous single-leg job
+        # only ever exercised PROFILER_BACKEND=KINETO -- ITT's static-install
+        # path (installing/referencing libittnotify.a instead of libkineto.a)
+        # was never covered by CI. CUDA/HIP static consumption is a separate,
+        # still-open gap (needs find_dependency(CUDAToolkit)/hip wiring this
+        # phase did not attempt -- see docs/plans/phase-5-api-simplification.md's
+        # 5.D amendment) and is not added to this matrix.
+        backend: [KINETO, ITT]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -232,7 +243,7 @@ jobs:
         run: |
           cmake -S . -B build-static -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
-            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_BACKEND=${{ matrix.backend }} \
             -DPROFILER_GPU_BACKEND=none \
             -DPROFILER_ENABLE_TESTING=ON
 
@@ -254,9 +265,9 @@ jobs:
       # working link line. This is the actual previously-broken scenario
       # (reproduced: dozens of undefined-symbol errors for libkineto/fmt
       # symbols before that fix), verified end to end here rather than just
-      # in-tree. Scope: PROFILER_BACKEND=KINETO, PROFILER_GPU_BACKEND=none --
-      # a CUDA/HIP static consumer would additionally need
-      # find_dependency(CUDAToolkit) wiring, not covered here.
+      # in-tree. Scope: PROFILER_GPU_BACKEND=none -- a CUDA/HIP static
+      # consumer would additionally need find_dependency(CUDAToolkit)
+      # wiring, not covered here.
       - name: Install and consume (static)
         run: |
           cmake --install build-static --config Release --prefix "${GITHUB_WORKSPACE}/install-static"

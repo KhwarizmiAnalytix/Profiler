@@ -454,3 +454,46 @@ agree (there are only two left, and they're proven to intentionally
 disagree on percentile semantics), but by the sentinel-bug regression test
 above, which is the one piece of overlap investigation that surfaced a real
 defect.
+
+## Amendment, 2026-09-18 — 5.D's export-machinery rewrite and CUDA/HIP static wiring not attempted
+
+5.D step 1 (`install(EXPORT ProfilerTargets ...)` +
+`write_basic_package_version_file()` replacing the hand-rolled
+`file(GENERATE ...)` `ProfilerConfig.cmake`) was evaluated and not
+attempted this pass. Reading the current generation logic in full
+(`CMakeLists.txt`'s SHARED/STATIC branching, Windows `IMPORTED_IMPLIB`
+handling, and the STATIC whole-archive/`profiler_keep_static_registrations()`
+registration-preservation block) found it isn't a self-contained export
+step that can be swapped out in isolation: `install(EXPORT)` requires the
+`Profiler` target's usage requirements (include dirs, link libraries) to
+already be expressed as real target properties, which would mean
+restructuring how the target itself is defined throughout `CMakeLists.txt`,
+not just how it's exported -- a materially larger change than this phase's
+mandate, and one this session cannot fully verify: the Windows
+`IMPORTED_IMPLIB` path and the static registration-preservation trick (a
+previously hard-won fix, re-verified working today in this same session's
+5.C commit) have no way to be exercised on this macOS machine. Rewriting
+working, recently-hardened, partially-untestable-here logic for a
+"cleaner mechanism" with no behavior change carries real regression risk
+for no verifiable gain -- left as a follow-up for whoever can test the
+Windows leg.
+
+5.D step 2 (CUDA/HIP static consumption via `find_dependency(CUDAToolkit)`)
+was also not attempted: this machine has no CUDA toolkit at all
+(`PROFILER_HAS_CUDA` is always 0 here), so any wiring added could not be
+configured, built, installed, or consumed to prove it actually works --
+exactly the kind of unverified claim Phase 4's own history (two of five
+claimed items turning out to be dead code) warns against. The existing
+code's own comment already states this gap honestly; left as-is rather
+than adding untested code.
+
+5.D step 3 (extend the static-consumer CI matrix) **was done**, scoped to
+what step 1/2's constraints still allow safely: the `static-link` job was
+until now KINETO-only, so ITT's static-install path (installing/
+referencing `libittnotify.a` instead of `libkineto.a`) had zero CI
+coverage. Verified locally first -- configured, built, tested, installed,
+and ran `consumer/` against a fresh `BUILD_SHARED_LIBS=OFF`,
+`PROFILER_BACKEND=ITT`, `PROFILER_GPU_BACKEND=none` build, all passing --
+then converted the job to a `matrix: backend: [KINETO, ITT]` in
+`.github/workflows/ci.yml`. CUDA/HIP legs are not added to this matrix,
+consistent with step 2 above.
