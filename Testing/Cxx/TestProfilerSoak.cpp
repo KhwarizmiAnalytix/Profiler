@@ -69,6 +69,20 @@ using namespace profiler;
 namespace
 {
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(undefined_behavior_sanitizer) || \
+    __has_feature(thread_sanitizer)
+#define PROFILER_SOAK_TEST_HAS_SANITIZER 1
+#else
+#define PROFILER_SOAK_TEST_HAS_SANITIZER 0
+#endif
+#elif defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_UNDEFINED__) || \
+    defined(__SANITIZE_THREAD__)
+#define PROFILER_SOAK_TEST_HAS_SANITIZER 1
+#else
+#define PROFILER_SOAK_TEST_HAS_SANITIZER 0
+#endif
+
 uint64_t current_rss_bytes()
 {
 #if defined(_WIN32)
@@ -149,6 +163,12 @@ void run_one_cycle(int cycle_index)
 
 PROFILERTEST(Soak, many_start_stop_cycles_with_threads_and_metadata_churn_do_not_leak_or_hang)
 {
+#if PROFILER_SOAK_TEST_HAS_SANITIZER
+    GTEST_SKIP() << "ASan/UBSan/TSan change allocator arena and RSS behavior materially; "
+                    "this soak test is a normal non-sanitized stability check, not a "
+                    "sanitizer-zero-noise invariant.";
+#endif
+
     // design-review.md's Phase 6 done-when clause: "publish soak duration,
     // seed, event counts and hardware rather than claiming universal
     // reliability from a passing suite." No RNG is used here (names are
