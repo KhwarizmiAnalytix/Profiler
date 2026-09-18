@@ -3,7 +3,12 @@
 **Status:** Baseline plan written 2026-09-17, on the same Windows/NVIDIA
 machine Phase 4 was executed on, informed by a three-way parallel audit of
 the current codebase against each of Phase 5's bullets (findings cited
-throughout below). Not yet executed.
+throughout below). **Executed 2026-09-18** (macOS session, commits
+`f8a8746`..`44cb848`) — see the amendments below and the validation
+checklist for what was done, what was deliberately scoped out and why, and
+what's left as an honest follow-up (Windows-side `install(EXPORT)`
+migration, CUDA/HIP static `find_dependency()` wiring — both need
+verification this session's machine cannot provide).
 
 ## Goal
 
@@ -315,29 +320,69 @@ For each row in the "Dead/inert fields and types" table above:
 - **Phase 6's architecture-enforcement CI checks** — explicitly a
   follow-on phase, not part of this one.
 
-## Validation checklist (fill in as each item completes)
+## Validation checklist (filled in 2026-09-18; see amendments above for the reasoning behind each)
 
-- [ ] 5.A — `stat_with_percentiles` (or chosen accumulator) is the single
-      source of running-statistics truth; `statistical_analyzer` and the
-      public `timing_stats` project from it; a test proves all three
-      report agreeing numbers for the same input
-- [ ] 5.B — every dead field/type in the table above is either wired up
-      with real behavior or removed (not left as a permanent "no effect"
-      comment); `python_tracer_stub` reports unsupported honestly
-- [ ] 5.C — only the curated public header set installs by default;
-      deprecated headers install under an opt-out compatibility flag with
-      a stated transition period; a build/install regression test enforces
-      the allowlist
-- [ ] 5.D — `ProfilerConfig.cmake` generated via `install(EXPORT ...)` +
-      a real version file; static CUDA/HIP consumption wired and tested;
-      `consumer/`'s (or CI's) matrix covers shared+static ×
-      KINETO/ITT × gpu=none/cuda
-- [ ] 5.E — CI asserts zero GPU/instrumentation symbols in a
-      `PROFILER_BACKEND=NONE` binary; `gpu_device_available` split
-      per-backend with test coverage; Metal comment in `capture.h`
-      re-reviewed once the public contract settles
-- [ ] Phase 5's "Done when" criteria (top of this document) re-checked
-      item by item against what was actually verified, not assumed
+- [x] 5.A — full merge deliberately not done (percentile-semantic mismatch
+      + `stat<ValueType>`'s scope is narrower than `statistical_analyzer`'s);
+      instead fixed a real bug the investigation surfaced
+      (`stat<ValueType>::max_`'s floating-point sentinel) with a regression
+      test that fails against the old code and passes against the fix.
+      `timing_stats` (the one genuinely dead representation) deleted under
+      5.B. Verified: `build_ninja`/`build-itt`, clang-tidy clean.
+- [x] 5.B — `timing_stats`, `remote_profiler_session_manager_options`,
+      `MetadataCollector`/`enable_hlo_proto`, `include_dataset_ops`/
+      `duration_ms`/`repository_path`, `enable_thread_safety_`/
+      `thread_pool_size_`, `output_file_path_`/`calculate_percentiles_`/
+      `track_peak_memory_` (and their builder methods), the disabled
+      `python_tracer.{h,cpp}` shell, and duplicate `native/utils/timespan.h`
+      all removed. `python_tracer_stub::start()` now returns
+      `profiler_status::Error(...)` instead of silently succeeding, with
+      new tests (`TestProfilerBackendPythonTracer.cpp`) proving it.
+      Verified: `build_ninja`/`build-itt` build+test green, clang-tidy clean.
+- [x] 5.C — `install()` now installs exactly the 29 headers in
+      `profiler.h`'s real transitive `#include` closure (mechanically
+      traced, not guessed) instead of every `*.h` under `Profiler/`. No
+      compatibility-header flag added (nothing was deprecated-in-place;
+      narrowing install() aligned the build with documentation that already
+      existed). Verified end to end: installed both SHARED and STATIC
+      configs to scratch prefixes, confirmed the exact header set and zero
+      internal-directory leakage, built+ran `consumer/` against both. CI
+      step added (`static-link` job) enforcing the same invariants going
+      forward.
+- [x] 5.D — export-machinery rewrite and CUDA/HIP static
+      `find_dependency()` wiring deliberately not attempted (real
+      regression risk to partially-untestable-here logic; no way to verify
+      CUDA wiring with no toolkit on this machine) — documented as
+      follow-ups, not silently dropped. What could be verified was done:
+      `static-link` CI job extended to a `[KINETO, ITT]` matrix (was
+      KINETO-only), verified locally first (configure/build/test/install/
+      consume all passing for static+ITT before touching CI).
+- [x] 5.E — Found and fixed a real native-only (`PROFILER_BACKEND=NONE`)
+      link failure (`backend_capabilities.cpp`'s unguarded `cudaStubs()`
+      call) while verifying isolation empirically instead of trusting the
+      existing green CI job — that job's pass was never real proof (GNU ld
+      allows undefined symbols in a `.so` by default; macOS's `ld64` does
+      not, which is how this was actually caught). Added a CI step that
+      greps the native-only library's dynamic symbols for vendor prefixes
+      so this class of bug fails on Linux too from now on. Split
+      `gpu_device_available` into `cuda_device_available`/
+      `hip_device_available` with a regression test (kept the shared field
+      too, since `TestProfilerGpuRealHardware.cpp` has 8+ real-hardware
+      call sites on unreachable Windows/NVIDIA hardware this session
+      cannot safely touch). Reviewed `capture.h`'s Metal-removal comment:
+      still accurate and non-confusing, left as-is. Verified:
+      `build_ninja`/`build-itt`/a throwaway `PROFILER_BACKEND=NONE` build
+      all pass; `nm`/`otool` confirm zero real CUDA/Kineto/ITT symbols in
+      the native-only library.
+- [x] Phase 5's "Done when" criteria re-checked: supported header/package
+      tests pass (5.C, verified both SHARED/STATIC installs + consumer);
+      native-only builds are independent (5.E, now empirically verified
+      and CI-enforced, not just asserted); every retained option has
+      tested behavior (5.B's removals + 5.A/5.E's new tests; a few narrow
+      gaps knowingly deferred with reasons in the amendments above, not
+      silently skipped); compatibility work doesn't regress performance/
+      reliability gates (every change verified against both standing build
+      configs, no regressions found).
 
 ## Exit criteria
 
