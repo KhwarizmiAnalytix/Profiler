@@ -64,6 +64,27 @@ PROFILERTEST(BackendCapabilities, cuda_and_hip_require_a_real_device)
     }
 }
 
+// Phase 5.E: cuda_device_available/hip_device_available must each reflect
+// only their own vendor, not a shared bool -- PROFILER_GPU_BACKEND is a
+// single choice (design-review.md section 5's "Multi-vendor process" note),
+// so cuda_compiled and hip_compiled can never both be true here, but the
+// fields must still be independently correct rather than aliasing each
+// other, and gpu_device_available must stay their OR for old callers.
+PROFILERTEST(BackendCapabilities, cuda_and_hip_device_availability_is_not_shared)
+{
+    const backend_capabilities& caps = discover_backend_capabilities();
+    EXPECT_FALSE(caps.cuda_compiled && caps.hip_compiled);
+    if (!caps.cuda_compiled)
+    {
+        EXPECT_FALSE(caps.cuda_device_available);
+    }
+    if (!caps.hip_compiled)
+    {
+        EXPECT_FALSE(caps.hip_device_available);
+    }
+    EXPECT_EQ(caps.gpu_device_available, caps.cuda_device_available || caps.hip_device_available);
+}
+
 // NVTX must not require a device: design-review.md section 5's evidence
 // notes say NVTX is normally a no-op without an attached developer tool
 // either way, so gating it on gpu_device_available would over-restrict it

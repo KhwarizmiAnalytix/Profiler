@@ -30,9 +30,9 @@ bool backend_capabilities::supports(activity act) const
     case activity::cpu:
         return true;
     case activity::cuda:
-        return cuda_compiled && gpu_device_available;
+        return cuda_compiled && cuda_device_available;
     case activity::hip:
-        return hip_compiled && gpu_device_available;
+        return hip_compiled && hip_device_available;
     }
     return false;
 }
@@ -69,13 +69,23 @@ const backend_capabilities& discover_backend_capabilities()
         // never-taken branch away on its own like it does at capture.cpp's
         // `PROFILER_HAS_KINETO != 0 && cudaStubs()->...` call site; without
         // this #if, a NONE build fails to link with an undefined symbol.
+        // PROFILER_GPU_BACKEND is a single choice (design-review.md section 5's
+        // "Multi-vendor process" note), so cuda_compiled and hip_compiled are
+        // never both true in the same build -- each gets its own field so
+        // supports() can key off the specific vendor, but there is only one
+        // shared device probe (cudaStubs()->enabled(), whichever vendor's
+        // bespoke/base/cuda.cpp compiled it) since at most one of these two
+        // branches is ever real for a given build.
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
-        result.gpu_device_available =
-            (result.cuda_compiled || result.hip_compiled) &&
-            profiler::profiler_impl::impl::cudaStubs()->enabled();
+        result.cuda_device_available =
+            result.cuda_compiled && profiler::profiler_impl::impl::cudaStubs()->enabled();
+        result.hip_device_available =
+            result.hip_compiled && profiler::profiler_impl::impl::cudaStubs()->enabled();
 #else
-        result.gpu_device_available = false;
+        result.cuda_device_available = false;
+        result.hip_device_available  = false;
 #endif
+        result.gpu_device_available = result.cuda_device_available || result.hip_device_available;
 
         if (!result.kineto_compiled)
         {

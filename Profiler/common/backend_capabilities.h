@@ -47,8 +47,20 @@ struct backend_capabilities
     bool hip_compiled    = false;
     bool nvtx_compiled   = false;
 
-    /// True only when a real CUDA- or HIP-capable device was found at
-    /// runtime, not just that the corresponding backend was compiled in.
+    /// True only when a real CUDA-capable device was found at runtime, not
+    /// just that CUDA was compiled in.
+    bool cuda_device_available = false;
+
+    /// True only when a real HIP-capable device was found at runtime, not
+    /// just that HIP was compiled in.
+    bool hip_device_available = false;
+
+    /// True when either vendor's device was found. PROFILER_GPU_BACKEND is a
+    /// single choice (none/cuda/hip; see design-review.md section 5's
+    /// "Multi-vendor process" note), so cuda_compiled and hip_compiled can
+    /// never both be true in the same build -- this is equivalent to
+    /// `cuda_device_available || hip_device_available` today, kept for
+    /// callers that only care "is there a usable GPU," not which vendor.
     bool gpu_device_available = false;
 
     /// Human-readable reasons for anything above that's false, e.g.
