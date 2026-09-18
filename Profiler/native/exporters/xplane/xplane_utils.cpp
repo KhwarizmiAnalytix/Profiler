@@ -44,7 +44,6 @@ limitations under the License.
 #include <vector>
 
 #include "common/profiler_macros.h"
-////#include "logger/logger.h"
 #include "common/flat_hash.h"
 #include "native/analysis/stats_calculator.h"
 #include "native/core/timespan.h"

@@ -33,7 +33,6 @@
 #include <utility>
 #include <vector>
 
-////#include "logger/logger.h"
 #include "common/flat_hash.h"
 #include "common/lock_free_queue.h"
 #include "common/per_thread.h"

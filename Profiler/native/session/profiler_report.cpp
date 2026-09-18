@@ -31,7 +31,6 @@
 #include <unordered_map>
 #include <vector>
 
-////#include "logger/logger.h"
 #include "native/analysis/hotspot_report.h"
 #include "native/analysis/stat_summarizer_options.h"
 #include "native/analysis/statistical_analyzer.h"

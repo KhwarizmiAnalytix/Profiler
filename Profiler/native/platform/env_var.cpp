@@ -42,7 +42,6 @@ limitations under the License.
 #include <string_view>
 #include <vector>
 
-////#include "logger/logger.h"  // for PROFILER_LOG_ERROR
 //#include "util/string_util.h"  // for profiler::strings::to_lower
 #include "common/profiler_export.h"
 #include "common/profiler_macros.h"

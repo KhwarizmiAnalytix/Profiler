@@ -219,9 +219,9 @@ jobs:
           git submodule update --init --recursive --force
 
       # Several sources (native/gpu/gpu_tracer_factory.cpp, native/cpu/
-      # host_tracer_factory.cpp, native/cpu/python_tracer_factory.cpp,
-      # native/cpu/metadata_collector.cpp, and CUDA/ITT stub registration)
-      # register purely via a file-scope static initializer with no other
+      # host_tracer_factory.cpp, native/cpu/python_tracer_factory.cpp, and
+      # CUDA/ITT stub registration) register purely via a file-scope static
+      # initializer with no other
       # symbol referenced elsewhere in the library. The rest of the CI matrix
       # only ever builds BUILD_SHARED_LIBS=ON (the default), where a shared
       # library always links every object file in, so it never exercises the
@@ -264,6 +264,42 @@ jobs:
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install-static"
           cmake --build build-consumer-static --config Release --parallel
           ./build-consumer-static/profiler_consumer
+
+      # design-review.md section 7's Phase 5 bullet: "publish supported
+      # headers only" (finding 13: installation used to copy every header
+      # under Profiler/, including native/cpu, native/gpu, native/platform,
+      # bespoke/base, bespoke/kineto, bespoke/itt -- implementation detail
+      # profiler.h's own doc comment and docs/profiler.md already describe as
+      # internal). CMakeLists.txt's install() now installs an explicit list
+      # derived from profiler.h's real transitive #include closure. Guard
+      # against that list silently drifting from the source of truth in
+      # either direction: a header profiler.h needs but the list omits would
+      # break external consumers (the "install and consume" step above
+      # already exercises this positively); a known-internal directory
+      # reappearing would mean the curation regressed.
+      - name: Verify installed header surface stays curated
+        run: |
+          include_dir="${GITHUB_WORKSPACE}/install-static/include"
+          for f in profiler.h common/session.h common/capture.h \
+                   native/session/profiler.h native/session/profiler_report.h \
+                   native/analysis/statistical_analyzer.h native/core/profiler_options.h; do
+            if [ ! -f "$include_dir/$f" ]; then
+              echo "expected public header missing from install: $f" >&2
+              exit 1
+            fi
+          done
+          if find "$include_dir" -path "*/native/cpu/*" -o -path "*/native/gpu/*" \
+               -o -path "*/native/platform/*" -o -path "*/native/utils/*" \
+               -o -path "*/bespoke/base/*" -o -path "*/bespoke/kineto/*" \
+               -o -path "*/bespoke/itt/*" | grep -q .; then
+            echo "internal-only headers leaked into the installed include/ tree" >&2
+            exit 1
+          fi
+          count=$(find "$include_dir" -name '*.h' | wc -l | tr -d ' ')
+          if [ "$count" -gt 40 ]; then
+            echo "installed header count ($count) grew well past the curated ~29 -- check CMakeLists.txt's _profiler_public_headers list is still intentional" >&2
+            exit 1
+          fi
 
   coverage:
     name: coverage

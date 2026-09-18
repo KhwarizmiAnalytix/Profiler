@@ -21,7 +21,6 @@
 #include <string>
 #include <utility>
 
-////#include "logger/logger.h"
 #include "native/cpu/threadpool_listener_state.h"
 #include "native/exporters/xplane/xplane_schema.h"
 #include "native/tracing/traceme.h"

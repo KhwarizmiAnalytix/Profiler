@@ -39,7 +39,6 @@ limitations under the License.
 #include <type_traits>
 #include <utility>
 
-//////#include "logger/logger.h"
 #include "common/no_init.h"
 #include "native/tracing/traceme_encode.h"
 #include "native/tracing/traceme_recorder.h"

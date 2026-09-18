@@ -41,7 +41,6 @@ limitations under the License.
 #include <utility>
 
 #include "common/profiler_macros.h"
-////#include "logger/logger.h"
 //#include "util/exception.h"
 #include "common/no_init.h"
 

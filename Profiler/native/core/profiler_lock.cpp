@@ -36,7 +36,6 @@ limitations under the License.
 #include <optional>
 
 #include "common/profiler_macros.h"  // for PROFILER_UNLIKELY
-////#include "logger/logger.h"           // for PROFILER_LOG_ERROR
 #include "native/platform/env_var.h"  // for read_bool_from_env_var
 
 namespace profiler

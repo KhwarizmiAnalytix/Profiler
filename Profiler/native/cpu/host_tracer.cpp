@@ -39,7 +39,6 @@ limitations under the License.
 #include <vector>
 
 #include "common/profiler_macros.h"
-////#include "logger/logger.h"
 #include "native/core/profiler_collection.h"
 #include "native/core/profiler_interface.h"
 #include "native/cpu/host_tracer_utils.h"

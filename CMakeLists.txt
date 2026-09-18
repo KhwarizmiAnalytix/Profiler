@@ -342,12 +342,60 @@ if(PROFILER_ENABLE_INSTALL)
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin
     )
-    install(
-        DIRECTORY "${PROFILER_SRC_DIR}/"
-        DESTINATION include
-        FILES_MATCHING
-        PATTERN "*.h"
+    # Phase 5 (design-review.md section 7 / finding 13): install only the
+    # public surface -- profiler.h plus every header its own #include chain
+    # transitively needs to resolve for an external consumer, not every
+    # header under Profiler/ (which used to include native/cpu, native/gpu,
+    # native/platform, bespoke/base, bespoke/kineto, bespoke/itt, etc. --
+    # implementation-detail headers profiler.h's own doc comment and
+    # docs/profiler.md already describe as internal, but the build never
+    # enforced). This list was derived mechanically, not guessed: it is the
+    # exact transitive closure of profiler.h's quoted #include graph
+    # (common/instrumentation.h's bespoke/common/record_function.h pull-in
+    # included, since it's reachable under PROFILER_HAS_KINETO/_ITT). Keep it
+    # in sync with that closure -- CI's static-link job's header-surface
+    # check re-derives and verifies this.
+    set(_profiler_public_headers
+        profiler.h
+        common/align_of.h
+        common/annotation.h
+        common/approximate_clock.h
+        common/capture.h
+        common/device.h
+        common/flat_hash.h
+        common/instrumentation.h
+        common/no_init.h
+        common/profiler_export.h
+        common/profiler_macros.h
+        common/profiler_strings.h
+        common/session.h
+        common/small_vector.h
+        native/analysis/hotspot_report.h
+        native/analysis/statistical_analyzer.h
+        native/core/profiler_interface.h
+        native/core/profiler_lock.h
+        native/core/profiler_options.h
+        native/core/profiler_status.h
+        native/exporters/xplane/xplane.h
+        native/memory/memory_tracker.h
+        native/memory/scoped_memory_debug_annotation.h
+        native/session/profiler.h
+        native/session/profiler_report.h
+        native/tracing/traceme.h
+        native/tracing/traceme_encode.h
+        native/tracing/traceme_recorder.h
+        bespoke/common/record_function.h
     )
+    foreach(_profiler_public_header ${_profiler_public_headers})
+        get_filename_component(_profiler_public_header_dir "${_profiler_public_header}" DIRECTORY)
+        install(
+            FILES "${PROFILER_SRC_DIR}/${_profiler_public_header}"
+            DESTINATION "include/${_profiler_public_header_dir}"
+        )
+    endforeach()
+    unset(_profiler_public_header_dir)
+    unset(_profiler_public_header)
+    unset(_profiler_public_headers)
     # The imported target's kind (SHARED vs STATIC) and properties must match
     # how this build actually compiled Profiler -- a STATIC build described as
     # SHARED IMPORTED doesn't link correctly for a consumer, and only a STATIC

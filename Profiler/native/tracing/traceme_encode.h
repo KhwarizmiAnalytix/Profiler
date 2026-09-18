@@ -38,7 +38,6 @@ limitations under the License.
 #include <string>
 
 #include "common/profiler_macros.h"
-////#include "logger/logger.h"
 #include "common/profiler_strings.h"
 
 namespace profiler

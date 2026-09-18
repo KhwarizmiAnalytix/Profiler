@@ -24,7 +24,6 @@
 #include <sstream>
 #include <string>
 
-////#include "logger/logger.h"
 #include "native/exporters/xplane/xplane.h"
 #include "native/utils/checked_file_write.h"
 
