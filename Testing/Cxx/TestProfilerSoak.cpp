@@ -92,9 +92,11 @@ uint64_t current_rss_bytes()
 #endif
 }
 
-constexpr int kCycles          = 2000;
+constexpr int kCycles          = 200;
 constexpr int kThreadsPerCycle = 8;
-constexpr int kScopesPerThread = 2000;
+// Exercise session/thread churn with 160,000 events so Debug coverage builds
+// fit within the normal unit-test timeout.
+constexpr int kScopesPerThread = 100;
 // RSS is a process-wide, monotonically-nondecreasing-ish OS stat shared
 // with every other test in this binary; ru_maxrss in particular never
 // decreases. So this isn't "did RSS stay flat," it's "did RSS roughly stop
