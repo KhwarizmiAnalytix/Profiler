@@ -59,9 +59,23 @@ const backend_capabilities& discover_backend_capabilities()
         // attached developer tool" and must not require a usable CUDA device
         // (design-review.md section 5's evidence notes). Do not fold NVTX
         // into this check.
+        //
+        // cudaStubs() is defined in bespoke/base/cuda.cpp, which CMakeLists.txt
+        // only compiles when PROFILER_ENABLE_KINETO or PROFILER_ENABLE_ITT is
+        // set -- PROFILER_BACKEND=NONE (native-only) builds omit all of
+        // bespoke/**, so the symbol doesn't exist there. result.cuda_compiled/
+        // hip_compiled are runtime bool fields (not compile-time literals from
+        // this expression's point of view), so the compiler can't fold the
+        // never-taken branch away on its own like it does at capture.cpp's
+        // `PROFILER_HAS_KINETO != 0 && cudaStubs()->...` call site; without
+        // this #if, a NONE build fails to link with an undefined symbol.
+#if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
         result.gpu_device_available =
             (result.cuda_compiled || result.hip_compiled) &&
             profiler::profiler_impl::impl::cudaStubs()->enabled();
+#else
+        result.gpu_device_available = false;
+#endif
 
         if (!result.kineto_compiled)
         {

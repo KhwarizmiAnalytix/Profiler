@@ -180,6 +180,28 @@ jobs:
       - name: Test (native-only)
         run: ctest --test-dir build-none -C Release --output-on-failure --timeout 180
 
+      # design-review.md section 7's Phase 5 bullet: "verify native-only
+      # consumption does not initialize or require GPU/instrumentation
+      # backends." Building and testing green is not proof of that by
+      # itself: bespoke/base/cuda.cpp (defining impl::cudaStubs()) is only
+      # compiled under Kineto/ITT, but a call to it left unguarded by
+      # PROFILER_HAS_KINETO/_ITT compiled fine here before -- GNU ld allows
+      # undefined symbols in a shared library by default, so this exact
+      # class of bug passed this job silently while failing outright on
+      # macOS/Windows's stricter linkers (found and fixed going into this
+      # check). Fail explicitly instead of relying on linker leniency.
+      - name: Verify no GPU/instrumentation symbols leaked into the native-only library
+        run: |
+          lib=build-none/lib/libProfiler.so
+          if [ ! -f "$lib" ]; then
+            echo "expected shared library not found: $lib" >&2
+            exit 1
+          fi
+          if nm -D "$lib" 2>/dev/null | grep -iE 'cuda[A-Z]|nvtx(Range|Mark|Domain)|__itt_|libkineto|ActivityTraceWrapper'; then
+            echo "native-only (PROFILER_BACKEND=NONE) library references GPU/instrumentation symbols" >&2
+            exit 1
+          fi
+
   static-link:
     name: static-link registration survives archive linking
     runs-on: ubuntu-latest
