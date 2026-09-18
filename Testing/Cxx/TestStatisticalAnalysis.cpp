@@ -110,6 +110,37 @@ PROFILERTEST(StatWithPercentiles, invalid_percentile_returns_nan)
     EXPECT_TRUE(std::isnan(s.percentile(101)));
 }
 
+PROFILERTEST(StatWithPercentiles, percentile_interpolated_linearly_blends_straddling_samples)
+{
+    profiler::stat_with_percentiles<double> s;
+    for (double v : {10.0, 20.0, 30.0, 40.0})
+    {
+        s.update_stat(v);
+    }
+    // index = (50/100) * (4-1) = 1.5 -> halfway between sorted[1]=20 and sorted[2]=30.
+    EXPECT_NEAR(s.percentile_interpolated(50.0), 25.0, 1e-9);
+    // Exact-index cases (no interpolation needed) still land on a real sample.
+    EXPECT_NEAR(s.percentile_interpolated(0.0), 10.0, 1e-9);
+    EXPECT_NEAR(s.percentile_interpolated(100.0), 40.0, 1e-9);
+}
+
+PROFILERTEST(
+    StatWithPercentiles, percentile_interpolated_differs_from_nearest_rank_percentile_by_design)
+{
+    // The two percentile methods are deliberately different (design-review.md
+    // section 7's Phase 5.A): percentile() is nearest-rank, percentile_interpolated()
+    // linearly interpolates. This is the case where they disagree -- proves
+    // both are live, distinct code paths, not that one silently shadows the
+    // other.
+    profiler::stat_with_percentiles<double> s;
+    for (double v : {10.0, 20.0, 30.0, 40.0})
+    {
+        s.update_stat(v);
+    }
+    EXPECT_NEAR(s.percentile_interpolated(50.0), 25.0, 1e-9);
+    EXPECT_NE(s.percentile(50), 25.0);
+}
+
 // ---------------------------------------------------------------------------
 // stats_calculator
 // ---------------------------------------------------------------------------
@@ -181,6 +212,52 @@ PROFILERTEST(StatisticalAnalyzer, calculate_timing_stats_matches_manual_computat
     EXPECT_NEAR(stats.min_value, 10.0, 1e-9);
     EXPECT_NEAR(stats.max_value, 40.0, 1e-9);
     EXPECT_NEAR(stats.median, 25.0, 1e-9);
+}
+
+PROFILERTEST(StatisticalAnalyzer,
+    calculate_metrics_agrees_with_an_independent_stat_with_percentiles_accumulator)
+{
+    // Phase 5.A's cross-checking test (design-review.md section 7): proves
+    // statistical_analyzer::calculate_metrics() and stats_calculator.h's
+    // stat_with_percentiles<double> -- now the same accumulator underneath --
+    // agree on the same numbers for the same input, built two independent
+    // ways (one via the public statistical_analyzer API, one by hand here).
+    const std::vector<double> data = {12.5, 7.0, 42.75, 3.0, 19.0, 19.0, 8.25, 27.5};
+
+    profiler::stat_with_percentiles<double> expected;
+    for (double v : data)
+    {
+        expected.update_stat(v);
+    }
+
+    profiler::statistical_analyzer analyzer;
+    analyzer.start_analysis();
+    for (double v : data)
+    {
+        analyzer.add_custom_sample("series", v);
+    }
+    auto const metrics = analyzer.calculate_custom_stats("series");
+
+    ASSERT_TRUE(metrics.is_valid());
+    EXPECT_EQ(metrics.count, static_cast<size_t>(expected.count()));
+    EXPECT_NEAR(metrics.sum, expected.sum(), 1e-9);
+    EXPECT_NEAR(metrics.mean, expected.avg(), 1e-9);
+    EXPECT_NEAR(metrics.min_value, expected.min(), 1e-9);
+    EXPECT_NEAR(metrics.max_value, expected.max(), 1e-9);
+    EXPECT_NEAR(metrics.variance, expected.variance(), 1e-9);
+    EXPECT_NEAR(metrics.std_deviation, expected.std_deviation(), 1e-9);
+    EXPECT_NEAR(metrics.median, expected.percentile_interpolated(50.0), 1e-9);
+
+    // Default percentiles_ = {25, 50, 75, 90, 95, 99} (statistical_analyzer.h).
+    const std::vector<double> configured_percentiles = {25.0, 50.0, 75.0, 90.0, 95.0, 99.0};
+    ASSERT_EQ(metrics.percentiles.size(), configured_percentiles.size());
+    for (size_t i = 0; i < configured_percentiles.size(); ++i)
+    {
+        EXPECT_NEAR(metrics.percentiles[i],
+            expected.percentile_interpolated(configured_percentiles[i]),
+            1e-9)
+            << "percentile " << configured_percentiles[i];
+    }
 }
 
 PROFILERTEST(StatisticalAnalyzer, unknown_series_returns_invalid_metrics)

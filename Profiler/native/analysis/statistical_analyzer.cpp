@@ -30,6 +30,7 @@
 // Include hash compatibility layer for libc++ versions that don't export __hash_memory
 
 #include "common/flat_hash.h"
+#include "native/analysis/stats_calculator.h"
 
 // Prevent Windows min/max macros from interfering
 #ifdef _WIN32
@@ -473,86 +474,42 @@ profiler::statistical_metrics statistical_analyzer::calculate_metrics(
         return metrics;
     }
 
-    metrics.count = data.size();
-
-    // Calculate basic statistics
-    metrics.sum  = std::accumulate(data.begin(), data.end(), 0.0);
-    metrics.mean = metrics.sum / metrics.count;
-
-    metrics.min_value = *std::min_element(data.begin(), data.end());
-    metrics.max_value = *std::max_element(data.begin(), data.end());
-
-    // Calculate variance and standard deviation
-    double variance_sum = 0.0;
-
+    // Phase 5.A (design-review.md section 7): min/max/mean/variance/
+    // percentiles/median all project from stat_with_percentiles, the same
+    // accumulator native/analysis/stats_calculator.h's by-node-type table
+    // uses, instead of maintaining a second, independent running-statistics
+    // implementation. Only outlier detection stays local -- the accumulator
+    // has no equivalent of it.
+    stat_with_percentiles<double> accumulator;
     for (double const value : data)
     {
-        double const diff = value - metrics.mean;
-        variance_sum += diff * diff;
+        accumulator.update_stat(value);
     }
-    metrics.variance      = variance_sum / metrics.count;
-    metrics.std_deviation = std::sqrt(metrics.variance);
 
-    // Calculate median and percentiles
-    std::vector<double> sorted_data = data;
-    std::sort(sorted_data.begin(), sorted_data.end());
+    metrics.count         = static_cast<size_t>(accumulator.count());
+    metrics.sum           = accumulator.sum();
+    metrics.mean          = accumulator.avg();
+    metrics.min_value     = accumulator.min();
+    metrics.max_value     = accumulator.max();
+    metrics.variance      = accumulator.variance();
+    metrics.std_deviation = accumulator.std_deviation();
+    metrics.median        = accumulator.percentile_interpolated(50.0);
 
-    size_t const mid = sorted_data.size() / 2;
-
-    if (sorted_data.size() % 2 == 0)
+    metrics.percentiles.reserve(percentiles_.size());
+    for (double const p : percentiles_)
     {
-        metrics.median = (sorted_data[mid - 1] + sorted_data[mid]) / 2.0;
+        if (p < 0.0 || p > 100.0)
+        {
+            continue;
+        }
+        metrics.percentiles.push_back(accumulator.percentile_interpolated(p));
     }
-    else
-    {
-        metrics.median = sorted_data[mid];
-    }
-
-    // Calculate percentiles
-    metrics.percentiles = calculate_percentiles(sorted_data, percentiles_);
 
     // Detect outliers
     metrics.outliers          = detect_outliers(data, outlier_threshold_);
     metrics.outlier_threshold = outlier_threshold_;
 
     return metrics;
-}
-
-std::vector<double> statistical_analyzer::calculate_percentiles(
-    std::vector<double> data, const std::vector<double>& percentiles)
-{
-    if (data.empty() || percentiles.empty())
-    {
-        return {};
-    }
-
-    std::sort(data.begin(), data.end());
-    std::vector<double> results;
-    results.reserve(percentiles.size());
-
-    for (double const p : percentiles)
-    {
-        if (p < 0.0 || p > 100.0)
-        {
-            continue;
-        }
-
-        double const index = (p / 100.0) * (data.size() - 1);
-        auto const   lower = static_cast<size_t>(std::floor(index));
-        auto const   upper = static_cast<size_t>(std::ceil(index));
-
-        if (lower == upper)
-        {
-            results.push_back(data[lower]);
-        }
-        else
-        {
-            double const weight = index - lower;
-            results.push_back((data[lower] * (1.0 - weight)) + (data[upper] * weight));
-        }
-    }
-
-    return results;
 }
 
 std::vector<double> statistical_analyzer::detect_outliers(

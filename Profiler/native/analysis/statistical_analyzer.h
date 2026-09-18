@@ -168,8 +168,6 @@ private:
     std::vector<double> percentiles_            = {25.0, 50.0, 75.0, 90.0, 95.0, 99.0};
 
     // Helper methods
-    static std::vector<double> calculate_percentiles(
-        std::vector<double> data, const std::vector<double>& percentiles);
     static std::vector<double> detect_outliers(const std::vector<double>& data, double threshold);
     void                       trim_series_if_needed(std::vector<double>& series) const;
     void trim_time_series_if_needed(std::vector<profiler::time_series_point>& series) const;

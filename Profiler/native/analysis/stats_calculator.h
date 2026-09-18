@@ -169,7 +169,8 @@ public:
         values_.push_back(v);
     }
 
-    // Returns the percentile value.
+    // Returns the percentile value using nearest-rank selection (no
+    // interpolation between straddling samples).
     ValueType percentile(int percentile) const
     {
         if (percentile < 0 || percentile > 100 || values_.empty())
@@ -181,6 +182,37 @@ public:
                                                    : (values.size() * percentile / 100);
         std::nth_element(values.begin(), values.begin() + index, values.end());
         return values[index];
+    }
+
+    // Returns the percentile value using linear interpolation between the two
+    // straddling samples (the semantics native/analysis/statistical_analyzer.h's
+    // calculate_metrics() needs -- distinct from percentile()'s nearest-rank
+    // selection above by design, not by oversight: the two were independently
+    // developed for different call sites -- stats_calculator's by-node-type
+    // table vs. session-level statistical analysis -- and forcing one onto the
+    // other would silently change existing callers' numbers whenever the exact
+    // rank falls between two samples. Phase 5.A (design-review.md section 7)
+    // converges the two representations for min/max/mean/variance/percentiles
+    // by giving this accumulator both percentile semantics, rather than
+    // picking one and breaking the other's callers.
+    ValueType percentile_interpolated(double percentile) const
+    {
+        if (percentile < 0.0 || percentile > 100.0 || values_.empty())
+        {
+            return std::numeric_limits<ValueType>::quiet_NaN();
+        }
+        std::vector<ValueType> values = values_;
+        std::sort(values.begin(), values.end());
+        const double index = (percentile / 100.0) * static_cast<double>(values.size() - 1);
+        const auto   lower = static_cast<size_t>(std::floor(index));
+        const auto   upper = static_cast<size_t>(std::ceil(index));
+        if (lower == upper)
+        {
+            return values[lower];
+        }
+        const double weight = index - static_cast<double>(lower);
+        return static_cast<ValueType>((static_cast<double>(values[lower]) * (1.0 - weight)) +
+                                      (static_cast<double>(values[upper]) * weight));
     }
 
     void output_to_stream(std::ostream* stream) const
