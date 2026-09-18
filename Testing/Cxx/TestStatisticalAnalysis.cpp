@@ -72,6 +72,21 @@ PROFILERTEST(Stat, reset_clears_accumulated_state)
     EXPECT_EQ(s.count(), 0);
 }
 
+// max_'s initial sentinel must be the most negative representable value
+// (numeric_limits::lowest()), not numeric_limits::min() -- for a
+// floating-point ValueType, min() is the smallest positive normalized value,
+// so an all-negative series would never move max_ away from that near-zero
+// sentinel and max() would report a positive number no sample ever had.
+PROFILERTEST(Stat, max_tracks_correctly_for_an_all_negative_floating_point_series)
+{
+    profiler::stat<double> s;
+    s.update_stat(-30.0);
+    s.update_stat(-10.0);
+    s.update_stat(-20.0);
+    EXPECT_NEAR(s.max(), -10.0, 1e-9);
+    EXPECT_NEAR(s.min(), -30.0, 1e-9);
+}
+
 // ---------------------------------------------------------------------------
 // stat_with_percentiles<ValueType>
 // ---------------------------------------------------------------------------

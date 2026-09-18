@@ -384,3 +384,73 @@ replaced by: delete `timing_stats` and `profiler_scope_data::timing_stats_`
 outright (folded into 5.B's dead-code removal pass instead, since there's
 no live behavior to preserve or migrate). Step 4's cross-checking test only
 needs to cover the two real representations.
+
+## Amendment, 2026-09-18 — 5.A's full merge is not attempted; two real bugs found instead
+
+With `timing_stats` gone (previous amendment), only two representations are
+left to reconcile: `stat_with_percentiles<double>` (`stats_calculator.h`)
+and `statistical_analyzer`'s own `statistical_metrics`/`calculate_metrics()`.
+5.A step 2 called for making the latter "thin views over" the former, "or
+removed in favor of calling the accumulator directly, whichever keeps
+`statistical_analyzer`'s own public behavior unchanged for its callers"
+(5.A's own words). Reading both implementations side by side to plan the
+merge found that constraint cannot be satisfied by a thin wrapper:
+
+1. **Different percentile algorithms, not just different code paths.**
+   `stat_with_percentiles::percentile(p)` is nearest-rank
+   (`values.size() * p / 100`, no interpolation). `statistical_analyzer`'s
+   `calculate_percentiles()` linearly interpolates between the two
+   surrounding sorted samples. These produce different numbers for the same
+   input whenever the exact rank falls between two samples. Projecting
+   `statistical_metrics::percentiles` from `stat_with_percentiles` would
+   silently change `statistical_analyzer`'s percentile values for existing
+   callers -- not a refactor, a behavior change design-review.md section 8's
+   own testing philosophy specifically warns against ("compare identities...
+   exactly for deterministic synthetic inputs").
+2. **A real, independent bug in `stat<ValueType>` itself**, found while
+   checking whether at least the non-percentile fields (min/max/mean/
+   variance) could safely delegate: `max_`'s initial sentinel was
+   `std::numeric_limits<ValueType>::min()`. For an integer `ValueType` that's
+   correct (`int64_t::min()` is the most negative representable value, which
+   is why `stats_calculator`'s only live instantiation, `stat<int64_t>`,
+   never showed a symptom). For a floating-point `ValueType`,
+   `numeric_limits<double>::min()` is the smallest *positive* normalized
+   value (~2.2e-308), not negative infinity -- an all-negative series would
+   never move `max_` off that near-zero sentinel. Reusing `stat<double>`
+   inside `calculate_metrics()` as originally planned would have silently
+   produced wrong maxima for exactly the kind of data (memory deltas,
+   custom samples) `statistical_analyzer` is used for.
+
+**Resolution:** fixed bug 2 for real regardless of the merge decision --
+`max_`'s sentinel is now `numeric_limits<ValueType>::lowest()`
+(`stats_calculator.h`), which is identical to `min()` for integer types (no
+behavior change for the existing `stat<int64_t>` usage) and correct for
+floating-point types. New regression test
+`Stat.max_tracks_correctly_for_an_all_negative_floating_point_series`
+(`TestStatisticalAnalysis.cpp`) reproduces the bug against the old sentinel
+and passes against the fix. This is an opportunistic fix per
+`.agent-rules/scope.md` (real, low-risk, root-cause, first-party code, not
+vendored) surfaced by 5.A's own investigation, not a pre-planned item.
+
+Given finding 1, **the full merge is not attempted.** Forcing it means
+either accepting a silent percentile-semantics regression, or first
+extending `stat_with_percentiles` with a second, interpolated percentile
+mode plus outlier detection/time-series/trend/correlation support it has
+never had -- at which point it stops being "reuse" and becomes a rewrite of
+a small, working, TF-derived accumulator to serve a second, larger,
+already-well-served consumer. `statistical_analyzer` already computes
+richer things (outlier detection, time series, trend slope, correlation)
+that `stat_with_percentiles` has no equivalent of at all; the two serve
+genuinely different call sites (`stats_calculator`'s by-node-type table vs.
+session-level statistical analysis) with different precision/shape needs.
+5.A's own "Deferred" section anticipated exactly this outcome ("may turn out
+to need... if that surfaces as larger than expected, split it into its own
+follow-up rather than quietly narrowing 5.A's scope") -- recorded here
+instead of attempted, since the added scope buys no correctness or
+efficiency improvement, only line-count reduction at real regression risk.
+5.A's validation checklist item is satisfied differently than originally
+envisioned: not by a cross-checking test proving three representations
+agree (there are only two left, and they're proven to intentionally
+disagree on percentile semantics), but by the sentinel-bug regression test
+above, which is the one piece of overlap investigation that surfaced a real
+defect.

@@ -144,7 +144,13 @@ public:
 private:
     ValueType              first_       = 0;
     ValueType              newest_      = 0;
-    ValueType              max_         = std::numeric_limits<ValueType>::min();
+    // lowest(), not min(): for floating-point ValueType, min() is the smallest
+    // positive normalized value, not the most negative representable one -- an
+    // all-negative series would never update max_ away from that near-zero
+    // sentinel. lowest() == min() for integer types, so this changes nothing
+    // there (Phase 5.A, found while evaluating stat_with_percentiles as a
+    // shared accumulator for native/analysis/statistical_analyzer.h).
+    ValueType              max_         = std::numeric_limits<ValueType>::lowest();
     ValueType              min_         = std::numeric_limits<ValueType>::max();
     int64_t                count_       = 0;
     ValueType              sum_         = 0;
