@@ -490,6 +490,34 @@ struct result_row
     trial_stats stats;
 };
 
+// Phase 5 (design-review.md section 7): "publish costs and support for
+// optional memory/stack/marker features" -- runs one named session_options
+// configuration and records its slowdown relative to the workload's own
+// baseline, exactly like the plain "active" row below but parameterized so
+// each optional feature's *incremental* cost is directly visible as its own
+// row instead of only ever being measured bundled into one "active" number.
+void run_named_active_config(const char* config_name,
+    profiler::session_options            opts,
+    const workload_spec&                 workload,
+    const trial_stats&                   baseline_stats,
+    int                                  trials,
+    std::vector<result_row>&             results)
+{
+    profiler::session session(opts);
+    if (!session.start())
+    {
+        std::fprintf(
+            stderr, "warning: %s %s-capture session failed to start\n", workload.name, config_name);
+        return;
+    }
+    trial_stats const stats = run_trials(workload.instrumented, trials);
+    double const      slowdown =
+        100.0 * (stats.mean_ns - baseline_stats.mean_ns) / baseline_stats.mean_ns;
+    print_row(workload.name, config_name, stats, slowdown);
+    results.push_back({workload.name, config_name, stats});
+    (void)session.stop();
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -538,7 +566,7 @@ int main(int argc, char** argv)
     // fail every trial, per the same distinction backend_capabilities.cpp's
     // gpu_device_available draws between "toolkit compiled in" and "device
     // actually usable".
-    constexpr int kGpuN = 1 << 16;  // 65536
+    constexpr int kGpuN            = 1 << 16;  // 65536
     int           gpu_device_count = 0;
     auto          gpu_h_a          = std::shared_ptr<float[]>(new float[kGpuN]);
     auto          gpu_h_b          = std::shared_ptr<float[]>(new float[kGpuN]);
@@ -550,24 +578,23 @@ int main(int argc, char** argv)
             gpu_h_a[i] = static_cast<float>(i);
             gpu_h_b[i] = static_cast<float>(i * 2);
         }
-        workloads.push_back(
-            {"gpu_kernel_and_transfer",
-                [gpu_h_a, gpu_h_b, gpu_h_out]
-                {
-                    bool ok = false;
-                    g_dont_optimize_sink = gpu_kernel_and_transfer_core(
-                        kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get(), &ok);
-                },
-                [gpu_h_a, gpu_h_b, gpu_h_out]
-                {
-                    gpu_kernel_and_transfer_instrumented(
-                        kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get());
-                }});
+        workloads.push_back({"gpu_kernel_and_transfer",
+            [gpu_h_a, gpu_h_b, gpu_h_out]
+            {
+                bool ok              = false;
+                g_dont_optimize_sink = gpu_kernel_and_transfer_core(
+                    kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get(), &ok);
+            },
+            [gpu_h_a, gpu_h_b, gpu_h_out]
+            {
+                gpu_kernel_and_transfer_instrumented(
+                    kGpuN, gpu_h_a.get(), gpu_h_b.get(), gpu_h_out.get());
+            }});
     }
     else
     {
         std::printf("NOTE: no CUDA device detected -- skipping gpu_kernel_and_transfer "
-                     "workload.\n\n");
+                    "workload.\n\n");
     }
 #endif  // PROFILER_HAS_CUDA
 
@@ -588,28 +615,45 @@ int main(int argc, char** argv)
         results.push_back({workload.name, "inactive", inactive_stats});
 
         {
-            profiler::session_options opts;
+            // "active": every optional feature at its default (off) --
+            // measures PROFILER_SCOPE + the native/marker recording path
+            // alone, the floor the per-feature rows below add to.
+            profiler::session_options active_opts;
 #if PROFILER_HAS_CUDA
             // Only meaningfully affects the gpu_kernel_and_transfer workload
             // (harmless no-op for the CPU-only workloads without a device);
             // without this, "active" would measure PROFILER_SCOPE overhead
             // alone and never actually exercise the GPU device-tracing path
             // this workload exists to measure.
-            opts.gpu_tracing = true;
+            active_opts.gpu_tracing = true;
 #endif
-            profiler::session session(opts);
-            if (!session.start())
-            {
-                std::fprintf(
-                    stderr, "warning: %s active-capture session failed to start\n", workload.name);
-                continue;
-            }
-            trial_stats const active_stats = run_trials(workload.instrumented, trials);
-            double const      active_slowdown =
-                100.0 * (active_stats.mean_ns - baseline_stats.mean_ns) / baseline_stats.mean_ns;
-            print_row(workload.name, "active", active_stats, active_slowdown);
-            results.push_back({workload.name, "active", active_stats});
-            (void)session.stop();
+            run_named_active_config(
+                "active", active_opts, workload, baseline_stats, trials, results);
+
+            // "active+stack": adds with_stack (source file/line capture per
+            // scope) on top of the same floor.
+            profiler::session_options stack_opts = active_opts;
+            stack_opts.with_stack                = true;
+            run_named_active_config(
+                "active+stack", stack_opts, workload, baseline_stats, trials, results);
+
+            // "active+memory": adds memory_tracking + profile_memory (peak
+            // allocator accounting per scope).
+            profiler::session_options memory_opts = active_opts;
+            memory_opts.memory_tracking           = true;
+            memory_opts.profile_memory            = true;
+            run_named_active_config(
+                "active+memory", memory_opts, workload, baseline_stats, trials, results);
+
+            // "active+nomark": turns the instrumentation/marker sink
+            // (Kineto/ITT) *off*, leaving only the native pipeline -- the gap
+            // between this row and "active" is the marker sink's own cost,
+            // the third optional-feature category design-review.md's Phase 5
+            // asks to publish.
+            profiler::session_options nomark_opts = active_opts;
+            nomark_opts.instrumentation           = false;
+            run_named_active_config(
+                "active+nomark", nomark_opts, workload, baseline_stats, trials, results);
         }
         std::printf("\n");
     }

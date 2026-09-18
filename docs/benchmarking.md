@@ -59,7 +59,7 @@ compile-only CUDA toolkit:
   exception-throwing host code, which `nvcc` rejects as device code if the
   whole file is compiled as CUDA.
 
-Each runs in three configurations, back to back, using the exact same
+Each runs in six configurations, back to back, using the exact same
 computational core so the only difference between them is profiler
 overhead itself:
 
@@ -69,9 +69,24 @@ overhead itself:
    Should track design-review.md's <=1% target.
 3. **active** -- a default-preset `profiler::session` is running (with
    `gpu_tracing = true` when built with CUDA, so the GPU workload actually
-   exercises device-plane tracing and not just `PROFILER_SCOPE` overhead).
-   Should track the 3% (CPU-only) / 5% (GPU) target for workloads with scope
-   durations >=10us, which all four of these comfortably exceed.
+   exercises device-plane tracing and not just `PROFILER_SCOPE` overhead),
+   every optional feature below left at its default (off). Should track the
+   3% (CPU-only) / 5% (GPU) target for workloads with scope durations
+   >=10us, which all four of these comfortably exceed.
+4. **active+stack** -- `active` plus `with_stack = true` (source file/line
+   capture per scope). Isolates that one optional feature's incremental
+   cost on top of `active`'s floor.
+5. **active+memory** -- `active` plus `memory_tracking = true` and
+   `profile_memory = true` (peak allocator accounting per scope).
+6. **active+nomark** -- `active` with `instrumentation = false` (the
+   Kineto/ITT marker sink turned off, native pipeline only). The gap between
+   this row and `active` is the marker sink's own cost.
+
+design-review.md section 7's Phase 5 asks to "publish costs and support for
+optional memory/stack/marker features" -- rows 4-6 are that: each optional
+feature's cost isolated as its own row instead of only ever appearing
+bundled into one "active" number. See "Per-feature cost results" below for
+recorded numbers and their (same shared-machine) caveats.
 
 For each configuration it reports mean/p50/p95/p99/stddev wall-clock
 duration, the number of heap allocations during the timed call (a global
@@ -107,6 +122,41 @@ real-GPU-hardware requirement: the measurement tooling exists, but running
 it as an authoritative gate needs infrastructure (a controlled machine, or
 eventually a dedicated self-hosted CI runner) beyond what this repository's
 shared CI can provide today.
+
+## Per-feature cost results (Phase 5)
+
+Recorded 2026-09-18 on the same Windows/NVIDIA machine as the GPU-path
+results below. **Informational, not a gate** -- same shared-machine caveats
+as everywhere else in this doc (this run shared the machine with other
+processes, 30 trials), plus this table's own added noise source: rows 4-6
+each start a fresh `profiler::session`, so run-to-run system jitter affects
+each row independently rather than all sharing one session's warm state.
+Read this as "the mechanism to isolate each feature's cost now exists and
+produces numbers," not as certified per-feature overhead percentages --
+getting those needs the same dedicated, low-noise, higher-trial-count setup
+"Doing real budget gating" above describes, not attempted here.
+
+`PROFILER_BACKEND=KINETO`, `gpu=none`, Clang 22.1.2, Ninja, 30 trials,
+slowdown relative to each workload's own `baseline` row:
+
+| workload | active | active+stack | active+memory | active+nomark |
+| --- | --- | --- | --- | --- |
+| matrix_multiply | 17.06% | 9.37% | 13.85% | 16.69% |
+| monte_carlo | -1.54% | -1.44% | -1.40% | -1.48% |
+| fft | 21.02% | 24.27% | 18.79% | 20.39% |
+
+`matrix_multiply`'s `active+stack` reading *below* `active` and `monte_carlo`'s
+rows clustering within ~0.1 percentage points of each other and of *negative*
+"slowdown" are both artifacts of this shared machine's noise floor exceeding
+the actual effect size at 30 trials (the same phenomenon design-review.md's
+own "fix reference machines" language warns about, and the same one this
+doc's existing `inactive`/`active` rows already show elsewhere) -- not
+evidence that stack capture is free or that memory tracking costs more than
+the marker sink. `monte_carlo`'s ~11.5ms baseline duration is long enough
+relative to per-scope overhead that all four active-family rows are
+statistically indistinguishable at this trial count; `matrix_multiply` and
+`fft` (both ~200-270us) are short enough that per-feature costs would need
+to be a large fraction of total scope overhead to separate from noise here.
 
 ## GPU-path results (Phase 4.E)
 
