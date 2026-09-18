@@ -278,12 +278,32 @@ else()
 endif()
 # Headers from fmt / Kineto / ITT are included by Profiler sources and by
 # in-tree tests/examples. Keep the libraries PRIVATE in standalone builds so
-# install consumers only link Profiler::Profiler.
+# install consumers only link Profiler::Profiler. Wrapped in
+# $<BUILD_INTERFACE:> so these source-tree paths and vendored targets still
+# propagate to in-tree consumers (tests/examples/benchmarks) but are excluded
+# from install(EXPORT)'s INSTALL_INTERFACE -- without this, install(EXPORT)
+# refuses to export Profiler at all (a source-directory path can't appear in
+# an installed package's INTERFACE_INCLUDE_DIRECTORIES; a STATIC library's
+# PRIVATE link libraries are auto-propagated to consumers via
+# $<LINK_ONLY:...> since the archive alone can't resolve its own symbols --
+# see 5.D's STATIC third-party archive install block below, which supplies
+# the same dependencies for a STATIC install consumer through an explicit,
+# relocatable path instead).
 if(PROFILER_DEPENDENCY_INCLUDE_DIRS)
-    target_include_directories(Profiler PUBLIC ${PROFILER_DEPENDENCY_INCLUDE_DIRS})
+    set(_profiler_dep_include_dirs_build_only "")
+    foreach(_profiler_dep_dir IN LISTS PROFILER_DEPENDENCY_INCLUDE_DIRS)
+        list(APPEND _profiler_dep_include_dirs_build_only "$<BUILD_INTERFACE:${_profiler_dep_dir}>")
+    endforeach()
+    target_include_directories(Profiler PUBLIC ${_profiler_dep_include_dirs_build_only})
+    unset(_profiler_dep_include_dirs_build_only)
 endif()
 if(PROFILER_DEPENDENCY_LIBS)
-    target_link_libraries(Profiler ${_profiler_dep_vis} ${PROFILER_DEPENDENCY_LIBS})
+    set(_profiler_dep_libs_build_only "")
+    foreach(_profiler_dep_lib IN LISTS PROFILER_DEPENDENCY_LIBS)
+        list(APPEND _profiler_dep_libs_build_only "$<BUILD_INTERFACE:${_profiler_dep_lib}>")
+    endforeach()
+    target_link_libraries(Profiler ${_profiler_dep_vis} ${_profiler_dep_libs_build_only})
+    unset(_profiler_dep_libs_build_only)
 endif()
 if(PROFILER_DEPENDENCY_COMPILE_DEFINITIONS)
     target_compile_definitions(Profiler PUBLIC ${PROFILER_DEPENDENCY_COMPILE_DEFINITIONS})
@@ -336,12 +356,6 @@ if(PROFILER_ENABLE_INSTALL)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" "${CMAKE_CURRENT_SOURCE_DIR}/NOTICE"
             DESTINATION share/licenses/Profiler
     )
-    install(
-        TARGETS Profiler
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-    )
     # Phase 5 (design-review.md section 7 / finding 13): install only the
     # public surface -- profiler.h plus every header its own #include chain
     # transitively needs to resolve for an external consumer, not every
@@ -388,51 +402,42 @@ if(PROFILER_ENABLE_INSTALL)
     )
     foreach(_profiler_public_header ${_profiler_public_headers})
         get_filename_component(_profiler_public_header_dir "${_profiler_public_header}" DIRECTORY)
-        install(
-            FILES "${PROFILER_SRC_DIR}/${_profiler_public_header}"
-            DESTINATION "include/${_profiler_public_header_dir}"
+        install(FILES "${PROFILER_SRC_DIR}/${_profiler_public_header}"
+                DESTINATION "include/${_profiler_public_header_dir}"
         )
     endforeach()
     unset(_profiler_public_header_dir)
     unset(_profiler_public_header)
     unset(_profiler_public_headers)
-    # The imported target's kind (SHARED vs STATIC) and properties must match
-    # how this build actually compiled Profiler -- a STATIC build described as
-    # SHARED IMPORTED doesn't link correctly for a consumer, and only a STATIC
-    # consumer needs the whole-archive treatment below at all.
-    if(BUILD_SHARED_LIBS)
-        set(_profiler_imported_kind "SHARED")
-        if(WIN32)
-            set(_profiler_imported_props
-                "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/bin/$<TARGET_FILE_NAME:Profiler>\"
-      IMPORTED_IMPLIB \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_LINKER_FILE_NAME:Profiler>\"
-      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
-            )
-        else()
-            set(_profiler_imported_props
-                "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:Profiler>\"
-      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
-            )
-        endif()
-    else()
-        set(_profiler_imported_kind "STATIC")
-        set(_profiler_imported_props
-            "IMPORTED_LOCATION \"\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:Profiler>\"
-      INTERFACE_INCLUDE_DIRECTORIES \"\${PACKAGE_PREFIX_DIR}/include\""
-        )
-    endif()
+    # Real install(EXPORT) target-export machinery (Phase 5.D, design-review.md
+    # section 7) instead of a hand-rolled file(GENERATE ...) string. This
+    # natively handles the SHARED/STATIC imported-target kind and Windows
+    # IMPORTED_IMPLIB/IMPORTED_LOCATION pairing -- both previously computed by
+    # hand above -- because Profiler's usage requirements (include dirs via
+    # $<BUILD_INTERFACE:>/$<INSTALL_INTERFACE:> above) are already expressed
+    # as real target properties, which is exactly what install(EXPORT) needs.
+    install(
+        TARGETS Profiler
+        EXPORT ProfilerTargets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+    )
+    install(EXPORT ProfilerTargets NAMESPACE Profiler:: DESTINATION lib/cmake/Profiler)
 
     # Third-party archives Profiler links PRIVATE-ly (cmake/ProfilerDependencies.cmake):
     # deliberate for SHARED, where they're already linked into libProfiler.so and an
     # install consumer needs nothing else -- not true for STATIC, where a plain archive
-    # resolves none of its own symbols. Without also installing and referencing these,
-    # a find_package() consumer of a STATIC build gets undefined-symbol errors for every
-    # libkineto/fmt/ITT symbol Profiler itself calls (reproduced and confirmed fixed by
-    # this block). Scope: the configuration this was actually reproduced/tested against
-    # (PROFILER_BACKEND=KINETO or ITT, PROFILER_GPU_BACKEND=none) -- a CUDA/HIP static
-    # consumer would additionally need find_dependency(CUDAToolkit) wiring here, not
-    # attempted yet.
-    set(_profiler_static_link_block "")
+    # resolves none of its own symbols. install(EXPORT) only exports usage requirements
+    # for targets that are themselves part of an export set; fmt/kineto/ittnotify are
+    # vendored via FetchContent with no installed find_package() identity of their own,
+    # so they can't join ProfilerTargets' export set. Without separately installing and
+    # referencing their archives, a find_package() consumer of a STATIC build gets
+    # undefined-symbol errors for every libkineto/fmt/ITT symbol Profiler itself calls
+    # (reproduced and confirmed fixed by this block, originally without CUDA/HIP).
+    # CUDA::cudart/nvToolsExt/nvtx3 and hip::host are real, separately find_package()-able
+    # targets (find_dependency() in ProfilerConfig.cmake.in re-creates them in the
+    # consumer's own scope), so those are propagated by name instead of by installed path.
     if(NOT BUILD_SHARED_LIBS)
         set(_profiler_static_install_targets fmt)
         if(TARGET kineto)
@@ -452,32 +457,76 @@ if(PROFILER_ENABLE_INSTALL)
                    "\${PACKAGE_PREFIX_DIR}/lib/$<TARGET_FILE_NAME:${_profiler_dep_tgt}>;"
             )
         endforeach()
-        set(_profiler_static_link_block
-            "set_target_properties(Profiler::Profiler PROPERTIES
-      INTERFACE_LINK_LIBRARIES \"${_profiler_static_link_libs}\")
-"
+        foreach(_profiler_cuda_hip_lib IN LISTS PROFILER_DEPENDENCY_LIBS)
+            if(_profiler_cuda_hip_lib MATCHES "^(CUDA|hip)::")
+                string(APPEND _profiler_static_link_libs "${_profiler_cuda_hip_lib};")
+            endif()
+        endforeach()
+        # kineto links CUPTI itself (its own CMakeLists' find_package(CUDAToolkit),
+        # never added to PROFILER_DEPENDENCY_LIBS since Profiler never calls CUPTI
+        # directly) -- since kineto is only installed as a raw archive above, not
+        # a real exported target, that transitive requirement is otherwise
+        # invisible here. Reproduced: a STATIC find_package() consumer with a
+        # CUPTI-enabled kineto got 21 unresolved cuptiActivity*/cuptiSubscribe/...
+        # externals without this. Same reasoning as cudart/nvtx3 above -- a real,
+        # separately find_package()-able target the consumer's own
+        # find_dependency(CUDAToolkit) call already re-creates.
+        if(TARGET CUDA::cupti)
+            string(APPEND _profiler_static_link_libs "CUDA::cupti;")
+        endif()
+        # PROFILER_DEPENDENCY_INCLUDE_DIRS also holds kineto/fmt/ITT build-tree
+        # include paths (needed only to build Profiler itself, already
+        # $<BUILD_INTERFACE:>-scoped on the Profiler target above) -- none of
+        # the curated public headers need them, so only the one CUDA-specific
+        # entry (CUDAToolkit_INCLUDE_DIR's header-only nvtx3 fallback, when no
+        # CUDA::nvtx3 target is available) is deliberately re-propagated here,
+        # by variable name rather than this build's absolute path, so it
+        # re-resolves in the consumer's own scope (set there by
+        # ProfilerConfig.cmake.in's find_dependency(CUDAToolkit)) and survives
+        # relocation. Everything else in the list is intentionally dropped.
+        set(_profiler_static_third_party_includes "")
+        if(DEFINED CUDAToolkit_INCLUDE_DIR AND CUDAToolkit_INCLUDE_DIR IN_LIST
+                                               PROFILER_DEPENDENCY_INCLUDE_DIRS
+        )
+            set(_profiler_static_third_party_includes "\${CUDAToolkit_INCLUDE_DIR};")
+        endif()
+        # $<TARGET_FILE_NAME:...> varies by config (fmt's DEBUG_POSTFIX, e.g.),
+        # so under a multi-config generator (Visual Studio) this content
+        # legitimately differs per configuration -- file(GENERATE) requires a
+        # distinct OUTPUT per distinct CONTENT, hence the $<CONFIG> in the
+        # generated (not installed) file name. install(FILES ... RENAME)
+        # collapses it back to one fixed installed name: `cmake --install`
+        # always targets exactly one config, so exactly one of these ever
+        # actually gets installed under that fixed name.
+        file(
+            GENERATE
+            OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerStaticThirdParty-$<CONFIG>.cmake"
+            CONTENT
+                "set_property(TARGET Profiler::Profiler APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES \"${_profiler_static_link_libs}\")
+$<$<BOOL:${_profiler_static_third_party_includes}>:set_property(TARGET Profiler::Profiler APPEND PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES \"${_profiler_static_third_party_includes}\")
+>"
+        )
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerStaticThirdParty-$<CONFIG>.cmake"
+                DESTINATION lib/cmake/Profiler RENAME ProfilerStaticThirdParty.cmake
         )
     endif()
 
-    file(
-        GENERATE
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake"
-        CONTENT
-            "get_filename_component(PACKAGE_PREFIX_DIR \"\${CMAKE_CURRENT_LIST_DIR}/../../..\" ABSOLUTE)
-if(NOT TARGET Profiler::Profiler)
-  add_library(Profiler::Profiler ${_profiler_imported_kind} IMPORTED)
-  set_target_properties(Profiler::Profiler PROPERTIES
-      ${_profiler_imported_props})
-endif()
-${_profiler_static_link_block}# A STATIC Profiler::Profiler needs the same whole-archive treatment the
-# in-tree Profiler target gets (see ProfilerLinking.cmake) -- an ordinary
-# archive link silently drops the self-registering GPU/host/python tracer
-# and CUDA/ITT stub translation units otherwise, since nothing else in the
-# archive references a symbol from them.
-include(\"\${CMAKE_CURRENT_LIST_DIR}/ProfilerLinking.cmake\")
-profiler_keep_static_registrations(Profiler::Profiler)
-"
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProfilerConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake" INSTALL_DESTINATION lib/cmake/Profiler
     )
+    if(PROJECT_VERSION)
+        write_basic_package_version_file(
+            "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfigVersion.cmake" VERSION "${PROJECT_VERSION}"
+            COMPATIBILITY SameMajorVersion
+        )
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfigVersion.cmake"
+                DESTINATION lib/cmake/Profiler
+        )
+    endif()
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake" DESTINATION lib/cmake/Profiler)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProfilerLinking.cmake"
             DESTINATION lib/cmake/Profiler

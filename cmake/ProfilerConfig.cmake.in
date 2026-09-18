@@ -1,0 +1,35 @@
+@PACKAGE_INIT@
+
+# Real CMake export machinery (Phase 5.D, design-review.md section 7):
+# ProfilerTargets.cmake below is install(EXPORT)-generated, so it already
+# handles the SHARED/STATIC imported-target kind and Windows
+# IMPORTED_IMPLIB/IMPORTED_LOCATION pairing natively instead of the
+# hand-rolled string template this file used to be. What install(EXPORT)
+# cannot express on its own -- private, vendored static dependencies
+# (fmt/kineto/ittnotify have no installed find_package() identity of their
+# own) and the CUDA/HIP toolkit a STATIC consumer must also link -- is
+# handled below and in the optional ProfilerStaticThirdParty.cmake.
+include(CMakeFindDependencyMacro)
+
+if(@PROFILER_HAS_CUDA@)
+    find_dependency(CUDAToolkit)
+endif()
+if(@PROFILER_HAS_HIP@)
+    find_dependency(hip)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/ProfilerTargets.cmake")
+
+# profiler_keep_static_registrations() must run against the actual imported
+# target every time this package is consumed -- a STATIC Profiler::Profiler
+# needs the same whole-archive treatment the in-tree Profiler target gets
+# (cmake/ProfilerLinking.cmake), or self-registering GPU/host/python tracer
+# and CUDA/ITT stub translation units get silently dropped by the linker.
+include("${CMAKE_CURRENT_LIST_DIR}/ProfilerLinking.cmake")
+profiler_keep_static_registrations(Profiler::Profiler)
+
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/ProfilerStaticThirdParty.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/ProfilerStaticThirdParty.cmake")
+endif()
+
+check_required_components(Profiler)

@@ -23,8 +23,9 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <psapi.h>
 #include <windows.h>
+
+#include <psapi.h>
 #pragma comment(lib, "psapi.lib")
 #else
 #include <sys/resource.h>

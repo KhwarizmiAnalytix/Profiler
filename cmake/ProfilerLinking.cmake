@@ -25,16 +25,61 @@ function(profiler_keep_static_registrations target)
         return()
     endif()
 
+    # Wrapped in $<BUILD_INTERFACE:> so this self-referencing flag (it names
+    # `target` itself, e.g. plain "Profiler") only applies to in-tree
+    # consumers of the in-tree target. Without it, install(EXPORT) captures
+    # this INTERFACE_LINK_OPTIONS entry verbatim -- unlike INTERFACE_LINK_LIBRARIES,
+    # it isn't scanned/renamed to the namespaced "Profiler::Profiler" export
+    # name, so an install consumer would get a broken generator expression
+    # ("No target Profiler", reproduced during Phase 5.D's install(EXPORT)
+    # migration). The installed package instead gets this same flag correctly
+    # (against "Profiler::Profiler") from ProfilerConfig.cmake.in's own
+    # explicit profiler_keep_static_registrations(Profiler::Profiler) call,
+    # made fresh in the consumer's own scope after ProfilerTargets.cmake is
+    # included.
     if(APPLE)
         target_link_options(
-            ${target} INTERFACE "SHELL:-Wl,-force_load,$<TARGET_FILE:${target}>"
+            ${target} INTERFACE "$<BUILD_INTERFACE:SHELL:-Wl,-force_load,$<TARGET_FILE:${target}>>"
         )
     elseif(MSVC)
-        target_link_options(${target} INTERFACE "/WHOLEARCHIVE:$<TARGET_FILE_NAME:${target}>")
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_link_options(
+            ${target} INTERFACE "$<BUILD_INTERFACE:/WHOLEARCHIVE:$<TARGET_FILE_NAME:${target}>>"
+        )
+    elseif(WIN32 AND NOT MINGW AND NOT CYGWIN)
+        # The native Windows/MSVC ABI always links with an MSVC-style linker
+        # (link.exe or lld-link), even when the compiler *frontend* isn't
+        # MSVC-flavored -- plain clang++.exe defaults to the
+        # x86_64-pc-windows-msvc target when invoked directly on Windows, but
+        # (unlike clang-cl) still takes GNU-style command-line arguments, so a
+        # raw "/WHOLEARCHIVE:..." token is misread as a file path
+        # ("no such file or directory"); it must be forwarded verbatim via
+        # -Xlinker instead. The previous code had no branch for this
+        # (frontend, ABI) combination at all: CMake's MSVC variable reflects
+        # the compiler frontend, not the ABI/linker, so this fell through to
+        # the GNU branch below and emitted -Wl,--whole-archive/
+        # -Wl,--no-whole-archive -- syntax lld-link does not understand.
+        # lld-link only warns ("ignoring unknown argument") and links anyway,
+        # so this silently dropped the self-registering GPU/host/python
+        # tracer and CUDA/ITT stub translation units with no error
+        # (reproduced: 36 test failures, zero link/configure errors). WIN32
+        # is the target platform, so this is also correct for MSVC-targeting
+        # cross-compiles; MINGW/CYGWIN are excluded since those really do
+        # link with a GNU-style linker. Uses the full path
+        # ($<TARGET_FILE:>, not just $<TARGET_FILE_NAME:> as the MSVC branch
+        # above uses) -- link.exe resolves a bare "/WHOLEARCHIVE:name" against
+        # libraries already given on the link line by matching base name, but
+        # lld-link invoked this way (via clang's driver, not cl.exe) does not:
+        # reproduced as "lld-link: error: could not open 'Profiler.lib': no
+        # such file or directory" with just the base name.
         target_link_options(
             ${target} INTERFACE
-            "SHELL:-Wl,--whole-archive $<TARGET_FILE:${target}> -Wl,--no-whole-archive"
+            "$<BUILD_INTERFACE:SHELL:-Xlinker /WHOLEARCHIVE:$<TARGET_FILE:${target}>>"
+        )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_link_options(
+            ${target}
+            INTERFACE
+            "$<BUILD_INTERFACE:SHELL:-Wl,--whole-archive $<TARGET_FILE:${target}> -Wl,--no-whole-archive>"
         )
     else()
         message(

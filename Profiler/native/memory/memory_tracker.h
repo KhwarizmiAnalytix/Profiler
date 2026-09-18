@@ -51,8 +51,12 @@
 #include "native/session/profiler.h"
 
 #ifdef _WIN32
-#include <psapi.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
+///
+#include <psapi.h>
 #else
 #include <sys/resource.h>
 #include <unistd.h>
