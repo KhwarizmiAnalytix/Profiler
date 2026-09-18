@@ -351,3 +351,36 @@ gates — is satisfied item-by-item, matching the same discipline Phase 4's
 plan applied and that this session's two post-push CI regressions (see
 `docs/plans/phase-4-gpu-validation.md`) are a concrete reminder of: a claim
 without CI/test evidence behind it is not done.
+
+## Amendment, 2026-09-18 — `timing_stats` is dead, not merely duplicative
+
+A parallel macOS-side audit (converging on this same plan before pulling
+`origin/main` and finding this document already committed) re-checked the
+"three overlapping representations, none dead" claim above with a direct
+grep for the `timing_stats_` field itself, not just its type:
+
+```
+grep -n "timing_stats_\b" Profiler/native/session/profiler.cpp \
+    Profiler/native/session/profiler.h \
+    Profiler/native/session/scope_tree_builder.cpp \
+    Profiler/native/session/profiler_report.cpp
+```
+
+Only one hit: the field declaration at `profiler.h:281`
+(`profiler::timing_stats timing_stats_;`). Nothing in `profiler.cpp` (or
+anywhere else) ever reads or writes `.timing_stats_`/`->timing_stats_`, and
+`timing_stats::add_sample()`/`calculate_statistics()`/`reset()` are defined
+(`profiler.cpp:79-154`) but never called from outside their own
+definitions. So `timing_stats` isn't a third *live* accumulator competing
+with `stat_with_percentiles`/`statistical_metrics` — it's unreachable dead
+code end to end (type, field, and all three of its methods).
+
+**Impact on 5.A:** narrows scope, doesn't change direction. Steps 1-2 (pick
+`stat_with_percentiles` as the accumulator; make
+`statistical_analyzer`'s types thin views over it) are unaffected — that
+convergence is between two genuinely live representations. Step 3
+("make the public `timing_stats` project from the same accumulator") is
+replaced by: delete `timing_stats` and `profiler_scope_data::timing_stats_`
+outright (folded into 5.B's dead-code removal pass instead, since there's
+no live behavior to preserve or migrate). Step 4's cross-checking test only
+needs to cover the two real representations.
