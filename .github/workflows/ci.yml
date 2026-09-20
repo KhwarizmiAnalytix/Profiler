@@ -225,7 +225,10 @@ jobs:
           # rocm-core/rocm_version.h and, for ROCm >= 7.0, rocprofiler-sdk).
           # ROCm's apt packaging bundles headers into rocprofiler-sdk itself
           # (no separate -dev split, unlike hip-dev/roctracer-dev).
-          sudo apt-get install -y hip-dev rocm-core rocprofiler-sdk
+          # librocprofiler-sdk.so itself needs hsa-amd-aqlprofile's
+          # libhsa-amd-aqlprofile64.so at link time (aqlprofile_* symbols) --
+          # not pulled in automatically by apt (no declared dependency).
+          sudo apt-get install -y hip-dev rocm-core rocprofiler-sdk hsa-amd-aqlprofile
 
       - name: Configure (HIP, toolkit-only)
         run: |
