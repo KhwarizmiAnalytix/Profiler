@@ -223,7 +223,9 @@ jobs:
           # hip-dev alone is not enough for CMakeLists.txt's KINETO_BACKEND=rocm
           # path (third_party/kineto/libkineto/CMakeLists.txt requires
           # rocm-core/rocm_version.h and, for ROCm >= 7.0, rocprofiler-sdk).
-          sudo apt-get install -y hip-dev rocm-core rocprofiler-sdk rocprofiler-sdk-dev
+          # ROCm's apt packaging bundles headers into rocprofiler-sdk itself
+          # (no separate -dev split, unlike hip-dev/roctracer-dev).
+          sudo apt-get install -y hip-dev rocm-core rocprofiler-sdk
 
       - name: Configure (HIP, toolkit-only)
         run: |
