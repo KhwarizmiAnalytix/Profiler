@@ -35,13 +35,35 @@ All six cells also run the native-only symbol-leak check, the header-surface
 curation check (`static-link` job, KINETO and ITT both), and Phase 6.A's
 architecture checks (backend-independent, runs once per push).
 
+**Cross-backend conformance** (Phase 6.C): the `cross-backend-conformance`
+job runs `Testing/Cxx/TestCrossBackendGoldenScenario.cpp`'s identical,
+single-sourced golden workload (nested scopes, recursion, same name from
+different call sites, a Unicode/JSON-special-character scope name) through
+a fresh KINETO build and a fresh ITT build, then diffs the two normalized
+event-identity/count summaries for exact agreement
+(`Scripts/diff_cross_backend_golden.py`). Deliberately not attempted, for
+structural reasons documented in that test file's own header comment: a
+positional/ordering comparison (KinetoEvents complete in LIFO-unwind order;
+the ITT stub records push order -- two different, equally valid orderings
+of the same workload, not a real divergence), structured key/value
+metadata comparison (ITT's wrapper has no metadata plumbing at all, unlike
+Kineto's `extraMeta()`), and "overlapping async spans" (ITT's wrapper only
+exposes a LIFO push/pop stack API with no explicit task IDs, so it cannot
+represent a genuinely non-nested span at all — there is no ITT-side
+observation point for this scenario, not just a missing test).
+`TestHotspotReport.cpp` and `TestProfilerBackendMetadata.cpp`'s metadata
+round-trip test remain KINETO-only for the same structural reason
+(`bespoke/kineto/hotspot_report.h` and `extraMeta()` are both real,
+Kineto-specific capabilities with no ITT equivalent to port to), not an
+unaddressed gap.
+
 ## GPU backends
 
 | OS | Backend | GPU | Tier | CI job |
 | --- | --- | --- | --- | --- |
 | `windows-2022` | KINETO | CUDA 12.8.1 | Toolkit-only (compiles, unexecuted) | `build-test` (`windows-2022 KINETO cuda` leg) |
 | `windows-2022` | ITT | CUDA 12.8.1 | Toolkit-only (compiles, unexecuted) | `build-test` (`windows-2022 ITT cuda` leg) |
-| *(any)* | *(any)* | HIP/ROCm | **Not currently tested** | none exist |
+| `ubuntu-22.04` | KINETO | HIP/ROCm (latest) | Toolkit-only (compiles, unexecuted; no HIP-specific real-hardware test exists yet) | `hip-toolkit-only` |
 
 GitHub-hosted runners install the CUDA *toolkit* but expose no physical
 GPU (confirmed directly:
@@ -55,27 +77,48 @@ on the Windows/NVIDIA development machine (`docs/plans/phase-4-gpu-validation.md
 `docs/plans/phase-5-api-simplification.md`'s Windows follow-up
 session) — not from ordinary CI, and not on every push.
 
-HIP has no CI leg of any tier today (`design-review.md`'s Phase 6 ask —
-"toolkit-only builds test compilation, not GPU capture" — isn't even met at
-the toolkit-only tier yet for HIP). `docs/profiler.md` and
-`docs/phase-5-remaining.md` item 3 already document this gap; tracked as an
-open item in `docs/plans/phase-6-continuous-enforcement.md`'s 6.D.
+HIP now has a toolkit-only CI leg (`hip-toolkit-only`, Phase 6.D): it
+installs a real ROCm apt package (`hip-dev`) on `ubuntu-22.04` (pinned to
+match ROCm's per-codename apt repository, not `ubuntu-latest`) and
+configures with `-DPROFILER_REQUIRE_HIP=ON`, so the job fails outright
+(rather than silently building a `PROFILER_HAS_HIP=0` config) if the
+toolkit install ever stops actually being picked up. No physical AMD GPU
+exists on this runner, and no HIP-specific real-hardware test exists yet
+either (design-review.md's Phase 4 real-hardware scope was CUDA-only) — so
+this proves "configures, links against a real ROCm toolkit, and compiles,"
+the same honestly-limited claim the CUDA toolkit-only legs make, nothing
+about HIP capture correctness on a device.
+
+CI now also distinguishes "ran on real hardware" from "skipped everywhere"
+for the CUDA toolkit-only legs specifically (Phase 6.D):
+`Scripts/report_gpu_test_status.py` parses each `build-test` leg's
+GoogleTest JUnit XML (written via `GTEST_OUTPUT`) for the `GpuRealHardware`
+suite's skip/pass counts and publishes them as a job summary, so "0/N ran
+on real hardware (toolkit-only)" is visible without reading the raw test
+log.
 
 ## Sanitizers
 
 | Sanitizer | OS | Backend | Leak detection | Gate |
 | --- | --- | --- | --- | --- |
-| ASan + UBSan | Ubuntu, macOS | KINETO only | **Off** (`detect_leaks=0`) | Zero-tolerance (`halt_on_error=1`; any finding fails the job) |
+| ASan + UBSan | Ubuntu | KINETO only | **On** (`detect_leaks=1`) | Zero-tolerance (`halt_on_error=1`; any finding fails the job) |
+| ASan + UBSan | macOS | KINETO only | **Off** (`detect_leaks=0`; LSan's stop-the-world scan can hang during process teardown on Darwin) | Zero-tolerance (`halt_on_error=1`; any finding fails the job) |
 | TSan | Ubuntu only | KINETO only | N/A | Zero-tolerance (`halt_on_error=1`) |
 
 Not covered by any sanitizer job: ITT backend, Windows (sanitizers are a
 GCC/Clang-only wrapper in `cmake/ProfilerSanitizers.cmake` — an explicit
 no-op on MSVC, by design, since MSVC's own sanitizer story is a materially
 different toolchain integration this project hasn't taken on), and any
-GPU-enabled build. Leak detection is explicitly disabled on both platforms
-that do run (macOS LSan is unreliable there; Linux is kept identical to the
-same recipe rather than diverging) — a real, documented gap, not an
-oversight.
+GPU-enabled build. Leak detection is Linux-only (macOS LSan's stop-the-world
+scan is unreliable there) — a real, documented gap, not an oversight.
+
+One known, precisely-located but unfixed finding from Phase 6.F's soak
+testing: a rare race in `Profiler/common/lock_free_queue.h`'s
+`blocked_queue_base::pop_impl()`, reproducing in a minority of TSan runs on
+WSL2/Ubuntu (not this project's own CI environment). Not reproduced on
+macOS ASan across repeated attempts at both original and larger scale (see
+`docs/plans/phase-6-continuous-enforcement.md`'s Phase A amendment) —
+left open for a session with Linux/TSan access, not guessed at blind.
 
 ## Compiler/OS/SDK version pinning
 

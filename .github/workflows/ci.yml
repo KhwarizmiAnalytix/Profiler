@@ -131,7 +131,21 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Test
+        env:
+          # Phase 6.D (design-review.md section 7, Phase 6): write GoogleTest's
+          # own per-case JUnit XML (skip vs. pass, not just ctest's one
+          # pass/fail bit for the whole binary) so the next step can tell "ran
+          # on real hardware" apart from "skipped everywhere" without a human
+          # reading the log. Harmless on legs that don't compile
+          # TestProfilerGpuRealHardware.cpp (PROFILER_HAS_CUDA=0) -- the next
+          # step only looks for it on the CUDA legs.
+          GTEST_OUTPUT: xml:${{ github.workspace }}/gtest-results.xml
         run: ctest --test-dir build -C Release --output-on-failure --timeout 180
+
+      - name: Report GpuRealHardware real-hardware status
+        if: matrix.gpu == 'cuda'
+        shell: bash
+        run: python3 Scripts/report_gpu_test_status.py "${{ github.workspace }}/gtest-results.xml"
 
       - name: Set up Python for HTA example
         if: matrix.os == 'ubuntu-latest' && matrix.backend == 'KINETO'
@@ -163,6 +177,126 @@ jobs:
           else
             ./build-consumer/Release/profiler_consumer.exe
           fi
+
+  hip-toolkit-only:
+    # Phase 6.D (design-review.md section 7, Phase 6): "Add a HIP/ROCm CI leg
+    # ... compilation-only, explicitly labeled 'toolkit-only, not
+    # device-verified'" -- the same honestly-labeled tier build-test's
+    # windows-2022 CUDA legs already occupy (they install a real toolkit on a
+    # GitHub-hosted runner with no physical GPU, per
+    # docs/phase-5-remaining.md's own investigation). No ROCm hardware exists
+    # anywhere in this project (same constraint Phase 4/5/6 already
+    # documented), so this only proves PROFILER_GPU_BACKEND=hip configures,
+    # links against a real ROCm toolkit, and compiles -- not that it runs
+    # correctly on a device. Pinned to ubuntu-22.04 (not ubuntu-latest):
+    # ROCm's apt repository is published per Ubuntu codename (jammy here),
+    # so floating to a newer default would silently point at a
+    # not-yet-published repo path.
+    name: hip-toolkit-only (compiles, not device-verified)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+
+      # Follows ROCm's own documented apt-repository setup
+      # (https://rocm.docs.amd.com, "Ubuntu install"). hip-dev pulls in the
+      # hip-config.cmake package CMakeLists.txt's find_package(hip) needs;
+      # no GPU driver/runtime package is installed since no device is
+      # present on this runner.
+      - name: Install ROCm HIP toolkit (compile-only)
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key | \
+            gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/latest jammy main" | \
+            sudo tee /etc/apt/sources.list.d/rocm.list
+          sudo apt-get update
+          sudo apt-get install -y hip-dev
+
+      - name: Configure (HIP, toolkit-only)
+        run: |
+          cmake -S . -B build-hip -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=/opt/rocm \
+            -DPROFILER_BACKEND=KINETO \
+            -DPROFILER_GPU_BACKEND=hip \
+            -DPROFILER_REQUIRE_HIP=ON \
+            -DPROFILER_ENABLE_TESTING=ON
+
+      - name: Build
+        run: cmake --build build-hip --config Release --parallel
+
+      # No HIP-specific real-hardware test exists yet (design-review.md's
+      # Phase 4 real-hardware scope was CUDA-only) -- this proves the
+      # existing suite still builds and runs (every GPU-gated case skips
+      # cleanly, same as the CUDA toolkit-only legs) against a real ROCm
+      # toolchain, not HIP capture correctness.
+      - name: Test
+        run: ctest --test-dir build-hip -C Release --output-on-failure --timeout 180
+
+  cross-backend-conformance:
+    # Phase 6.C (design-review.md section 7, Phase 6 / section 8's "CPU
+    # conformance" row): KINETO and ITT are mutually exclusive per build, so
+    # this cannot be one in-process parameterized test -- it builds each
+    # backend in its own build directory, runs the identical shared golden
+    # scenario (Testing/Cxx/TestCrossBackendGoldenScenario.cpp) against
+    # each, and diffs the two normalized summaries for exact agreement on
+    # event identities/counts (never timing, per section 8's own "avoid
+    # brittle" guidance -- see that file's own comment for what is and is
+    # not compared and why).
+    name: cross-backend-conformance (KINETO vs ITT golden scenario)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+
+      - name: Configure and build (KINETO)
+        run: |
+          cmake -S . -B build-golden-kineto -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=KINETO -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON
+          cmake --build build-golden-kineto --config Release --parallel
+
+      - name: Run golden scenario (KINETO)
+        working-directory: build-golden-kineto/bin
+        run: ./ProfilerCxxTests --gtest_filter=CrossBackendGolden.kineto_backend_observes_expected_identities
+
+      - name: Save KINETO summary
+        run: cp build-golden-kineto/bin/cross_backend_golden.json kineto_golden.json
+
+      - name: Configure and build (ITT)
+        run: |
+          cmake -S . -B build-golden-itt -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=ITT -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON
+          cmake --build build-golden-itt --config Release --parallel
+
+      - name: Run golden scenario (ITT)
+        working-directory: build-golden-itt/bin
+        run: ./ProfilerCxxTests --gtest_filter=CrossBackendGolden.itt_backend_observes_expected_identities
+
+      - name: Save ITT summary
+        run: cp build-golden-itt/bin/cross_backend_golden.json itt_golden.json
+
+      - name: Diff KINETO vs ITT golden-scenario summaries
+        run: python3 Scripts/diff_cross_backend_golden.py kineto_golden.json itt_golden.json
 
   native-only:
     name: native-only build (PROFILER_BACKEND=NONE)

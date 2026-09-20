@@ -10,10 +10,20 @@ and 6.H are done (see the amendment below and the validation checklist) —
 6.F in particular found and fixed three real, previously-undetected
 memory-corruption bugs via soak testing, and found but did not fix a
 fourth, rarer one, using WSL2/Ubuntu for TSan/ASan access this Windows
-machine doesn't have natively. 6.C and 6.D remain open. Phase 6 is **not**
-complete — design-review.md's own "Done when" clause requires cross-backend
-semantics agreement (6.C) and CI's supported/unsupported/unavailable
-distinction (6.D), neither of which has landed yet.
+machine doesn't have natively.
+
+**2026-09-20 amendment (see "Amendment, 2026-09-20" section below)**: 6.C
+and 6.D are now also done — a cross-backend golden-scenario diffing CI job
+(6.C) and JUnit skip/pass reporting plus a HIP toolkit-only CI leg (6.D)
+both landed and were verified locally. The `lock_free_queue.h` race (found
+during 6.F) was investigated further but not reproduced on this session's
+hardware, and remains open, precisely documented. **Phase 6 is
+substantially complete**: every work item (6.A-6.H) has landed, but
+design-review.md's "Done when" clause is not unconditionally satisfied in
+its strictest reading — see that amendment's Phase D re-verification for
+the two specific, honestly-documented reasons (structural KINETO/ITT
+metadata-and-async-span asymmetry; the one unreproduced-in-CI
+`lock_free_queue.h` race) rather than a blanket "done."
 
 ## Goal
 
@@ -572,12 +582,48 @@ this is the mechanism working as designed, not a detour from it.
       to fail with a clear "decomposes into N elements, but M names were
       provided" error when a field was temporarily added (reverted after
       confirming).
-- [ ] 6.C — not attempted this session. Cross-backend conformance needs a
-      dedicated CI-level diffing step (KINETO and ITT can't coexist in one
-      binary); scoping and building that is a substantial independent task
-      not started here.
-- [ ] 6.D — not attempted this session. JUnit/skip-count CI reporting and a
-      HIP toolkit-only CI leg remain open.
+- [x] 6.C — `Testing/Cxx/TestCrossBackendGoldenScenario.cpp` added: one
+      single-sourced golden workload (nested scopes, recursion, same name
+      from different call sites, a Unicode/JSON-special-char scope name)
+      executed via each backend's own observation point (Kineto:
+      `disableProfiler()->events()`; ITT: a recording stub intercepting the
+      wrapper's push/pop calls, reused from `TestProfilerBackendFunction.cpp`'s
+      existing `itt_profiles_function` pattern). Each writes a normalized
+      `{name: count}` JSON; a new `cross-backend-conformance` CI job builds
+      both backends fresh and diffs them with
+      `Scripts/diff_cross_backend_golden.py`. Verified locally end to end:
+      built and ran against both `build_ninja` (KINETO) and `build-itt`
+      (ITT) dev builds, confirmed byte-identical normalized output, and
+      confirmed the diff script fails on a deliberately introduced count
+      mismatch (reverted after). "Overlapping async spans" and structured
+      metadata comparison are deliberately not attempted — both are
+      structurally impossible to compare (ITT has no metadata plumbing and
+      no non-nested-span API at all, not just an untested corner) — see the
+      test file's own header comment and `docs/capability-matrix.md` for
+      the full reasoning. `TestHotspotReport.cpp` and
+      `TestProfilerBackendMetadata.cpp`'s metadata round-trip stay
+      KINETO-only for the same structural reason, not backfilled.
+- [x] 6.D — `Scripts/report_gpu_test_status.py` added; `build-test`'s Test
+      step now sets `GTEST_OUTPUT` and a follow-up step (gated on
+      `matrix.gpu == 'cuda'`) reports the `GpuRealHardware` suite's
+      skip-vs-pass counts as a job summary. Verified locally: confirmed
+      `GTEST_OUTPUT` produces real GoogleTest JUnit XML when the binary is
+      invoked directly (ctest's own per-test 120s timeout made a full-suite
+      local run environment-contended, not a problem with the mechanism
+      itself), and confirmed the parsing script correctly reports both a
+      synthetic all-skipped report and a real partial JUnit report from
+      this binary. Added a new `hip-toolkit-only` job (`ubuntu-22.04`,
+      pinned to match ROCm's per-codename apt repository): installs
+      `hip-dev` from ROCm's real apt repository, configures with the new
+      `-DPROFILER_REQUIRE_HIP=ON` (added alongside the existing
+      `PROFILER_REQUIRE_CUDA`/`PROFILER_REQUIRE_NVTX` pattern) so the job
+      fails loudly rather than silently building HIP=0, and runs the
+      existing suite (every GPU-gated case skips cleanly, same tier as the
+      CUDA toolkit-only legs). Not verified against a real GitHub Actions
+      run (no push access from this session) — the ROCm apt-repository
+      steps follow ROCm's own documented Ubuntu install process but have
+      not been confirmed to succeed on an actual `ubuntu-22.04` runner;
+      flagged for the first real CI run on this branch/PR to confirm.
 - [x] 6.E — `Testing/Cxx/TestProfilerFailureInjection.cpp` added: throwing-
       collector containment (found and fixed a real bug — see below) and
       sample-series bounded-overflow tests, running in the normal test
@@ -615,14 +661,282 @@ this is the mechanism working as designed, not a detour from it.
       (`TestProfilerChromeTraceHierarchical.cpp`) that pins the current
       value and would fail if the constant changed without a deliberate
       test update.
-- [ ] Phase 6's "Done when" criteria re-checked item-by-item against
-      design-review.md's exact language: not yet — six of eight work items
-      (6.A/6.B/6.E/6.F/6.G/6.H) are done, but 6.C and 6.D (cross-backend
-      semantics agreement, CI's supported/unsupported/unavailable
-      distinction) are both explicitly required by that clause and remain
-      open. Do not mark Phase 6 complete until they land or are
-      consciously descoped with the same reasoning discipline Phase 4 and
-      Phase 5 applied to their own open items.
+- [x] Phase 6's "Done when" criteria re-checked item-by-item against
+      design-review.md's exact language, 2026-09-20:
+      - "CI distinguishes supported, unsupported, unavailable and
+        incomplete results" — met for the real-hardware axis (6.D's
+        skip/pass reporting) and the backend axis (`docs/capability-matrix.md`
+        publishes verified/toolkit-only/not-tested tiers, now including HIP).
+      - "core semantics agree across backends" — met for the scenarios
+        6.C's golden test actually covers (identities/counts for nested/
+        recursive/shared-name/Unicode scopes); NOT met for structured
+        metadata or async-span semantics, which are structurally
+        incomparable between backends (documented, not silently dropped).
+      - "regressions in ownership, timing precision, attribution and
+        overhead block release" — met via the existing sanitizer gates
+        (now including Linux LeakSanitizer), `TestPublicOptionsTripwire.cpp`,
+        and the benchmark/overhead tests predating this phase.
+      - "Require zero failures in deterministic tests and zero sanitizer
+        findings in tested scenarios" — met for everything sanitizers
+        actually cover on this project's CI (Linux/macOS ASan+UBSan, Linux
+        TSan, all KINETO-only). NOT fully met in the strictest sense: the
+        `lock_free_queue.h` race is a known, real, previously-observed
+        sanitizer finding (Linux/TSan on WSL2) that remains unfixed —
+        precisely because it is not currently reproducible in *this
+        project's own CI environment* (only ever seen off-CI, on a
+        developer's WSL2 machine), it does not show as a live CI failure
+        today, but it is a real, honestly-documented gap against the
+        clause's literal wording, not a clean pass.
+      - "publish soak duration, seed, event counts and hardware" — met,
+        Phase 6.F, unchanged.
+      **Overall: Phase 6 is substantially complete but not unconditionally
+      "done" against the clause's strictest reading**, for two reasons that
+      are both already fully documented rather than glossed over: the
+      structural (not merely untested) metadata/async-span asymmetry
+      between KINETO and ITT, and the one known, unreproduced-in-CI
+      `lock_free_queue.h` race. Both are precisely the kind of
+      "infrastructure-blocked, honestly documented" gap Phase 4 (HIP
+      hardware, clock_calibration) and Phase 5 (CUDA/HIP static
+      find_dependency wiring) already established as this project's
+      accepted closing pattern — not silently claimed as resolved.
+
+## Amendment, 2026-09-20 — closing 6.C, 6.D, and the open lock_free_queue race
+
+User asked to complete Phase 6 fully. This is a continuation of the plan
+above, not a scope change: it closes exactly the three items the checklist
+above already named as open (6.C, 6.D, and Bug 4 from the 6.F amendment),
+plus the final "Done when" re-check the checklist deferred. No new goal,
+no change to Non-goals/Deferred (HIP/ROCm real hardware, genuine scheduled
+hardware soak, and a general-purpose architecture-linting framework stay
+out of scope, unchanged).
+
+Re-verified current state before planning (do not trust the checklist
+dates alone):
+- `git log -- Profiler/common/lock_free_queue.h` shows no commit since
+  `17172ad` — Bug 4 is still unfixed.
+- `.github/workflows/ci.yml` has no `gtest_output`/JUnit step and no
+  `hip`/`rocm` job — 6.D is still fully open.
+- `Testing/Cxx/TestProfilerBackendFunction.cpp` confirms 6.C's audit finding
+  still holds: `kineto_profiles_function` (line 114) and
+  `itt_profiles_function` (line 329) are separately written test bodies,
+  not one shared scenario — same pattern in `TestProfilerBackendMemory.cpp`;
+  `TestHotspotReport.cpp` and `TestProfilerBackendMetadata.cpp`'s metadata
+  round-trip are still KINETO-only.
+- Read `Profiler/common/lock_free_queue.h` and
+  `Profiler/native/tracing/traceme_recorder.cpp` in full: the queue is a
+  genuine SPSC (single-producer/single-consumer) design — `Record()` is
+  only ever called by the owning thread, `Consume()` only by the control
+  thread calling `stop()` — with acquire/release pairing on `end_`
+  intended to make push()'s slot writes and `end_block_->next` linkage
+  visible to the consumer before it follows them. No defect was found by
+  inspection alone in the time available for planning; per this project's
+  own established discipline (Phase 4's clock_calibration item, Phase 6.F
+  itself), this bug will not be "fixed" by guessing — it gets fixed only if
+  a sanitizer reproduces it on hardware available to this session, with the
+  same before/after evidence bar Phase 6.F's three real fixes met.
+
+### Phase A — Reproduce and fix (or honestly not fix) the lock_free_queue.h race
+
+1. Attempt to reproduce Bug 4 locally. This machine is macOS, where the
+   existing project memory records ThreadSanitizer as broken (crashes in
+   its own runtime before test code runs) — treat that as still true unless
+   disproven, but AddressSanitizer is not recorded as broken here and the
+   original finding reproduced under ASan too (2 of 8 runs, per the 6.F
+   amendment), not only TSan. Build `-DPROFILER_SANITIZER=address,undefined`
+   (matching CI's `sanitize-asan-ubsan` job exactly) and run
+   `TestProfilerSoak.cpp` repeatedly (8+ runs, matching the original
+   investigation's sample size) looking for the same
+   `blocked_queue_base::pop_impl()` crash signature.
+2. If it reproduces: capture the real stack trace/ASan report first, form a
+   hypothesis from that evidence (not from re-reading the source in
+   isolation), fix it, then re-run 8+ iterations to confirm zero crashes.
+   Extend `Testing/Cxx/TestLockFreeQueue.cpp` (create it if no dedicated
+   test file exists yet — confirm via a repo search first) with a
+   regression test exercising the specific concurrent pattern that
+   triggered it, not just a restatement of the existing soak test.
+3. If it does not reproduce on this machine after a reasonable number of
+   attempts (macOS ASan may simply not hit the same interleaving Linux TSan
+   did): do not guess a fix blind. Instead, harden the investigation itself
+   — re-derive the actual proof obligation for the SPSC contract (what
+   happens-before relationship each field access relies on) directly from
+   `lock_free_queue.h`'s code as written, check it field-by-field
+   (`start_block_`, `end_block_->next`, `block_count_`) against the
+   acquire/release pairing on `end_`, and document either "confirmed
+   correct by inspection, could not reproduce to disprove" or a specific,
+   named suspect line with reasoning — update this plan and the 6.F
+   amendment with whichever outcome is honest, rather than marking the
+   checklist item complete without evidence.
+4. Exit criteria: either a committed fix with reproducing-then-clean
+   sanitizer evidence recorded in the commit message and this plan, or a
+   documented, reasoned non-fix (same bar as Phase 4's `clock_calibration`
+   item) — not silence either way.
+
+### Phase B — 6.D: CI hardware-gating distinction + HIP toolkit-only leg
+
+1. Add `--gtest_output=xml:<path>` (or the CMake/CTest equivalent —
+   confirm `ProfilerCxxTests` is a gtest binary invoked via `ctest`, check
+   whether `ctest`'s own `--output-junit` is more direct than passing
+   gtest flags through) to the `Test` steps in `build-test`,
+   `native-only`, and `static-link` jobs at minimum — wherever
+   `TestProfilerGpuRealHardware.cpp` actually links in.
+2. Add a follow-up CI step parsing that XML for skip vs. pass counts specific
+   to `GpuRealHardware` tests, publishing them as a job summary
+   (`$GITHUB_STEP_SUMMARY`) — "0 GPU tests skipped, N passed on real
+   hardware" vs. "N GPU tests skipped, 0 ran" must be visible without
+   reading the raw log, per the plan's existing 6.D item 1.
+3. Add a HIP/ROCm CI leg: research what GitHub Actions setup exists for the
+   ROCm toolkit on Linux (an apt-based install is the fallback if no
+   maintained action exists — verify current state, don't assume
+   `Jimver/cuda-toolkit`'s HIP analog exists without checking), configure
+   with `PROFILER_GPU_BACKEND=hip`, build only (no device), and label the
+   job/summary explicitly "toolkit-only, not device-verified" — matching
+   design-review.md's own phrase precisely.
+4. Update `docs/capability-matrix.md`'s HIP/ROCm row from "Not currently
+   tested" to "Toolkit-only" once the leg is green, and cross-reference the
+   new CI job name.
+5. Exit criteria: both sub-items land as real, running CI jobs (not just
+   documented as planned), verified locally where possible (the JUnit
+   parsing step) and by a real CI run against this branch/PR for the parts
+   that can't be verified locally (the HIP toolkit install, real GitHub
+   Actions runner behavior).
+
+### Phase C — 6.C: cross-backend (KINETO vs. ITT) conformance diffing
+
+1. Define the golden scenario set design-review.md section 8 names: N
+   nested scopes with known names, recursion, same name from different
+   call sites, overlapping async spans, Unicode/escaped metadata. Implement
+   it once as shared, backend-agnostic scenario code (not duplicated
+   per-backend test bodies) that both `kineto_profiles_function`-style and
+   `itt_profiles_function`-style tests already have a precedent for
+   structuring, but written so the *scenario* is single-sourced and only
+   the backend selection differs.
+2. Each backend's CI leg exports the golden run's trace to a JSON artifact
+   (reusing the existing Chrome Trace/XSpace export path — check which one
+   is more diffable structurally before choosing). Upload both backends'
+   artifacts (`actions/upload-artifact`).
+3. Add a new CI job, dependent on both `build-test` matrix legs completing
+   (`needs:`), that downloads both artifacts and runs a small Python
+   diffing script comparing identities/categories/units/counts/attribution
+   for exact agreement — explicitly *not* diffing timing values, per
+   design-review.md's own "avoid brittle 'must agree within 1%'" guidance
+   quoted in this plan's own 6.C item 2.
+4. Backfill the two asymmetric scenarios the audit found
+   (`TestHotspotReport.cpp` KINETO-only, `TestProfilerBackendMetadata.cpp`'s
+   metadata round-trip KINETO-only) with ITT equivalents, or document
+   precisely why not (e.g., a KINETO-specific feature ITT genuinely has no
+   equivalent of) rather than silently leaving the asymmetry.
+5. Exit criteria: the diffing CI job runs on every push/PR (or is
+   consciously scoped to run only when both matrix legs succeed, documented
+   why), passes on the current clean tree, and is verified to actually
+   catch a divergence (introduce one deliberately, confirm the job fails,
+   revert) — matching 6.A/6.B's own verification discipline.
+
+### Phase D — Re-verify Phase 6 "Done when" and close out
+
+1. Re-read design-review.md's Phase 6 "Done when" clause line by line
+   against the state after Phases A-C land: CI distinguishes supported/
+   unsupported/unavailable/incomplete (6.D); core semantics agree across
+   backends (6.C); regressions in ownership/timing precision/attribution/
+   overhead block release (already true via existing tests + sanitizer
+   gates); zero failures in deterministic tests and zero sanitizer findings
+   in tested scenarios (true only if Phase A either fixed Bug 4 or the
+   non-fix is scoped/documented such that it doesn't count as a live
+   "failure in tested scenarios" — be precise about this distinction rather
+   than glossing over it); soak duration/seed/event counts/hardware
+   published (already true, 6.F).
+2. Update this plan's Validation checklist (6.C, 6.D rows) and the final
+   "Done when" checklist row with the actual outcome, not aspirational
+   language.
+3. Update `docs/design-review.md` if it tracks phase completion status
+   anywhere outside this plan document (confirm one way or the other,
+   don't assume).
+4. Update the project's persistent memory (auto-memory file tracking this
+   redesign) once Phase 6 is genuinely closed — or once it's closed as far
+   as this session's tooling allows, with the same infrastructure-gap
+   honesty Phase 4/5/6 already established as this project's standard.
+
+### Phase A outcome, 2026-09-20 — could not reproduce; re-derived SPSC correctness by inspection; left open
+
+Attempted reproduction on this (macOS) machine, escalating scale:
+- 8 consecutive runs of `TestProfilerSoak.cpp` at its original bug-hunt scale
+  (2000 cycles x 8 threads x 2000 scopes, temporarily restored from the
+  current CI-budget-reduced 200x8x100 by locally editing constants —
+  reverted after) under `-DPROFILER_SANITIZER=address,undefined` (matching
+  CI's `sanitize-asan-ubsan` job exactly): all clean.
+- 3 further runs at 32 threads/cycle (same event volume otherwise): all
+  clean, though each run took 130s-680s (thread oversubscription on this
+  machine) — stopped after 3 for time budget, not because of a failure.
+- 1000 repeats (`--gtest_repeat=20` x 50 batches) of the existing, isolated
+  `TestCommonContainers.cpp`'s `LockFreeQueue.
+  single_producer_single_consumer_threads_see_all_elements` test (500
+  elements, block size 64, tight producer/consumer spin loop) in the same
+  ASan build: all clean.
+- Confirmed this project's own memory already records ThreadSanitizer as
+  broken on this machine (crashes in its own runtime before test code
+  runs); did not re-attempt TSan locally as a result. Docker is installed
+  but has no running daemon in this sandboxed session, so a Linux/TSan
+  container was not available either. CI's own `sanitize-tsan` job (Linux)
+  is the only environment this project has that matches where Bug 4
+  originally reproduced (WSL2/Ubuntu) -- not available to this session.
+
+Re-derived the SPSC (single-producer/single-consumer) correctness argument
+directly from the current code (not just re-reading the existing comments)
+before giving up on reproduction:
+- `push()` writes the new slot's data, then (only when completing a block)
+  links `end_block_->next` and advances `end_block_`, and only *after* both
+  of those does it publish via `set_end()` (a release-store on `end_`).
+  `pop()`/`pop_impl()` only observe `get_end()` (an acquire-load) and only
+  follow `start_block_->next` once `start_` has advanced past a boundary
+  that a specific `set_end()` call already made visible -- so the
+  release/acquire pairing on `end_` is exactly what the class's own "Pop
+  only removes an element if Push finished before Pop was called" comment
+  claims, and by inspection actually holds for the field accesses that
+  matter (`slots[]` contents, `end_block_->next` linkage).
+- `block_count_` is relaxed-only, but it is only ever used as a heuristic
+  drop/no-drop decision in `push()` -- a stale read there produces an
+  incorrect *drop decision*, not corrupted memory, so it is not a
+  candidate for a memory-corruption crash.
+- `traceme_recorder.h`'s own documented contract ("Race Conditions: Events
+  recorded during stop() may be dropped") confirms concurrent push()/pop()
+  on the same `ThreadLocalRecorder`'s queue is an intended, designed-for
+  case (a live producer thread checking `active()` true just before
+  `stop()` flips `g_trace_level`), not a violation of the SPSC assumption
+  that would itself explain memory corruption.
+- No defect was found in this pass. This is not a proof of correctness
+  (this project has already been burned once per Phase 4/6 sessions by
+  "looks correct by inspection" claims that a sanitizer later
+  disproved) -- it is exactly the honest middle state Phase 6.F's own
+  amendment anticipated for this bug: "the exact mechanism ... was not
+  identified with confidence."
+
+**Decision: left open, undisturbed, same as documented.** Per this
+project's own established discipline (Phase 4's `clock_calibration`, and
+this exact bug's own original writeup), no fix is being guessed at without
+sanitizer evidence reproducing it. What changed from the pre-amendment
+state: broader reproduction attempts (isolated queue stress, larger
+soak scale, higher thread counts, all on ASan rather than only the
+original TSan environment) now also fail to reproduce it, which is
+additional negative evidence but not a resolution. Flagging this
+specifically, as the original writeup already asked, for a session with
+Linux/TSan access (a real machine or a working Docker daemon) to pick up:
+reproduce via `Testing/Cxx/TestProfilerSoak.cpp` under
+`-DPROFILER_SANITIZER=thread` on Linux, matching CI's `sanitize-tsan` job.
+
+### Risks / open questions carried into execution
+
+- Phase A's outcome is genuinely unknown before execution — the honest
+  answer might be "still open, could not reproduce on this hardware." That
+  is an acceptable Phase 6 exit state (same as HIP/ROCm hardware and
+  scheduled hardware soak, already accepted as infrastructure-blocked
+  Deferred items) as long as it's documented with the same rigor, not a
+  failure to plan around.
+- Phase B's JUnit-parsing and HIP-toolkit-availability details need
+  verification against current GitHub Actions ecosystem state at execution
+  time (this plan does not assume specifics not yet confirmed).
+- Phase C's "which export format is more diffable" and "reuse vs.
+  duplicate golden scenario code" choices are implementation-time
+  decisions within the scope already fixed by design-review.md section 8's
+  own required-scenario list; not decisions that change this plan's scope.
 
 ## Exit criteria
 
