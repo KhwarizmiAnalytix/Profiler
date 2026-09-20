@@ -1,5 +1,6 @@
 #include "bespoke/kineto/kineto_shim.h"
 
+#include <sstream>
 #include <type_traits>
 
 #include "bespoke/common/collection.h"

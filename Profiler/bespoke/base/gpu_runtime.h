@@ -15,8 +15,9 @@
 
 #include <hip/hip_runtime.h>
 
-using cudaError_t = hipError_t;
-using cudaEvent_t = hipEvent_t;
+using cudaError_t  = hipError_t;
+using cudaEvent_t  = hipEvent_t;
+using cudaStream_t = hipStream_t;
 
 #define cudaSuccess hipSuccess
 #define cudaErrorInitializationError hipErrorNotInitialized
