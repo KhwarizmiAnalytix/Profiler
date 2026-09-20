@@ -274,8 +274,8 @@ replaces the previous session's collected XSpace.
 | `with_output_format(format)` | Select the report format; pass the destination path to `export_report()`/`export_to_file()` directly |
 | `build()` | Return a `std::unique_ptr<profiler_session>` |
 
-Lower-level native tracing is implemented under `Profiler/native/tracing/` and
-`Profiler/native/exporters/xplane/`. Those headers are library internals. Applications
+Lower-level native tracing is implemented under `include/native/tracing/` and
+`include/native/exporters/xplane/`. Those headers are library internals. Applications
 use the session API from `profiler.h`.
 
 ## Threads and scope lifetime
@@ -499,16 +499,16 @@ flowchart LR
 
 | Directory | Responsibility |
 | --- | --- |
-| `Profiler/profiler.h` | Public client API (sessions, reports, capture, macros) |
-| `Profiler/common/` | Shared types, public instrumentation, capture wrapper, platform utilities |
-| `Profiler/native/session/` | Session lifecycle, scopes, reports, hierarchy reconstruction |
-| `Profiler/native/tracing/`, `Profiler/native/cpu/` | TraceMe recording and host/thread-pool collection |
-| `Profiler/native/gpu/` | Native GPU collection |
-| `Profiler/native/exporters/` | XSpace model and timeline serialization |
-| `Profiler/native/analysis/` | Statistics and native hotspots |
-| `Profiler/bespoke/common/`, `Profiler/bespoke/base/` | RecordFunction orchestration and backend observers |
-| `Profiler/bespoke/kineto/` | Kineto adapter (library-internal) |
-| `Profiler/bespoke/itt/` | ITT adapter (library-internal) |
+| `include/profiler.h` | Public client API (sessions, reports, capture, macros) |
+| `include/common/` | Shared types, public instrumentation, capture wrapper, platform utilities |
+| `include/native/session/` | Session lifecycle, scopes, reports, hierarchy reconstruction |
+| `include/native/tracing/`, `include/native/cpu/` | TraceMe recording and host/thread-pool collection |
+| `include/native/gpu/` | Native GPU collection |
+| `include/native/exporters/` | XSpace model and timeline serialization |
+| `include/native/analysis/` | Statistics and native hotspots |
+| `include/bespoke/common/`, `include/bespoke/base/` | RecordFunction orchestration and backend observers |
+| `include/bespoke/kineto/` | Kineto adapter (library-internal) |
+| `include/bespoke/itt/` | ITT adapter (library-internal) |
 
 ## Testing and troubleshooting
 
@@ -557,14 +557,14 @@ ctest --test-dir build-coverage --output-on-failure
 IGNORE=inconsistent,unsupported,format,count,unused,corrupt,empty
 lcov --capture --directory build-coverage --output-file coverage.info \
   --ignore-errors "${IGNORE}"
-lcov --extract coverage.info '*/Profiler/Profiler/*' \
+lcov --extract coverage.info '*/Profiler/include/*' \
   --output-file coverage.filtered.info --ignore-errors "${IGNORE}"
 genhtml coverage.filtered.info --output-directory coverage-html \
   --ignore-errors "${IGNORE},category"
 open coverage-html/index.html  # Linux: xdg-open
 ```
 
-`--extract` keeps only first-party sources under `Profiler/`. Toolchain headers
+`--extract` keeps only first-party sources under `include/`. Toolchain headers
 (LLVM libc++, libstdc++, Apple SDK) and `third_party/` are omitted even when
 gcov records them from inlined templates. `--ignore-errors` suppresses lcov's
 function-end-line warnings from heavily templated/inlined code (a known lcov

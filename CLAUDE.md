@@ -1,7 +1,7 @@
 # Profiler
 
 Standalone C++ profiler for any repository. Public header: `profiler.h`
-(in `Profiler/`). CMake target: `Profiler::Profiler`. Repo:
+(in `include/`). CMake target: `Profiler::Profiler`. Repo:
 https://github.com/KhwarizmiAnalytix/Profiler
 
 External projects use `find_package(Profiler)` or FetchContent. Do not add a
@@ -77,7 +77,7 @@ where used; plain Google Test is also present. Add new C++ test files to
 the explicit lists in `Testing/Cxx/CMakeLists.txt` and, where supported,
 `Testing/Cxx/BUILD.bazel`. Preserve deliberate backend-specific differences.
 Keep consumer tests focused on the public `profiler.h` API. Source lives
-in `Profiler/`, dependencies in `third_party/`; use `PROFILER_*` macros.
+in `include/`, dependencies in `third_party/`; use `PROFILER_*` macros.
 
 ## Verification and scope
 

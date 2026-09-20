@@ -113,7 +113,7 @@ GPU-enabled build. Leak detection is Linux-only (macOS LSan's stop-the-world
 scan is unreliable there) — a real, documented gap, not an oversight.
 
 One known, precisely-located but unfixed finding from Phase 6.F's soak
-testing: a rare race in `Profiler/common/lock_free_queue.h`'s
+testing: a rare race in `include/common/lock_free_queue.h`'s
 `blocked_queue_base::pop_impl()`, reproducing in a minority of TSan runs on
 WSL2/Ubuntu (not this project's own CI environment). Not reproduced on
 macOS ASan across repeated attempts at both original and larger scale (see

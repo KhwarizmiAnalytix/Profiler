@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 # Source directories that make up the Profiler library (mirrors
-# CMakeLists.txt's file(GLOB[_RECURSE] ...) roots under Profiler/:
+# CMakeLists.txt's file(GLOB[_RECURSE] ...) roots under include/:
 # common/*.{h,cpp}, native/**, the bespoke/{base,common,itt,kineto}
 # backend tree, and util/env.h -- minus Testing/, third_party/,
 # examples/, consumer/, docs/).
-_SOURCE_DIRS = ["Profiler"]
+_SOURCE_DIRS = ["include"]
 
 
 @dataclass

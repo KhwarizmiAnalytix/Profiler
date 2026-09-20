@@ -758,13 +758,13 @@ class ProfilerConfiguration:
 
         # coverage-tool (2026.9.14) passes --ignore-errors only on
         # `lcov --capture`, and filters with `lcov --remove`. Rewrite that
-        # remove into `lcov --extract */Profiler/Profiler/*` so the report
+        # remove into `lcov --extract */Profiler/include/*` so the report
         # is first-party library sources only (not LLVM libc++, Apple SDK,
         # or other toolchain headers). Apply the coverage.toml ignore list
         # to every lcov invocation so lcov 2.x does not fail on
         # derive_function_end_line inconsistencies.
         orig_run = gcc_coverage.subprocess.run
-        library_glob = "*/Profiler/Profiler/*"
+        library_glob = "*/Profiler/include/*"
 
         def run_filtered_lcov(cmd, *args, **kwargs):
             if isinstance(cmd, list) and cmd and cmd[0] == "lcov":

@@ -169,7 +169,7 @@ if(PROFILER_ENABLE_KINETO AND TARGET Kineto::kineto)
     list(APPEND PROFILER_DEPENDENCY_LIBS Kineto::kineto)
 endif()
 
-set(PROFILER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Profiler")
+set(PROFILER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set(profiler_headers "${PROFILER_SRC_DIR}/profiler.h")
 set(profiler_sources "")
@@ -362,7 +362,7 @@ if(PROFILER_ENABLE_INSTALL)
     # Phase 5 (design-review.md section 7 / finding 13): install only the
     # public surface -- profiler.h plus every header its own #include chain
     # transitively needs to resolve for an external consumer, not every
-    # header under Profiler/ (which used to include native/cpu, native/gpu,
+    # header under include/ (which used to include native/cpu, native/gpu,
     # native/platform, bespoke/base, bespoke/kineto, bespoke/itt, etc. --
     # implementation-detail headers profiler.h's own doc comment and
     # docs/profiler.md already describe as internal, but the build never

@@ -10,9 +10,9 @@ Two independent checks:
    source of truth is CMakeLists.txt's own `_profiler_public_headers` list,
    parsed here rather than duplicated, so this check can't silently drift
    from what actually gets installed) may transitively #include a header
-   under a backend-specific directory (Profiler/bespoke/kineto,
-   Profiler/bespoke/itt, Profiler/bespoke/base -- CUDA/HIP glue).
-   Profiler/bespoke/common is the shared instrumentation surface and is
+   under a backend-specific directory (include/bespoke/kineto,
+   include/bespoke/itt, include/bespoke/base -- CUDA/HIP glue).
+   include/bespoke/common is the shared instrumentation surface and is
    allowed (record_function.h is itself a public header).
 
 2. Backend conditionals in common report logic: native/session/
@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROFILER_SRC = REPO_ROOT / "Profiler"
+PROFILER_SRC = REPO_ROOT / "include"
 CMAKELISTS = REPO_ROOT / "CMakeLists.txt"
 
 # Directories a public header must never transitively depend on.
@@ -85,7 +85,7 @@ def parse_public_headers() -> list[str]:
 
 def resolve_include(including_file: Path, quoted_path: str) -> Path | None:
     """Resolve a quoted #include the same way the compiler would: relative
-    to the including file's directory first, then relative to Profiler/
+    to the including file's directory first, then relative to include/
     (this repo's one configured include root for quoted includes)."""
     candidate = (including_file.parent / quoted_path).resolve()
     if candidate.is_file():
@@ -119,7 +119,7 @@ def find_backend_leaks(public_headers: list[str]) -> list[str]:
 
         if not current.is_file():
             # A public header names something that doesn't resolve under
-            # Profiler/ (a system/third-party header) -- not this check's
+            # include/ (a system/third-party header) -- not this check's
             # concern.
             continue
 

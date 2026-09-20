@@ -8,22 +8,22 @@ package(default_visibility = ["//visibility:public"])
 # KINETO backend: bespoke/base, bespoke/kineto, bespoke/common (no unwind)
 _KINETO_BACKEND_SRCS = glob(
     [
-        "Profiler/kineto_*.cpp",
-        "Profiler/kineto/**/*.cpp",
-        "Profiler/bespoke/kineto/**/*.cpp",
-        "Profiler/bespoke/common/**/*.cpp",
-        "Profiler/bespoke/base/**/*.cpp",
+        "include/kineto_*.cpp",
+        "include/kineto/**/*.cpp",
+        "include/bespoke/kineto/**/*.cpp",
+        "include/bespoke/common/**/*.cpp",
+        "include/bespoke/base/**/*.cpp",
     ],
     exclude = [
-        "Profiler/bespoke/common/unwind/**/*.cpp",
+        "include/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
 )
 
 # ITT backend (when PROFILER_ENABLE_ITT and not KINETO): base + common + itt.
-# Profiler/bespoke/kineto/kineto_shim.{h,cpp} is included even though this isn't the Kineto backend:
-# Profiler/bespoke/common/collection.{h,cpp} #include "bespoke/kineto/kineto_shim.h" unconditionally
+# include/bespoke/kineto/kineto_shim.{h,cpp} is included even though this isn't the Kineto backend:
+# include/bespoke/common/collection.{h,cpp} #include "bespoke/kineto/kineto_shim.h" unconditionally
 # (matches CMakeLists.txt).
 # profiler_kineto.{h,cpp} is also included: it is the shared enableProfiler/
 # disableProfiler orchestration layer for every backend (Kineto, ITT, NVTX,
@@ -33,15 +33,15 @@ _KINETO_BACKEND_SRCS = glob(
 # `#if PROFILER_HAS_KINETO`) but is harmlessly inert without it.
 _ITT_BACKEND_SRCS = glob(
     [
-        "Profiler/bespoke/base/**/*.cpp",
-        "Profiler/bespoke/common/**/*.cpp",
-        "Profiler/bespoke/itt/**/*.cpp",
-        "Profiler/bespoke/kineto/kineto_shim.cpp",
-        "Profiler/bespoke/kineto/profiler_kineto.cpp",
-        "Profiler/bespoke/kineto/kineto_client_interface.cpp",
+        "include/bespoke/base/**/*.cpp",
+        "include/bespoke/common/**/*.cpp",
+        "include/bespoke/itt/**/*.cpp",
+        "include/bespoke/kineto/kineto_shim.cpp",
+        "include/bespoke/kineto/profiler_kineto.cpp",
+        "include/bespoke/kineto/kineto_client_interface.cpp",
     ],
     exclude = [
-        "Profiler/bespoke/common/unwind/**/*.cpp",
+        "include/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
@@ -49,11 +49,11 @@ _ITT_BACKEND_SRCS = glob(
 
 _KINETO_BACKEND_HDRS = glob(
     [
-        "Profiler/kineto_*.h",
-        "Profiler/kineto/**/*.h",
-        "Profiler/bespoke/kineto/**/*.h",
-        "Profiler/bespoke/common/**/*.h",
-        "Profiler/bespoke/base/**/*.h",
+        "include/kineto_*.h",
+        "include/kineto/**/*.h",
+        "include/bespoke/kineto/**/*.h",
+        "include/bespoke/common/**/*.h",
+        "include/bespoke/base/**/*.h",
     ],
     exclude = ["Testing/**"],
     allow_empty = True,
@@ -61,12 +61,12 @@ _KINETO_BACKEND_HDRS = glob(
 
 _ITT_BACKEND_HDRS = glob(
     [
-        "Profiler/bespoke/base/**/*.h",
-        "Profiler/bespoke/common/**/*.h",
-        "Profiler/bespoke/itt/**/*.h",
-        "Profiler/bespoke/kineto/kineto_shim.h",
-        "Profiler/bespoke/kineto/profiler_kineto.h",
-        "Profiler/bespoke/kineto/kineto_client_interface.h",
+        "include/bespoke/base/**/*.h",
+        "include/bespoke/common/**/*.h",
+        "include/bespoke/itt/**/*.h",
+        "include/bespoke/kineto/kineto_shim.h",
+        "include/bespoke/kineto/profiler_kineto.h",
+        "include/bespoke/kineto/kineto_client_interface.h",
     ],
     exclude = ["Testing/**"],
     allow_empty = True,
@@ -76,13 +76,13 @@ filegroup(
     name = "profiler_hdrs",
     srcs = glob(
         [
-            "Profiler/*.h",
-            "Profiler/**/*.h",
+            "include/*.h",
+            "include/**/*.h",
         ],
         exclude = [
             "Testing/**",
-            "Profiler/native/**",
-            "Profiler/bespoke/**",
+            "include/native/**",
+            "include/bespoke/**",
         ],
         allow_empty = True,
     ),
@@ -92,14 +92,14 @@ filegroup(
     name = "profiler_srcs",
     srcs = glob(
         [
-            "Profiler/*.cpp",
-            "Profiler/**/*.cpp",
+            "include/*.cpp",
+            "include/**/*.cpp",
         ],
         exclude = [
-            "Profiler/native/**/*.cpp",
-            "Profiler/bespoke/**",
-            "Profiler/kineto_*.cpp",
-            "Profiler/kineto/**/*.cpp",
+            "include/native/**/*.cpp",
+            "include/bespoke/**",
+            "include/kineto_*.cpp",
+            "include/kineto/**/*.cpp",
             "Testing/**",
         ],
         allow_empty = True,
@@ -110,13 +110,13 @@ cc_library(
     name = "Profiler",
     srcs = [
         ":profiler_srcs",
-    ] + glob(["Profiler/native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
+    ] + glob(["include/native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
         "//bazel:enable_itt": _ITT_BACKEND_SRCS,
         "//conditions:default": _KINETO_BACKEND_SRCS,
     }),
     hdrs = [
         ":profiler_hdrs",
-    ] + glob(["Profiler/native/**/*.h", "Profiler/native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True) + select({
+    ] + glob(["include/native/**/*.h", "include/native/**/*.hxx"], exclude = ["Testing/**"], allow_empty = True) + select({
         "//bazel:enable_itt": _ITT_BACKEND_HDRS,
         "//conditions:default": _KINETO_BACKEND_HDRS,
     }),
@@ -126,7 +126,7 @@ cc_library(
         "//conditions:default": ["PROFILER_STATIC_DEFINE"],
     }),
     includes = [
-        "Profiler",
+        "include",
     ],
     linkopts = profiler_linkopts(),
     linkstatic = select({

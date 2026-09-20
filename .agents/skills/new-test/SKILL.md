@@ -13,7 +13,7 @@ where used; plain Google Test is also present. Add new C++ test files to
 the explicit lists in `Testing/Cxx/CMakeLists.txt` and, where supported,
 `Testing/Cxx/BUILD.bazel`. Preserve deliberate backend-specific differences.
 Keep consumer tests focused on the public `profiler.h` API. Source lives
-in `Profiler/`, dependencies in `third_party/`; use `PROFILER_*` macros.
+in `include/`, dependencies in `third_party/`; use `PROFILER_*` macros.
 
 1. Search for existing coverage with `rg`; extend the relevant test file
    instead of creating a duplicate suite.

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Rename the top-level `Profiler/` source directory to `include/`. Purely a
+  source-tree layout change: the installed package's own `include/` layout,
+  the public `profiler.h` API, and `Profiler::Profiler` CMake target name are
+  all unaffected. Updated `CMakeLists.txt`'s `PROFILER_SRC_DIR`,
+  `BUILD.bazel`'s glob patterns, `Scripts/check_architecture.py`,
+  `Scripts/helpers/cppcheck.py`, `Scripts/setup.py`'s coverage lcov filter,
+  and this repository's living docs (`CLAUDE.md`, `docs/profiler.md`,
+  `docs/capability-matrix.md`) accordingly. Historical documents
+  (`docs/design-review.md`, `docs/plans/*.md`, `docs/phase-5-remaining.md`,
+  earlier `CHANGELOG.md` entries) intentionally keep their original `Profiler/`
+  path references, since they describe investigations performed against that
+  path at the time.
 - Phase 5 (design-review.md) API simplification: remove dead/unreachable public
   surface identified in section 4's inventory instead of leaving it as a
   permanent "has no effect" comment.
