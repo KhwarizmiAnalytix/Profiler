@@ -220,12 +220,16 @@ jobs:
           echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/latest jammy main" | \
             sudo tee /etc/apt/sources.list.d/rocm.list
           sudo apt-get update
-          sudo apt-get install -y hip-dev
+          # hip-dev alone is not enough for CMakeLists.txt's KINETO_BACKEND=rocm
+          # path (third_party/kineto/libkineto/CMakeLists.txt requires
+          # rocm-core/rocm_version.h and, for ROCm >= 7.0, rocprofiler-sdk).
+          sudo apt-get install -y hip-dev rocm-core rocprofiler-sdk rocprofiler-sdk-dev
 
       - name: Configure (HIP, toolkit-only)
         run: |
           cmake -S . -B build-hip -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH=/opt/rocm \
+            -DROCM_SOURCE_DIR=/opt/rocm \
             -DPROFILER_BACKEND=KINETO \
             -DPROFILER_GPU_BACKEND=hip \
             -DPROFILER_REQUIRE_HIP=ON \
