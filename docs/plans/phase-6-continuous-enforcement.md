@@ -15,10 +15,16 @@ machine doesn't have natively.
 **2026-09-20 amendment (see "Amendment, 2026-09-20" section below)**: 6.C
 and 6.D are now also done — a cross-backend golden-scenario diffing CI job
 (6.C) and JUnit skip/pass reporting plus a HIP toolkit-only CI leg (6.D)
-both landed and were verified locally. The `lock_free_queue.h` race (found
-during 6.F) was investigated further but not reproduced on this session's
-hardware, and remains open, precisely documented. **Phase 6 is
-substantially complete**: every work item (6.A-6.H) has landed, but
+both landed, verified locally, then pushed and confirmed **green on a real
+GitHub Actions run** (`35507383809`, commit `92256dc`) after fixing four
+real issues the first live run surfaced (two CI/toolkit-config gaps, and
+two genuine, previously-latent first-party HIP-portability bugs never
+caught before because no CI configuration had ever compiled
+`PROFILER_GPU_BACKEND=hip` — see 6.D's checklist entry for the full list).
+The `lock_free_queue.h` race (found during 6.F) was investigated further
+but not reproduced on this session's hardware, and remains open, precisely
+documented. **Phase 6 is substantially complete**: every work item
+(6.A-6.H) has landed and is confirmed green in real CI, but
 design-review.md's "Done when" clause is not unconditionally satisfied in
 its strictest reading — see that amendment's Phase D re-verification for
 the two specific, honestly-documented reasons (structural KINETO/ITT
@@ -619,11 +625,42 @@ this is the mechanism working as designed, not a detour from it.
       `PROFILER_REQUIRE_CUDA`/`PROFILER_REQUIRE_NVTX` pattern) so the job
       fails loudly rather than silently building HIP=0, and runs the
       existing suite (every GPU-gated case skips cleanly, same tier as the
-      CUDA toolkit-only legs). Not verified against a real GitHub Actions
-      run (no push access from this session) — the ROCm apt-repository
-      steps follow ROCm's own documented Ubuntu install process but have
-      not been confirmed to succeed on an actual `ubuntu-22.04` runner;
-      flagged for the first real CI run on this branch/PR to confirm.
+      CUDA toolkit-only legs).
+
+      **Verified against real GitHub Actions runs, 2026-09-20 (this
+      session, pushed directly to `main`).** The first real run
+      (`e1979ff`, run `35502583188`) failed, for real reasons this session
+      then fixed one at a time, watching each subsequent run rather than
+      guessing blind:
+      1. Kineto's own `CMakeLists.txt` requires `ROCM_SOURCE_DIR` for
+         `KINETO_BACKEND=rocm` — not set. Fixed (`3859b26`): added
+         `-DROCM_SOURCE_DIR=/opt/rocm`.
+      2. `rocprofiler-sdk-dev` does not exist in ROCm's apt repo (confirmed
+         directly against the repo's own `Packages` index, not guessed) —
+         headers ship inside `rocprofiler-sdk` itself. Fixed (`05d4ca9`).
+      3. Two genuine, previously-latent first-party HIP-portability bugs,
+         never caught before because no CI configuration had ever compiled
+         `PROFILER_GPU_BACKEND=hip` until this job existed. Fixed
+         (`555bb57`), verified against `build_ninja`/`build-itt` first:
+         - `bespoke/base/gpu_runtime.h`'s CUDA→HIP portability shim mapped
+           `cudaError_t`/`cudaEvent_t` but not `cudaStream_t`, which
+           `bespoke/base/cuda.cpp`'s `record_with_stream()` casts to
+           unconditionally — added the missing `using cudaStream_t =
+           hipStream_t;`.
+         - `bespoke/kineto/kineto_shim.cpp` uses `std::stringstream`
+           without including `<sstream>`, relying on a transitive include
+           present under every CUDA/no-GPU configuration this project's CI
+           has ever built — added the explicit include.
+      4. `librocprofiler-sdk.so` has undefined `aqlprofile_*` references at
+         link time; apt does not declare `hsa-amd-aqlprofile` as its
+         dependency. Fixed (`92256dc`): added the package.
+
+      **Final result: full CI run `35507383809` (commit `92256dc`) is
+      green across all 19 jobs**, including `hip-toolkit-only` (3m0s) and
+      `cross-backend-conformance` (3m42s, confirming 6.C's job also runs
+      clean on a real runner, not just locally). This is real, not
+      claimed: watched each run via `gh run view`/`gh api .../logs`, fixed
+      only what the actual failures said, not what seemed plausible.
 - [x] 6.E — `Testing/Cxx/TestProfilerFailureInjection.cpp` added: throwing-
       collector containment (found and fixed a real bug — see below) and
       sample-series bounded-overflow tests, running in the normal test
