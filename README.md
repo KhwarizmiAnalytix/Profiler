@@ -28,7 +28,26 @@ used for the optional, offline Holistic Trace Analysis (HTA) workflow.
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
 [Output examples](docs/outputs.md) · [Runnable examples](examples/README.md) ·
-[Capability matrix](docs/capability-matrix.md)
+[Capability matrix](docs/capability-matrix.md) · [Design review](docs/design-review.md) ·
+[Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
+
+## Supported platforms
+
+| | Ubuntu | macOS | Windows |
+| --- | --- | --- | --- |
+| KINETO backend | Verified in CI | Verified in CI | Verified in CI |
+| ITT backend | Verified in CI | Verified in CI | Verified in CI |
+| CUDA (Kineto) | — | — | Toolkit-only in CI; verify on real hardware before relying on device output |
+| HIP/ROCm (Kineto) | Toolkit-only in CI | — | — |
+| ASan + UBSan | Verified in CI | Verified in CI | Not covered (MSVC has no equivalent wrapper here) |
+| TSan | Verified in CI | Not covered | Not covered |
+
+"Toolkit-only" means the configuration builds against a real SDK on a
+GitHub-hosted runner with no physical device, so device-specific tests skip
+cleanly rather than running — it proves compilation, not GPU capture
+correctness. See the [capability matrix](docs/capability-matrix.md) for the
+full OS×backend×GPU breakdown, the CI job each row maps to, and known gaps
+(HIP/ROCm has no real-hardware coverage anywhere in this project today).
 
 ## Get it
 
@@ -183,6 +202,27 @@ opposed to `memory_tracking`, which drives the native `memory_tracker`). See the
 [user guide](docs/profiler.md) for what each option captures on each backend,
 and [examples/example_reports.cpp](examples/example_reports.cpp) for a runnable
 version that writes every report format in [Outputs](#outputs) below.
+
+### Multi-threaded profiling
+
+`PROFILER_SCOPE`/`PROFILER_FUNCTION` are thread-safe and need no coordination
+between callers — every worker thread just annotates its own code, and the
+hotspot report aggregates across threads automatically. Native memory
+tracking, however, only sees allocations an application reports to it
+explicitly (it does not hook the global allocator):
+
+```cpp
+profiler::memory_tracker* tracker = session.get_memory_tracker();
+void* block = std::malloc(size);
+tracker->track_allocation(block, size, "my_allocation");
+// ... use block ...
+tracker->track_deallocation(block);
+std::free(block);
+```
+
+[examples/example_multithreaded.cpp](examples/example_multithreaded.cpp) runs
+several worker threads concurrently, reports their allocations this way, and
+writes one Chrome Trace where each thread appears as its own timeline row.
 
 ## Outputs
 

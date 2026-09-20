@@ -17,12 +17,14 @@ For Visual Studio builds, executables are in `build/bin/Release/` and end in
 | [example_reports.cpp](example_reports.cpp) | One native capture, all report formats and hotspots | `native_trace.json`, `report.txt`, `report.json`, `report.csv`, `report.xml`, `hotspots.txt` in the selected directory |
 | [example_hta.cpp](example_hta.cpp) | Kineto CPU capture with rank metadata and iteration markers; requires the Kineto build | `rank0.json` in the selected directory |
 | [example_profiling_basic.cpp](example_profiling_basic.cpp) | Larger matrix, FFT, and Monte Carlo demonstrations for compiled backends | Native / backend demonstration traces in the working directory |
+| [example_multithreaded.cpp](example_multithreaded.cpp) | Several worker threads profiled concurrently, plus native memory tracking via `track_allocation()`/`track_deallocation()` | `multithreaded_trace.json` in the selected directory |
 
 ```bash
 ./build/bin/example_quickstart
 ./build/bin/example_reports build/reports
 ./build/bin/example_hta build/hta-traces
 ./build/bin/example_profiling_basic
+./build/bin/example_multithreaded build/multithreaded
 ```
 
 `example_reports` defaults to `reports/`; `example_hta` defaults to `traces/hta/`.

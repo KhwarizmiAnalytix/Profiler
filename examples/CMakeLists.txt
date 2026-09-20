@@ -2,7 +2,9 @@
 # C++ repo should copy. Enable with -DPROFILER_ENABLE_EXAMPLES=ON.
 cmake_minimum_required(VERSION 3.16)
 
-set(example_sources example_quickstart.cpp example_reports.cpp example_profiling_basic.cpp)
+set(example_sources example_quickstart.cpp example_reports.cpp example_profiling_basic.cpp
+                     example_multithreaded.cpp
+)
 if(PROFILER_ENABLE_KINETO)
   list(APPEND example_sources example_hta.cpp)
 endif()
