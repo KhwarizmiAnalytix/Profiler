@@ -8,23 +8,125 @@ Version **1.0.1** · [Changelog](CHANGELOG.md)
 
 ## What is Profiler?
 
-Profiler is a standalone C++ library that turns annotated scopes in your code
-into timelines, reports, and hotspot tables — for any repository, not just this
-one. Link one target, include one header, and you get:
+Profiler is a standalone C++ library that turns annotated scopes in your code into timelines, reports, and hotspot tables — for any repository, not just this one. Link one target, include one header, and you get:
 
-- **A native CPU tracing pipeline that is always compiled in** — nested scopes,
-  timing, memory deltas, and statistics, with zero external dependencies.
-- **An optional instrumentation backend, picked at build time** with
-  `PROFILER_BACKEND` — Kineto (Perfetto/Chrome Trace JSON, and the input
-  Holistic Trace Analysis expects) or Intel ITT (VTune ranges).
-- **Optional GPU device activity, picked with** `PROFILER_GPU_BACKEND` — CUDA
-  through Kineto/CUPTI, or NVTX ranges.
+- **A native CPU tracing pipeline that is always compiled in** — nested scopes, timing, memory deltas, and statistics, with zero external dependencies.
+- **An optional instrumentation backend, picked at build time** with `PROFILER_BACKEND` — Kineto (Perfetto/Chrome Trace JSON, and the input Holistic Trace Analysis expects) or Intel ITT (VTune ranges).
+- **Optional GPU device activity, picked with** `PROFILER_GPU_BACKEND` — CUDA through Kineto/CUPTI, or NVTX ranges.
 
-You annotate with backend-agnostic macros (`PROFILER_SCOPE`, `PROFILER_FUNCTION`)
-and drive everything through one type, `profiler::session`; the compiled backend
-is an implementation detail your code never names. No LibTorch, TensorFlow
-runtime, or Python dependency is required for the C++ library — Python is only
-used for the optional, offline Holistic Trace Analysis (HTA) workflow.
+You annotate with backend-agnostic macros (`PROFILER_SCOPE`, `PROFILER_FUNCTION`) and drive everything through one type, `profiler::session`; the compiled backend is an implementation detail your code never names. No LibTorch, TensorFlow runtime, or Python dependency is required for the C++ library — Python is only used for the optional, offline Holistic Trace Analysis (HTA) workflow.
+
+---
+
+## Quick Start (Third-Party Integration)
+
+### Add to your CMake project
+
+```cmake
+# Option 1: FetchContent (recommended for reproducible builds)
+include(FetchContent)
+FetchContent_Declare(
+  Profiler
+  GIT_REPOSITORY https://github.com/KhwarizmiAnalytix/Profiler.git
+  GIT_TAG v1.0.1  # use a tagged version
+)
+FetchContent_MakeAvailable(Profiler)
+
+add_executable(my_app main.cpp)
+target_compile_features(my_app PRIVATE cxx_std_20)
+target_link_libraries(my_app PRIVATE Profiler::Profiler)
+
+# Option 2: Installed package
+find_package(Profiler CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE Profiler::Profiler)
+
+# Option 3: Embedded subdirectory
+add_subdirectory(Profiler)
+target_link_libraries(my_app PRIVATE Profiler::Profiler)
+```
+
+### Minimal example in C++
+
+```cpp
+#include "profiler.h"
+
+int main() {
+    profiler::session session;
+    if (!session.start()) return 1;
+
+    {
+        PROFILER_SCOPE("my_work");
+        // Your code here
+    }
+
+    if (!session.stop()) return 1;
+    return session.write_trace("trace.json") ? 0 : 1;
+}
+```
+
+Run it and open `trace.json` in [Perfetto](https://ui.perfetto.dev/) or `chrome://tracing`.
+
+### Choose a backend
+
+Set `PROFILER_BACKEND` when configuring (default: `KINETO`):
+
+```bash
+# KINETO: Perfetto/Chrome Trace JSON, HTA analysis (default)
+cmake -S . -B build -DPROFILER_BACKEND=KINETO
+
+# ITT: Intel VTune integration
+cmake -S . -B build -DPROFILER_BACKEND=ITT
+
+# Native only: CPU pipeline, no instrumentation backend
+cmake -S . -B build -DPROFILER_BACKEND=NONE
+```
+
+Add GPU support:
+
+```bash
+# CUDA (with Kineto)
+cmake -S . -B build -DPROFILER_BACKEND=KINETO -DPROFILER_GPU_BACKEND=cuda
+```
+
+---
+
+## What You Get
+
+**Public macros** (backend-agnostic):
+
+| Macro | Purpose | Scope |
+|-------|---------|-------|
+| `PROFILER_SCOPE("name")` | Mark a region of code | Automatic timing on entry/exit |
+| `PROFILER_FUNCTION()` | Shorthand: same as `PROFILER_SCOPE(__func__)` | Entire function |
+
+**Public types** (`profiler` namespace):
+
+| Type | Purpose |
+|------|---------|
+| `profiler::session` | Create, start, stop, and write traces |
+| `profiler::session_options` | Configure what to capture |
+| `profiler::capture_backend` | Enum: `automatic`, `kineto`, `itt`, `nvtx` |
+| `profiler::activity` | Enum: `cpu`, `cuda`, `hip` |
+
+**Guarantees**:
+- **Zero-overhead when disabled**: Native pipeline runs; instrumentation backends (Kineto/ITT) only add overhead when active.
+- **Nested scopes**: Parent-child relationships preserved in output; full call tree reconstructed.
+- **Thread-safe**: Multiple threads can call `PROFILER_SCOPE` concurrently; no interleaving corruption in output.
+- **No external C++ runtime dependency**: Profiler links only vendored fmt and platform libraries.
+- **Portable output**: Writes Chrome Trace JSON (opens in Perfetto, Chrome DevTools, and web viewers).
+- **Optional offline analysis**: Python HTA scripts analyze Kineto traces without re-running code.
+
+**Compile-time decisions** (not runtime branching):
+- Which instrumentation backend is active (Kineto, ITT, or none)
+- GPU backend (CUDA, HIP, or none)
+- C++20 (fixed requirement)
+
+**Runtime configuration**:
+- When to start/stop capture
+- What to capture (CPU, GPU, memory, call stacks, operator shapes)
+- Output format (JSON trace, hotspot report, statistics table, CSV, XML)
+
+---
 
 [User guide](docs/profiler.md) · [HTA workflow](docs/hta.md) ·
 [Output examples](docs/outputs.md) · [Runnable examples](examples/README.md) ·
