@@ -203,26 +203,32 @@ public:
 
     std::string_view display_name() const { return metadata_->display_name(); }
 
-    double offset_ns() const { return pico_to_nano(event_->offset_ps()); }
+    double offset_ns() const { return static_cast<double>(pico_to_nano(event_->offset_ps())); }
 
     int64_t offset_ps() const { return event_->offset_ps(); }
 
     int64_t line_timestamp_ns() const { return line_->timestamp_ns(); }
 
-    int64_t timestamp_ns() const { return line_->timestamp_ns() + offset_ns(); }
+    int64_t timestamp_ns() const
+    {
+        return line_->timestamp_ns() + static_cast<int64_t>(offset_ns());
+    }
 
     int64_t timestamp_ps() const
     {
         return nano_to_pico(line_->timestamp_ns()) + event_->offset_ps();
     }
 
-    double duration_ns() const { return pico_to_nano(event_->duration_ps()); }
+    double duration_ns() const { return static_cast<double>(pico_to_nano(event_->duration_ps())); }
 
     int64_t duration_ps() const { return event_->duration_ps(); }
 
     int64_t end_offset_ps() const { return event_->offset_ps() + event_->duration_ps(); }
 
-    int64_t end_timestamp_ns() const { return timestamp_ns() + duration_ns(); }
+    int64_t end_timestamp_ns() const
+    {
+        return static_cast<int64_t>(timestamp_ns() + duration_ns());
+    }
 
     int64_t end_timestamp_ps() const { return timestamp_ps() + duration_ps(); }
 

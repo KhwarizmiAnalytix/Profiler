@@ -401,7 +401,9 @@ class semiregular::modifier<::strong::type<T, Tag, M...>>
 struct regular
 {
     template <typename T>
-    class modifier : public semiregular::modifier<T>, public equality::modifier<T>
+    class modifier  // NOLINT(bugprone-crtp-constructor-accessibility)
+        : public semiregular::modifier<T>,
+          public equality::modifier<T>
     {
     };
 };
@@ -468,7 +470,7 @@ public:
 
 struct ostreamable
 {
-    template <typename T> class modifier
+    template <typename T> class modifier  // NOLINT(bugprone-crtp-constructor-accessibility)
     {
     public:
         friend std::ostream& operator<<(std::ostream& os, const T& t) { return os << value_of(t); }
@@ -477,7 +479,7 @@ struct ostreamable
 
 struct istreamable
 {
-    template <typename T> class modifier
+    template <typename T> class modifier  // NOLINT(bugprone-crtp-constructor-accessibility)
     {
     public:
         friend std::istream& operator>>(std::istream& is, T& t) { return is >> value_of(t); }
@@ -556,7 +558,7 @@ struct boolean
 
 struct hashable
 {
-    template <typename T> class modifier
+    template <typename T> class modifier  // NOLINT(bugprone-crtp-constructor-accessibility)
     {
     };
 };
@@ -790,7 +792,7 @@ public:
 
 struct arithmetic
 {
-    template <typename T> class modifier
+    template <typename T> class modifier  // NOLINT(bugprone-crtp-constructor-accessibility)
     {
     public:
         [[nodiscard]]

@@ -105,7 +105,7 @@ constexpr int kThreadIdDerivedMax = kThreadIdDeviceDerivedMax;
  * @param thread_id Thread ID to check
  * @return true if the thread ID is in the derived range
  */
-static inline bool is_derived_thread_id(int thread_id)
+static bool is_derived_thread_id(int thread_id)
 {
     return thread_id >= kThreadIdDerivedMin && thread_id <= kThreadIdDerivedMax;
 }
@@ -125,7 +125,7 @@ static inline bool is_derived_thread_id(int thread_id)
  * @param device_name device_option name string to parse
  * @return device_option ordinal if successfully parsed, std::nullopt otherwise
  */
-static inline std::optional<uint32_t> parse_device_ordinal(std::string_view device_name)
+static std::optional<uint32_t> parse_device_ordinal(std::string_view device_name)
 {
     // Find the last colon (device ordinal comes after it)
     if (auto pos = device_name.find_last_of(':'); pos != std::string_view::npos)

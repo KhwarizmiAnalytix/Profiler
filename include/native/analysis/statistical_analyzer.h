@@ -42,8 +42,10 @@ namespace profiler
 // Statistical metrics for a series of measurements
 struct statistical_metrics
 {
-    double min_value     = (std::numeric_limits<double>::max)();
-    double max_value     = (std::numeric_limits<double>::lowest)();
+    double min_value =
+        (std::numeric_limits<double>::max)();  // NOLINT(readability-redundant-parentheses)
+    double max_value =
+        (std::numeric_limits<double>::lowest)();  // NOLINT(readability-redundant-parentheses)
     double mean          = 0.0;
     double median        = 0.0;
     double std_deviation = 0.0;

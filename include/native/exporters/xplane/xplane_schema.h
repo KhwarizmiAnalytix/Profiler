@@ -99,7 +99,7 @@ inline std::size_t HashOf(const std::string& val)
     return std::hash<std::string>{}(val);
 }
 
-enum class ContextType : int
+enum class ContextType : uint8_t
 {
     kGeneric                      = 0,
     kLegacy                       = 1,
@@ -213,7 +213,7 @@ constexpr std::string_view kTaskEnvPlaneName = "Task Environment";
 static constexpr uint32_t kMaxCollectivesToDisplay = 9;
 
 // Interesting event types (i.e., TraceMe names).
-enum HostEventType
+enum HostEventType : uint8_t
 {
     kFirstHostEventType   = 0,
     kUnknownHostEventType = kFirstHostEventType,
@@ -310,7 +310,7 @@ enum HostEventType
     kLastHostEventType                      = kTransferBufferFromDeviceFastPath,
 };
 
-enum StatType
+enum StatType : uint8_t
 {
     kFirstStatType   = 0,
     kUnknownStatType = kFirstStatType,
@@ -491,7 +491,7 @@ enum MegaScaleStatType : uint8_t
     kLastMegaScaleStatType            = kMegaScaleDelayBudgetUs,
 };
 
-enum TaskEnvStatType
+enum TaskEnvStatType : uint8_t
 {
     kFirstTaskEnvStatType = 1,
     kEnvProfileStartTime  = kFirstTaskEnvStatType,
@@ -501,7 +501,7 @@ enum TaskEnvStatType
 
 static constexpr uint32_t kLineIdOffset = 10000;
 
-enum LineIdType
+enum LineIdType : uint16_t
 {
     kFirstLineIdType   = kLineIdOffset,
     kUnknownLineIdType = kFirstLineIdType,
@@ -573,7 +573,7 @@ PROFILER_API std::optional<int64_t> FindTaskEnvStatType(std::string_view stat_na
 class PROFILER_VISIBILITY XFlow
 {
 public:
-    enum FlowDirection
+    enum FlowDirection : uint8_t
     {
         kFlowUnspecified = 0x0,
         kFlowIn          = 0x1,

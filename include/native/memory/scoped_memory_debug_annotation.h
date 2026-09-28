@@ -118,15 +118,15 @@ public:
 
     ~scoped_memory_debug_annotation() { *thread_memory_debug_annotation() = last_annotation_; }
 
+    scoped_memory_debug_annotation(const scoped_memory_debug_annotation&)            = delete;
+    scoped_memory_debug_annotation& operator=(const scoped_memory_debug_annotation&) = delete;
+
 private:
     // Returns a pointer to the memory_debug_annotation for the current thread.
     PROFILER_API static memory_debug_annotation* thread_memory_debug_annotation();
 
     // Stores the previous values in case the annotations are nested.
     memory_debug_annotation last_annotation_;
-
-    scoped_memory_debug_annotation(const scoped_memory_debug_annotation&)            = delete;
-    scoped_memory_debug_annotation& operator=(const scoped_memory_debug_annotation&) = delete;
 };
 
 }  // namespace profiler

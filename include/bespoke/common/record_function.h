@@ -427,11 +427,17 @@ public:
     record_function_metadata_builder(record_function_metadata_builder&&)                 = delete;
     record_function_metadata_builder& operator=(record_function_metadata_builder&&)      = delete;
 
-    ~record_function_metadata_builder()
+    ~record_function_metadata_builder() noexcept
     {
         if (fn_.isActive())
         {
-            fn_.before(name_);
+            try
+            {
+                fn_.before(name_);
+            }
+            catch (...)  // NOLINT(bugprone-empty-catch)
+            {
+            }
         }
     }
 
@@ -546,7 +552,16 @@ public:
     RecordFunctionGuard(const RecordFunctionGuard&)            = delete;
     RecordFunctionGuard& operator=(const RecordFunctionGuard&) = delete;
     RecordFunctionGuard& operator=(RecordFunctionGuard&&)      = delete;
-    virtual ~RecordFunctionGuard() { enableRecordFunction(prev_value_); }
+    virtual ~RecordFunctionGuard() noexcept
+    {
+        try
+        {
+            enableRecordFunction(prev_value_);
+        }
+        catch (...)  // NOLINT(bugprone-empty-catch)
+        {
+        }
+    }
 
 private:
     bool prev_value_ = false;

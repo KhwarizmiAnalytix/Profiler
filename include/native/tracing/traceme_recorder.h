@@ -253,7 +253,7 @@ public:
      * **Note**: Marked as "racy" because the result can change between check and use,
      *           but this is by design for performance
      */
-    static inline bool active(int level = 1)
+    static bool active(int level = 1)
     {
         return internal::g_trace_level.load(std::memory_order_acquire) >= level;
     }
@@ -264,7 +264,7 @@ public:
      * @param filter Bitmap describing the event category
      * @return true if the event should be recorded
      */
-    static inline bool check_filter(uint64_t filter)
+    static bool check_filter(uint64_t filter)
     {
         return (internal::g_trace_filter_bitmap.load(std::memory_order_acquire) & filter) != 0;
     }

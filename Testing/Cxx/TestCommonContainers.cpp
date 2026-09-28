@@ -156,7 +156,7 @@ PROFILERTEST(LockFreeQueue, push_pop_preserves_fifo_order_across_blocks)
     {
         auto popped = queue.pop();
         ASSERT_TRUE(popped.has_value());
-        EXPECT_EQ(popped.value(), i);
+        EXPECT_EQ(popped.value(), i);  // NOLINT(bugprone-unchecked-optional-access)
     }
     EXPECT_FALSE(queue.pop().has_value());
 }
@@ -252,8 +252,8 @@ PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
     // Further pushes are dropped, and counted, without crashing/corrupting anything.
     int overflow_a = 111;
     int overflow_b = 222;
-    EXPECT_FALSE(queue.push(std::move(overflow_a)));
-    EXPECT_FALSE(queue.push(std::move(overflow_b)));
+    EXPECT_FALSE(queue.push(std::move(overflow_a)));  // NOLINT(performance-move-const-arg)
+    EXPECT_FALSE(queue.push(std::move(overflow_b)));  // NOLINT(performance-move-const-arg)
     EXPECT_EQ(queue.dropped_count(), 2u);
 
     // Draining everything frees a block; capacity recovers automatically.
@@ -261,16 +261,17 @@ PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
     {
         auto popped = queue.pop();
         ASSERT_TRUE(popped.has_value());
-        EXPECT_EQ(popped.value(), static_cast<int>(i));
+        EXPECT_EQ(
+            popped.value(), static_cast<int>(i));  // NOLINT(bugprone-unchecked-optional-access)
     }
     EXPECT_FALSE(queue.pop().has_value());
 
     int recovered = 42;
-    EXPECT_TRUE(queue.push(std::move(recovered)));
-    EXPECT_EQ(queue.dropped_count(), 2u);  // unchanged: this push succeeded
+    EXPECT_TRUE(queue.push(std::move(recovered)));  // NOLINT(performance-move-const-arg)
+    EXPECT_EQ(queue.dropped_count(), 2u);           // unchanged: this push succeeded
     auto popped = queue.pop();
     ASSERT_TRUE(popped.has_value());
-    EXPECT_EQ(popped.value(), 42);
+    EXPECT_EQ(popped.value(), 42);  // NOLINT(bugprone-unchecked-optional-access)
 }
 
 // ---------------------------------------------------------------------------

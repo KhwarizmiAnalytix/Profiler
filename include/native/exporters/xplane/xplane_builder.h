@@ -444,8 +444,8 @@ public:
 
     void SetTimespan(timespan timespan)
     {
-        SetTimestampPs(timespan.begin_ps());
-        SetDurationPs(timespan.duration_ps());
+        SetTimestampPs(static_cast<int64_t>(timespan.begin_ps()));
+        SetDurationPs(static_cast<int64_t>(timespan.duration_ps()));
     }
 
     bool operator<(const xevent_builder& other) const
@@ -469,7 +469,7 @@ public:
     int64_t Id() const { return line_->id(); }
     void    SetId(int64_t id) { line_->set_id(id); }
 
-    int64_t NumEvents() const { return line_->events_size(); }
+    int64_t NumEvents() const { return static_cast<int64_t>(line_->events_size()); }
 
     std::string_view Name() const { return line_->name(); }
     void             SetName(std::string_view name) { line_->set_name(std::string(name)); }
