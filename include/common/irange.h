@@ -22,8 +22,7 @@ constexpr bool is_negative(T value)
 }
 
 /// Specialization for unsigned types - always returns false.
-template <typename T, std::enable_if_t<!std::is_signed_v<T>, int> = 0>
-constexpr bool is_negative(T)
+template <typename T, std::enable_if_t<!std::is_signed_v<T>, int> = 0> constexpr bool is_negative(T)
 {
     return false;
 }
@@ -98,8 +97,7 @@ private:
 /// If end<=begin, then the range is empty.
 /// The range has the type of the `end` integer; `begin` integer is
 /// cast to this type.
-template <
-    typename Integer1,
+template <typename Integer1,
     typename Integer2,
     std::enable_if_t<std::is_integral_v<Integer1>, bool> = true,
     std::enable_if_t<std::is_integral_v<Integer2>, bool> = true>

@@ -56,11 +56,10 @@ public:
     PROFILER_API x_stat_visitor(const xplane_visitor* plane, const xstat* stat);
 
     // REQUIRED: plane, stat and metadata cannot be nullptr.
-    PROFILER_API x_stat_visitor(
-        const xplane_visitor*  plane,
-        const xstat*           stat,
-        const x_stat_metadata* metadata,
-        std::optional<int64_t> type);
+    PROFILER_API x_stat_visitor(const xplane_visitor* plane,
+        const xstat*                                  stat,
+        const x_stat_metadata*                        metadata,
+        std::optional<int64_t>                        type);
 
     int64_t id() const { return stat_->metadata_id(); }
 
@@ -105,8 +104,7 @@ private:
     std::optional<int64_t> type_;
 };
 
-template <class T>
-class xstats_owner
+template <class T> class xstats_owner
 {
 public:
     // REQUIRED: plane and stats_owner cannot be nullptr.
@@ -116,8 +114,7 @@ public:
     }
 
     // For each stat, call the specified lambda.
-    template <typename ForEachStatFunc>
-    void for_each_stat(ForEachStatFunc&& for_each_stat) const
+    template <typename ForEachStatFunc> void for_each_stat(ForEachStatFunc&& for_each_stat) const
     {
         for (const xstat& stat : stats_owner_->stats())
         {
@@ -302,10 +299,9 @@ class xplane_visitor : public xstats_owner<profiler::xplane>
 {
 public:
     // REQUIRED: plane cannot be nullptr.
-    PROFILER_API explicit xplane_visitor(
-        const xplane*         plane,
-        const TypeGetterList& event_type_getter_list = TypeGetterList(),
-        const TypeGetterList& stat_type_getter_list  = TypeGetterList());
+    PROFILER_API explicit xplane_visitor(const xplane* plane,
+        const TypeGetterList&                          event_type_getter_list = TypeGetterList(),
+        const TypeGetterList&                          stat_type_getter_list  = TypeGetterList());
 
     int64_t id() const { return plane_->id(); }
 
@@ -313,8 +309,7 @@ public:
 
     size_t num_lines() const { return plane_->lines_size(); }
 
-    template <typename ForEachLineFunc>
-    void for_each_line(ForEachLineFunc&& for_each_line) const
+    template <typename ForEachLineFunc> void for_each_line(ForEachLineFunc&& for_each_line) const
     {
         for (const xline& line : plane_->lines())
         {
@@ -327,8 +322,8 @@ public:
         ThreadBundle bundle;
         for (const xline& line : plane_->lines())
         {
-            bundle.Add([this, line = &line, &for_each_line]
-                       { for_each_line(xline_visitor(this, line)); });
+            bundle.Add(
+                [this, line = &line, &for_each_line] { for_each_line(xline_visitor(this, line)); });
         }
         bundle.JoinAll();
     }
@@ -369,8 +364,7 @@ private:
     flat_hash_map<int64_t /*StatType*/, const x_stat_metadata*>   stat_metadata_by_type_;
 };
 
-template <class T>
-std::optional<x_stat_visitor> xstats_owner<T>::get_stat(int64_t stat_type) const
+template <class T> std::optional<x_stat_visitor> xstats_owner<T>::get_stat(int64_t stat_type) const
 {
     const auto* stat_metadata = plane_->get_stat_metadata_by_type(stat_type);
     if (stat_metadata != nullptr)

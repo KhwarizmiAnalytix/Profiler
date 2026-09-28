@@ -44,9 +44,7 @@ struct MemFile
     {
         UNWIND_CHECK(
             fd_ != -1, "failed to open {}: {}", filename_, profiler::utils::str_error(errno));
-        struct stat s
-        {
-        };
+        struct stat s{};
         if (-1 == fstat(fd_, &s))
         {
             close(fd_);  // destructors don't run during exceptions
@@ -73,8 +71,7 @@ struct MemFile
         ELF_CHECK(ehdr_->e_version == EV_CURRENT);
         ELF_CHECK(ehdr_->e_machine == EM_X86_64);
 #undef ELF_CHECK
-        UNWIND_CHECK(
-            ehdr_->e_shoff + sizeof(Elf64_Shdr) * ehdr_->e_shnum <= n_bytes_,
+        UNWIND_CHECK(ehdr_->e_shoff + sizeof(Elf64_Shdr) * ehdr_->e_shnum <= n_bytes_,
             "invalid section header table {} {} {}",
             ehdr_->e_shoff + sizeof(Elf64_Shdr) * ehdr_->e_shnum,
             n_bytes_,
@@ -133,8 +130,7 @@ struct MemFile
     Section strtab() { return strtab_; }
 
 private:
-    template <typename T>
-    T* load(size_t offset)
+    template <typename T> T* load(size_t offset)
     {
         UNWIND_CHECK(offset < n_bytes_, "out of range");
         return (T*)(mem_ + offset);

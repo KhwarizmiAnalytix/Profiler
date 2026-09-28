@@ -40,25 +40,19 @@ namespace profiler
 
 // Wraps T into a union so that we can avoid the cost of automatic construction
 // and destruction when tracing is disabled.
-template <typename T>
-union no_init
+template <typename T> union no_init
 {
     // Ensure constructor and destructor do nothing.
     no_init() {}
     ~no_init() {}
 
-    template <typename... Ts>
-    void Emplace(Ts&&... args)
+    template <typename... Ts> void Emplace(Ts&&... args)
     {
         new (&value) T(std::forward<Ts>(args)...);
     }
 
     // Profiler standards-compliant lowercase aliases
-    template <typename... Ts>
-    void emplace(Ts&&... args)
-    {
-        Emplace(std::forward<Ts>(args)...);
-    }
+    template <typename... Ts> void emplace(Ts&&... args) { Emplace(std::forward<Ts>(args)...); }
 
     void Destroy() { value.~T(); }
 

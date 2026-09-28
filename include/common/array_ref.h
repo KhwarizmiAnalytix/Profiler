@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //===--- array_ref.h - Array Reference Wrapper -------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
@@ -25,7 +43,7 @@
 #include <vector>
 
 #include "common/profiler_macros.h"
-//#include "util/exception.h"
+// #include "util/exception.h"
 #include "common/small_vector.h"
 
 namespace profiler
@@ -41,8 +59,7 @@ namespace profiler
 ///
 /// This is intended to be trivially copyable, so it should be passed by
 /// value.
-template <typename T>
-class array_ref final
+template <typename T> class array_ref final
 {
 public:
     using iterator       = const T*;
@@ -100,8 +117,7 @@ public:
         debugCheckNullptrInvariant();
     }
 
-    template <
-        typename Container,
+    template <typename Container,
         typename U = decltype(std::declval<Container>().data()),
         typename   = std::enable_if_t<(std::is_same_v<U, T*> || std::is_same_v<U, T const*>)>>
     /* implicit */ array_ref(const Container& container)
@@ -117,8 +133,7 @@ public:
     template <typename A>
     /* implicit */ array_ref(const std::vector<T, A>& Vec) : Data(Vec.data()), Length(Vec.size())
     {
-        static_assert(
-            !std::is_same_v<T, bool>,
+        static_assert(!std::is_same_v<T, bool>,
             "array_ref<bool> cannot be constructed from a std::vector<bool> bitfield.");
     }
 
@@ -174,14 +189,14 @@ public:
     /// front - Get the first element.
     constexpr const T& front() const
     {
-        //PROFILER_CHECK(!empty(), "array_ref: attempted to access front() of empty list");
+        // PROFILER_CHECK(!empty(), "array_ref: attempted to access front() of empty list");
         return Data[0];
     }
 
     /// back - Get the last element.
     constexpr const T& back() const
     {
-        //PROFILER_CHECK(!empty(), "array_ref: attempted to access back() of empty list");
+        // PROFILER_CHECK(!empty(), "array_ref: attempted to access back() of empty list");
         return Data[Length - 1];
     }
 
@@ -194,15 +209,16 @@ public:
     /// slice(n, m) - Take M elements of the array starting at element N
     constexpr array_ref<T> slice(size_t N, size_t M) const
     {
-        //PROFILER_CHECK(
-        //   N + M <= size(), "array_ref: invalid slice, N = ", N, "; M = ", M, "; size = ", size());
+        // PROFILER_CHECK(
+        //    N + M <= size(), "array_ref: invalid slice, N = ", N, "; M = ", M, "; size = ",
+        //    size());
         return array_ref<T>(data() + N, M);
     }
 
     /// slice(n) - Chop off the first N elements of the array.
     constexpr array_ref<T> slice(size_t N) const
     {
-        //PROFILER_CHECK(N <= size(), "array_ref: invalid slice, N = ", N, "; size = ", size());
+        // PROFILER_CHECK(N <= size(), "array_ref: invalid slice, N = ", N, "; size = ", size());
         return slice(N, size() - N);
     }
 
@@ -214,8 +230,8 @@ public:
     /// Vector compatibility
     constexpr const T& at(size_t Index) const
     {
-        //PROFILER_CHECK(
-        //   Index < Length, "array_ref: invalid index Index = ", Index, "; Length = ", Length);
+        // PROFILER_CHECK(
+        //    Index < Length, "array_ref: invalid index Index = ", Index, "; Length = ", Length);
         return Data[Index];
     }
 
@@ -233,8 +249,8 @@ public:
     /// The declaration here is extra complicated so that "arrayRef = {}"
     /// continues to select the move assignment operator.
     template <typename U>
-    std::enable_if_t<std::is_same_v<U, T>, array_ref<T>>& operator=(std::initializer_list<U>) =
-        delete;
+    std::enable_if_t<std::is_same_v<U, T>, array_ref<T>>& operator=(
+        std::initializer_list<U>) = delete;
 
     /// @}
     /// @name Expensive Operations
@@ -244,8 +260,7 @@ public:
     /// @}
 };
 
-template <typename T>
-std::ostream& operator<<(std::ostream& out, array_ref<T> list)
+template <typename T> std::ostream& operator<<(std::ostream& out, array_ref<T> list)
 {
     int i = 0;
     out << "[";
@@ -263,64 +278,55 @@ std::ostream& operator<<(std::ostream& out, array_ref<T> list)
 /// @{
 
 /// Construct an array_ref from a single element.
-template <typename T>
-array_ref<T> makeArrayRef(const T& OneElt)
+template <typename T> array_ref<T> makeArrayRef(const T& OneElt)
 {
     return OneElt;
 }
 
 /// Construct an array_ref from a pointer and length.
-template <typename T>
-array_ref<T> makeArrayRef(const T* data, size_t length)
+template <typename T> array_ref<T> makeArrayRef(const T* data, size_t length)
 {
     return array_ref<T>(data, length);
 }
 
 /// Construct an array_ref from a range.
-template <typename T>
-array_ref<T> makeArrayRef(const T* begin, const T* end)
+template <typename T> array_ref<T> makeArrayRef(const T* begin, const T* end)
 {
     return array_ref<T>(begin, end);
 }
 
 /// Construct an array_ref from a small_vector.
-template <typename T>
-array_ref<T> makeArrayRef(const SmallVectorImpl<T>& Vec)
+template <typename T> array_ref<T> makeArrayRef(const SmallVectorImpl<T>& Vec)
 {
     return Vec;
 }
 
 /// Construct an array_ref from a small_vector.
-template <typename T, unsigned N>
-array_ref<T> makeArrayRef(const small_vector<T, N>& Vec)
+template <typename T, unsigned N> array_ref<T> makeArrayRef(const small_vector<T, N>& Vec)
 {
     return Vec;
 }
 
 /// Construct an array_ref from a std::vector.
-template <typename T>
-array_ref<T> makeArrayRef(const std::vector<T>& Vec)
+template <typename T> array_ref<T> makeArrayRef(const std::vector<T>& Vec)
 {
     return Vec;
 }
 
 /// Construct an array_ref from a std::array.
-template <typename T, std::size_t N>
-array_ref<T> makeArrayRef(const std::array<T, N>& Arr)
+template <typename T, std::size_t N> array_ref<T> makeArrayRef(const std::array<T, N>& Arr)
 {
     return Arr;
 }
 
 /// Construct an array_ref from an array_ref (no-op) (const)
-template <typename T>
-array_ref<T> makeArrayRef(const array_ref<T>& Vec)
+template <typename T> array_ref<T> makeArrayRef(const array_ref<T>& Vec)
 {
     return Vec;
 }
 
 /// Construct an array_ref from an array_ref (no-op)
-template <typename T>
-array_ref<T>& makeArrayRef(array_ref<T>& Vec)
+template <typename T> array_ref<T>& makeArrayRef(array_ref<T>& Vec)
 {
     return Vec;
 }
@@ -337,38 +343,32 @@ array_ref<T> makeArrayRef(const T (&Arr)[N])
 // conversions to get you to an profiler::array_ref, which is why we need so
 // many overloads.
 
-template <typename T>
-bool operator==(profiler::array_ref<T> a1, profiler::array_ref<T> a2)
+template <typename T> bool operator==(profiler::array_ref<T> a1, profiler::array_ref<T> a2)
 {
     return a1.equals(a2);
 }
 
-template <typename T>
-bool operator!=(profiler::array_ref<T> a1, profiler::array_ref<T> a2)
+template <typename T> bool operator!=(profiler::array_ref<T> a1, profiler::array_ref<T> a2)
 {
     return !a1.equals(a2);
 }
 
-template <typename T>
-bool operator==(const std::vector<T>& a1, profiler::array_ref<T> a2)
+template <typename T> bool operator==(const std::vector<T>& a1, profiler::array_ref<T> a2)
 {
     return profiler::array_ref<T>(a1).equals(a2);
 }
 
-template <typename T>
-bool operator!=(const std::vector<T>& a1, profiler::array_ref<T> a2)
+template <typename T> bool operator!=(const std::vector<T>& a1, profiler::array_ref<T> a2)
 {
     return !profiler::array_ref<T>(a1).equals(a2);
 }
 
-template <typename T>
-bool operator==(profiler::array_ref<T> a1, const std::vector<T>& a2)
+template <typename T> bool operator==(profiler::array_ref<T> a1, const std::vector<T>& a2)
 {
     return a1.equals(profiler::array_ref<T>(a2));
 }
 
-template <typename T>
-bool operator!=(profiler::array_ref<T> a1, const std::vector<T>& a2)
+template <typename T> bool operator!=(profiler::array_ref<T> a1, const std::vector<T>& a2)
 {
     return !a1.equals(profiler::array_ref<T>(a2));
 }

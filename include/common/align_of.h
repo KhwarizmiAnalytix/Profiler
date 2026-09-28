@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //===--- AlignOf.h - Portable calculation of type alignment -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
@@ -34,8 +52,7 @@ namespace profiler
 // MSVC requires special handling here.
 #ifndef _MSC_VER
 
-template <size_t Alignment, size_t Size>
-struct AlignedCharArray
+template <size_t Alignment, size_t Size> struct AlignedCharArray
 {
     // NOLINTNEXTLINE(*c-arrays)
     alignas(Alignment) char buffer[Size];
@@ -44,8 +61,7 @@ struct AlignedCharArray
 #else  // _MSC_VER
 
 /// \brief Create a type with an aligned char buffer.
-template <size_t Alignment, size_t Size>
-struct AlignedCharArray;
+template <size_t Alignment, size_t Size> struct AlignedCharArray;
 
 // We provide special variations of this template for the most common
 // alignments because __declspec(align(...)) doesn't actually work when it is
@@ -55,8 +71,7 @@ struct AlignedCharArray;
 // MSVC warns on the existence of the declspec despite the union member forcing
 // proper alignment.
 
-template <size_t Size>
-struct AlignedCharArray<1, Size>
+template <size_t Size> struct AlignedCharArray<1, Size>
 {
     union
     {
@@ -65,8 +80,7 @@ struct AlignedCharArray<1, Size>
     };
 };
 
-template <size_t Size>
-struct AlignedCharArray<2, Size>
+template <size_t Size> struct AlignedCharArray<2, Size>
 {
     union
     {
@@ -75,8 +89,7 @@ struct AlignedCharArray<2, Size>
     };
 };
 
-template <size_t Size>
-struct AlignedCharArray<4, Size>
+template <size_t Size> struct AlignedCharArray<4, Size>
 {
     union
     {
@@ -85,8 +98,7 @@ struct AlignedCharArray<4, Size>
     };
 };
 
-template <size_t Size>
-struct AlignedCharArray<8, Size>
+template <size_t Size> struct AlignedCharArray<8, Size>
 {
     union
     {
@@ -98,11 +110,10 @@ struct AlignedCharArray<8, Size>
 // The rest of these are provided with a __declspec(align(...)) and we simply
 // can't pass them by-value as function arguments on MSVC.
 
-#define AT_ALIGNEDCHARARRAY_TEMPLATE_ALIGNMENT(x) \
-    template <size_t Size>                        \
-    struct AlignedCharArray<x, Size>              \
-    {                                             \
-        __declspec(align(x)) char buffer[Size];   \
+#define AT_ALIGNEDCHARARRAY_TEMPLATE_ALIGNMENT(x)                                                  \
+    template <size_t Size> struct AlignedCharArray<x, Size>                                        \
+    {                                                                                              \
+        __declspec(align(x)) char buffer[Size];                                                    \
     };
 
 AT_ALIGNEDCHARARRAY_TEMPLATE_ALIGNMENT(16)
@@ -116,8 +127,7 @@ AT_ALIGNEDCHARARRAY_TEMPLATE_ALIGNMENT(128)
 
 namespace detail
 {
-template <
-    typename T1,
+template <typename T1,
     typename T2  = char,
     typename T3  = char,
     typename T4  = char,
@@ -144,8 +154,7 @@ public:
     AlignerImpl() = delete;
 };
 
-template <
-    typename T1,
+template <typename T1,
     typename T2  = char,
     typename T3  = char,
     typename T4  = char,
@@ -170,8 +179,7 @@ union SizerImpl
 /// expose a char array buffer member which can be used as suitable storage for
 /// a placement new of any of these types. Support for more than ten types can
 /// be added at the cost of more boilerplate.
-template <
-    typename T1,
+template <typename T1,
     typename T2  = char,
     typename T3  = char,
     typename T4  = char,
@@ -182,8 +190,7 @@ template <
     typename T9  = char,
     typename T10 = char>
 struct AlignedCharArrayUnion
-    : AlignedCharArray<
-          alignof(detail::AlignerImpl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>),
+    : AlignedCharArray<alignof(detail::AlignerImpl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>),
           sizeof(::profiler::detail::SizerImpl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>)>
 {
 };

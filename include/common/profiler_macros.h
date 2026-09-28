@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //----------------------------------------------------------------------------
 #if __cplusplus >= 201703L
 #define PROFILER_UNUSED [[maybe_unused]]
@@ -21,7 +39,7 @@
 
 //------------------------------------------------------------------------
 // C++20 [[likely]] and [[unlikely]] attributes are only available in C++20 and later
-#if __cplusplus >= 202002L && PROFILER_HAVE_CPP_ATTRIBUTE(likely) && \
+#if __cplusplus >= 202002L && PROFILER_HAVE_CPP_ATTRIBUTE(likely) &&                               \
     PROFILER_HAVE_CPP_ATTRIBUTE(unlikely)
 #define PROFILER_LIKELY(expr) (expr) [[likely]]
 #define PROFILER_UNLIKELY(expr) (expr) [[unlikely]]

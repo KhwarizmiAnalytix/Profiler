@@ -165,10 +165,13 @@ double run_dense_kernel(int size, int task_id)
             double sum = 0.0;
             for (int inner = 0; inner < size; ++inner)
             {
-                sum += lhs[static_cast<size_t>(row * size + inner)] *
-                       rhs[static_cast<size_t>(inner * size + col)];
+                sum += lhs[static_cast<size_t>(row) * static_cast<size_t>(size) +
+                           static_cast<size_t>(inner)] *
+                       rhs[static_cast<size_t>(inner) * static_cast<size_t>(size) +
+                           static_cast<size_t>(col)];
             }
-            out[static_cast<size_t>(row * size + col)] = sum;
+            out[static_cast<size_t>(row) * static_cast<size_t>(size) + static_cast<size_t>(col)] =
+                sum;
         }
     }
 
@@ -188,15 +191,14 @@ void run_profiled_worker_task(profiler_session* session, int task_id, std::atomi
     traceme encoded_op(
         [&]()
         {
-            return traceme_encode(
-                traceme_op("MatMul", "CPU"),
+            return traceme_encode(traceme_op("MatMul", "CPU"),
                 {{"task_id", task_id},
-                 {"rows", 16},
-                 {"dtype", "f64"},
-                 {"fused", true},
-                 {"label", std::string_view("worker")},
-                 {"tag", "pool"},
-                 {"c_str", "ok"}});
+                    {"rows", 16},
+                    {"dtype", "f64"},
+                    {"fused", true},
+                    {"label", std::string_view("worker")},
+                    {"tag", "pool"},
+                    {"c_str", "ok"}});
         });
 
     encoded_op.append_metadata(
@@ -252,8 +254,7 @@ profiler_options make_options()
 PROFILERTEST(BackendThreadpoolTracing, end_to_end_pool_feeds_chrome_and_report)
 {
     ASSERT_NE(tracing::get_log_dir(), nullptr);
-    EXPECT_STREQ(
-        tracing::get_event_category_name(tracing::event_category::kScheduleClosure),
+    EXPECT_STREQ(tracing::get_event_category_name(tracing::event_category::kScheduleClosure),
         "ScheduleClosure");
     EXPECT_STREQ(tracing::get_event_category_name(tracing::event_category::kCompute), "Compute");
     EXPECT_STREQ(
@@ -270,8 +271,7 @@ PROFILERTEST(BackendThreadpoolTracing, end_to_end_pool_feeds_chrome_and_report)
 
         for (int task_id = 0; task_id < kTaskCount; ++task_id)
         {
-            pool.submit(
-                static_cast<uint64_t>(task_id),
+            pool.submit(static_cast<uint64_t>(task_id),
                 [&session, &sink, task_id]()
                 { run_profiled_worker_task(&session, task_id, &sink); });
         }
@@ -338,8 +338,7 @@ PROFILERTEST(BackendThreadpoolTracing, pool_instrumentation_is_session_gated)
         std::atomic<int>         done{0};
         for (int i = 0; i < 4; ++i)
         {
-            pool.submit(
-                static_cast<uint64_t>(i),
+            pool.submit(static_cast<uint64_t>(i),
                 [&session, &done, i]()
                 {
                     profiler_scope  scope(kWorkerCompute, &session);

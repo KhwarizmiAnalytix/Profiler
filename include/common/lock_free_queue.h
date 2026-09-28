@@ -41,7 +41,7 @@ limitations under the License.
 #include <utility>
 
 #include "common/profiler_macros.h"
-//#include "util/exception.h"
+// #include "util/exception.h"
 #include "common/no_init.h"
 
 namespace profiler
@@ -81,16 +81,14 @@ namespace QueueBaseInternal
 // Swaps two std::atomic<T> values (std::atomic itself has no swap()). Only used
 // for single-threaded bookkeeping (move-assignment of a not-yet-shared queue),
 // so relaxed loads/stores are fine.
-template <typename T>
-void swap_atomic(std::atomic<T>& a, std::atomic<T>& b)
+template <typename T> void swap_atomic(std::atomic<T>& a, std::atomic<T>& b)
 {
     T const a_value = a.load(std::memory_order_relaxed);
     a.store(b.load(std::memory_order_relaxed), std::memory_order_relaxed);
     b.store(a_value, std::memory_order_relaxed);
 }
 
-template <typename T, size_t kBlockSize>
-struct InternalBlock
+template <typename T, size_t kBlockSize> struct InternalBlock
 {
     // The number of slots in a block is chosen so the block fits in kBlockSize.
     static constexpr size_t kNumSlots =
@@ -104,11 +102,9 @@ struct InternalBlock
 
 // Wraps size_t or std::atomic<size_t> used as index to the queue.
 // Index<true> wraps std::atomic<size_t>, Index<false> wraps size_t.
-template <bool kIsAtomic>
-struct Index;
+template <bool kIsAtomic> struct Index;
 
-template <>
-struct Index<false>
+template <> struct Index<false>
 {
     size_t value;
     explicit Index(size_t pos = 0) : value(pos) {}
@@ -116,8 +112,7 @@ struct Index<false>
     void   set(size_t pos) { value = pos; }
 };
 
-template <>
-struct Index<true>
+template <> struct Index<true>
 {
     std::atomic<size_t> value;
     explicit Index(size_t pos = 0) : value(pos) {}
@@ -125,8 +120,7 @@ struct Index<true>
     void   set(size_t pos) { value.store(pos, std::memory_order_release); }
 };
 
-template <typename T, size_t kBlockSize, bool kAtomicEnd>
-class blocked_queue_base
+template <typename T, size_t kBlockSize, bool kAtomicEnd> class blocked_queue_base
 {
     using Block = InternalBlock<T, kBlockSize>;
 
@@ -142,9 +136,7 @@ public:
     explicit blocked_queue_base(size_t max_blocks = kDefaultMaxBlocks)
         : max_blocks_(max_blocks),
           start_block_(new Block{/*start=*/0, /*next=*/nullptr, /*slots=*/{}}),
-          start_(start_block_->start),
-          end_block_(start_block_),
-          end_(end_block_->start)
+          start_(start_block_->start), end_block_(start_block_), end_(end_block_->start)
     {
     }
 
@@ -177,10 +169,10 @@ public:
     // the consumer frees enough capacity.
     bool push(T&& element)
     {
-        size_t const end            = get_end();
+        size_t const end              = get_end();
         bool const   would_fill_block = (end - end_block_->start + 1 == Block::kNumSlots);
         if PROFILER_UNLIKELY (would_fill_block &&
-                               block_count_.load(std::memory_order_relaxed) >= max_blocks_)
+                              block_count_.load(std::memory_order_relaxed) >= max_blocks_)
         {
             dropped_count_.fetch_add(1, std::memory_order_relaxed);
             return false;
@@ -257,19 +249,18 @@ protected:
         return element;
     }
 
-    size_t                max_blocks_;       // Set at construction; never changes.
-    std::atomic<size_t>   block_count_{1};   // Live blocks; constructor allocates the first.
-    std::atomic<uint64_t> dropped_count_{0}; // See dropped_count().
-    Block*                start_block_;      // Head: updated only by consumer thread.
-    size_t                start_;            // Non-atomic: read only by consumer thread.
-    Block*                end_block_;        // Tail: updated only by producer thread.
-    Index<kAtomicEnd>     end_;              // Maybe atomic: read also by consumer thread.
+    size_t                max_blocks_;        // Set at construction; never changes.
+    std::atomic<size_t>   block_count_{1};    // Live blocks; constructor allocates the first.
+    std::atomic<uint64_t> dropped_count_{0};  // See dropped_count().
+    Block*                start_block_;       // Head: updated only by consumer thread.
+    size_t                start_;             // Non-atomic: read only by consumer thread.
+    Block*                end_block_;         // Tail: updated only by producer thread.
+    Index<kAtomicEnd>     end_;               // Maybe atomic: read also by consumer thread.
 };
 
 }  // namespace QueueBaseInternal
 
-template <typename T, size_t kBlockSize>
-class LockFreeQueue;
+template <typename T, size_t kBlockSize> class LockFreeQueue;
 
 template <typename T, size_t kBlockSize = 1 << 16 /* 64 KiB */>
 class BlockedQueue final : public QueueBaseInternal::blocked_queue_base<T, kBlockSize, false>
@@ -285,9 +276,9 @@ public:
     {
     }
 
-    BlockedQueue(BlockedQueue&& src) { *this = std::move(src); }
+    BlockedQueue(BlockedQueue&& src) noexcept { *this = std::move(src); }
 
-    BlockedQueue& operator=(BlockedQueue&& src)
+    BlockedQueue& operator=(BlockedQueue&& src) noexcept
     {
         this->clear();
         std::swap(this->max_blocks_, src.max_blocks_);

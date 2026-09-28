@@ -70,8 +70,7 @@ void* allocate_and_report(size_t bytes, size_t* total_allocated)
     std::memset(ptr, 0xAB, bytes);
     *total_allocated += bytes;
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT
-    profiler::report_memory_usage(
-        ptr,
+    profiler::report_memory_usage(ptr,
         static_cast<int64_t>(bytes),
         *total_allocated,
         *total_allocated,
@@ -92,8 +91,7 @@ void free_and_report(void* ptr, size_t bytes, size_t* total_allocated)
     {
         *total_allocated = 0;
     }
-    profiler::report_memory_usage(
-        ptr,
+    profiler::report_memory_usage(ptr,
         -static_cast<int64_t>(bytes),
         *total_allocated,
         *total_allocated,
@@ -181,8 +179,7 @@ PROFILERTEST(BackendMemory, kineto_profiles_memory)
         PROFILER_RECORD_USER_SCOPE(kMemoryScope);
         void* ptr = allocate_and_report(kAllocBytes, &total_allocated);
         free_and_report(ptr, kAllocBytes, &total_allocated);
-        profiler::report_out_of_memory(
-            static_cast<int64_t>(kAllocBytes),
+        profiler::report_out_of_memory(static_cast<int64_t>(kAllocBytes),
             total_allocated,
             total_allocated,
             static_cast<int16_t>(profiler::device_enum::CPU),
@@ -258,14 +255,12 @@ PROFILERTEST(BackendMemory, itt_profiles_memory)
     profiler::profiler_impl::itt_init();
     EXPECT_TRUE(profiler::profiler_impl::kITTAvailable);
 
-    profiler::profiler_impl::ProfilerConfig config(
-        profiler::profiler_impl::ProfilerState::ITT,
+    profiler::profiler_impl::ProfilerConfig config(profiler::profiler_impl::ProfilerState::ITT,
         /*report_input_shapes=*/false,
         /*profile_memory=*/true);
     try
     {
-        profiler::profiler_impl::enableProfiler(
-            config,
+        profiler::profiler_impl::enableProfiler(config,
             {profiler::profiler_impl::ActivityType::CPU},
             {profiler::RecordScope::USER_SCOPE});
     }
@@ -297,14 +292,12 @@ PROFILERTEST(BackendMemory, itt_profiles_memory)
 
 PROFILERTEST(BackendMemory, nvtx_profiles_memory)
 {
-    profiler::profiler_impl::ProfilerConfig config(
-        profiler::profiler_impl::ProfilerState::NVTX,
+    profiler::profiler_impl::ProfilerConfig config(profiler::profiler_impl::ProfilerState::NVTX,
         /*report_input_shapes=*/false,
         /*profile_memory=*/true);
     try
     {
-        profiler::profiler_impl::enableProfiler(
-            config,
+        profiler::profiler_impl::enableProfiler(config,
             {profiler::profiler_impl::ActivityType::CPU},
             {profiler::RecordScope::USER_SCOPE});
     }

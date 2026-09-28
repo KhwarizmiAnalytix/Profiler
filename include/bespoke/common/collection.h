@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -22,7 +40,7 @@
 #include "bespoke/common/util.h"
 #include "bespoke/kineto/kineto_shim.h"
 #include "common/profiler_macros.h"
-//#include "common/device.h"
+// #include "common/device.h"
 #include "common/approximate_clock.h"
 #include "common/flat_hash.h"
 #include "common/strong_type.h"
@@ -59,8 +77,7 @@ struct PROFILER_VISIBILITY ProfilerStepInfo
 // ============================================================================
 // == ExtraFields =============================================================
 // ============================================================================
-template <EventType>
-struct ExtraFields;
+template <EventType> struct ExtraFields;
 
 struct FunctionOpBasicFields
 {
@@ -86,20 +103,16 @@ struct FallbackPair
     ProfilerVoidEventStub device_event_end_   = nullptr;
 };
 
-template <>
-struct ExtraFields<EventType::FunctionOp> : FunctionOpBasicFields
+template <> struct ExtraFields<EventType::FunctionOp> : FunctionOpBasicFields
 {
-    ExtraFields(
-        FunctionOpBasicFields&&            f,
+    ExtraFields(FunctionOpBasicFields&&    f,
         uint64_t                           correlation_id,
         profiler::time_t                   end_time_ns,
         extra_meta_t&&                     extra_meta,
         FallbackPair&&                     device_fallback,
         std::unique_ptr<perf_counters_t>&& perf_event_counters)
-        : FunctionOpBasicFields(std::move(f)),
-          correlation_id_{correlation_id},
-          end_time_ns_{end_time_ns},
-          extra_meta_{std::move(extra_meta)},
+        : FunctionOpBasicFields(std::move(f)), correlation_id_{correlation_id},
+          end_time_ns_{end_time_ns}, extra_meta_{std::move(extra_meta)},
           device_fallback_{std::move(device_fallback)},
           perf_event_counters_{std::move(perf_event_counters)}
     {
@@ -112,8 +125,7 @@ struct ExtraFields<EventType::FunctionOp> : FunctionOpBasicFields
     std::string                      metadata_json_;
 };
 
-template <>
-struct ExtraFields<EventType::Backend>
+template <> struct ExtraFields<EventType::Backend>
 {
     int64_t               start_time_us_;
     int64_t               end_time_us_;
@@ -123,8 +135,7 @@ struct ExtraFields<EventType::Backend>
     std::string           backend_;
 };
 
-template <>
-struct ExtraFields<EventType::PythonGC>
+template <> struct ExtraFields<EventType::PythonGC>
 {
     std::string phase;
     int64_t     duration_ns_;
@@ -144,8 +155,7 @@ struct RawAllocation
 // For performance.
 static_assert(std::is_trivial_v<RawAllocation>, "Non-Trivial member of RawAllocation.");
 
-template <>
-struct ExtraFields<EventType::Allocation> : RawAllocation
+template <> struct ExtraFields<EventType::Allocation> : RawAllocation
 {
     ExtraFields(const RawAllocation& allocation) : RawAllocation(allocation) {}
 
@@ -158,8 +168,7 @@ struct ExtraFields<EventType::Allocation> : RawAllocation
     }
 };
 
-template <>
-struct ExtraFields<EventType::OutOfMemory>
+template <> struct ExtraFields<EventType::OutOfMemory>
 {
     profiler::approx_time_t start_time_;
     int64_t                 alloc_size_;
@@ -170,12 +179,10 @@ struct ExtraFields<EventType::OutOfMemory>
 };
 
 // For performance.
-static_assert(
-    std::is_trivial_v<ExtraFields<EventType::OutOfMemory>>,
+static_assert(std::is_trivial_v<ExtraFields<EventType::OutOfMemory>>,
     "Non-Trivial member of ExtraFields<EventType::OutOfMemory>.");
 
-template <>
-struct ExtraFields<EventType::Kineto>
+template <> struct ExtraFields<EventType::Kineto>
 {
     // Mirrors `libkineto::GenericTraceActivity::Flow`. This information is used
     // during post processing to properly embed Kineto events into the broader
@@ -201,32 +208,28 @@ struct ExtraFields<EventType::Kineto>
 
 struct PROFILER_VISIBILITY Result : public std::enable_shared_from_this<Result>
 {
-    template <typename... Args>
-    [[nodiscard]] static std::shared_ptr<Result> create(Args... args)
+    template <typename... Args> [[nodiscard]] static std::shared_ptr<Result> create(Args... args)
     {
         return std::shared_ptr<Result>(new Result(std::forward<Args>(args)...));
     }
 
-    template <typename T>
-    auto visit(T&& visitor)
+    template <typename T> auto visit(T&& visitor)
     {
         return std::visit(std::forward<T>(visitor), extra_fields_);
     }
 
-    template <typename T>
-    auto visit(T&& visitor) const
+    template <typename T> auto visit(T&& visitor) const
     {
         return std::visit(std::forward<T>(visitor), extra_fields_);
     }
 
-    template <typename T, typename Fn>
-    void visit_if_base(const Fn& fn) const
+    template <typename T, typename Fn> void visit_if_base(const Fn& fn) const
     {
         visit(
             [&](const auto& extra_fields)
             {
-                using extra_fields_t = typename std::remove_cv_t<
-                    typename std::remove_reference_t<decltype(extra_fields)>>;
+                using extra_fields_t =
+                    std::remove_cv_t<std::remove_reference_t<decltype(extra_fields)>>;
 
                 if constexpr (std::is_base_of_v<T, extra_fields_t>)
                 {
@@ -256,8 +259,7 @@ struct PROFILER_VISIBILITY Result : public std::enable_shared_from_this<Result>
     // ExtraFields<EventType::PythonGC> / PyCall / PyCCall are defined for a
     // registered python_tracer implementation to materialize; the default
     // NoOpPythonTracer never produces them, so they are not variant alternatives.
-    std::variant<
-        ExtraFields<EventType::FunctionOp>,
+    std::variant<ExtraFields<EventType::FunctionOp>,
         ExtraFields<EventType::Backend>,
         ExtraFields<EventType::Allocation>,
         ExtraFields<EventType::OutOfMemory>,
@@ -272,20 +274,16 @@ struct PROFILER_VISIBILITY Result : public std::enable_shared_from_this<Result>
 
 private:
     template <EventType E>
-    Result(
-        int64_t                   start_time_ns,
+    Result(int64_t                start_time_ns,
         uint64_t                  start_tid,
         kineto::DeviceAndResource kineto_info,
         ExtraFields<E>&&          extra_fields)
-        : start_time_ns_{start_time_ns},
-          start_tid_{start_tid},
-          kineto_info_{kineto_info},
+        : start_time_ns_{start_time_ns}, start_tid_{start_tid}, kineto_info_{kineto_info},
           extra_fields_{std::move(extra_fields)}
     {
     }
 
-    template <EventType E>
-    static EventType deduceTag(const ExtraFields<E>& /*unused*/)
+    template <EventType E> static EventType deduceTag(const ExtraFields<E>& /*unused*/)
     {
         return E;
     }
@@ -319,32 +317,27 @@ public:
 
     std::unique_ptr<KinetoObserverContext> begin_op(const profiler::RecordFunction& fn);
 
-    template <class... Args>
-    void emplace_backend_event(Args&&... args)
+    template <class... Args> void emplace_backend_event(Args&&... args)
     {
         backend_events_.emplace_back(std::forward<Args>(args)...);
     }
 
-    template <class... Args>
-    void emplace_allocation_event(Args&&... args)
+    template <class... Args> void emplace_allocation_event(Args&&... args)
     {
         allocations_.emplace_back(std::forward<Args>(args)...);
     }
 
-    template <class... Args>
-    void emplace_ooms_event(Args&&... args)
+    template <class... Args> void emplace_ooms_event(Args&&... args)
     {
         ooms_.emplace_back(std::forward<Args>(args)...);
     }
 
-    template <class... Args>
-    void emplace_py_call(Args&&... args)
+    template <class... Args> void emplace_py_call(Args&&... args)
     {
         py_calls_.emplace_back(std::forward<Args>(args)...);
     }
 
-    template <class... Args>
-    void emplace_gc_call(Args&&... args)
+    template <class... Args> void emplace_gc_call(Args&&... args)
     {
         pythongc_.emplace_back(std::forward<Args>(args)...);
     }
@@ -353,7 +346,7 @@ public:
 
     const kineto::DeviceAndResource& kineto_info() const { return kineto_info_; }
 
-    inline void disable_perf_profiler(perf_counters_t& counters) const
+    void disable_perf_profiler(perf_counters_t& counters) const
     {
         perf_profiler_->Disable(counters);
     }
@@ -371,15 +364,13 @@ private:
     struct FunctionOpStorage
     {
         // NB: This is a destructive operation.
-        void materialize(
-            std::vector<std::shared_ptr<Result>>&                           out,
+        void materialize(std::vector<std::shared_ptr<Result>>&              out,
             std::vector<ProfilerStepInfo>&                                  step_info,
             const std::function<profiler::time_t(profiler::approx_time_t)>& time_converter,
             const uint64_t                                                  tid,
             const kineto::DeviceAndResource&                                kineto_info);
 
-        template <typename T, size_t ChunkSize>
-        class EventBlock : public std::array<T, ChunkSize>
+        template <typename T, size_t ChunkSize> class EventBlock : public std::array<T, ChunkSize>
         {
         public:
             EventBlock();
@@ -393,9 +384,8 @@ private:
         class OpList : public AppendOnlyList<event_t, BlockSize, EventBlock>
         {
         public:
-            template <class... Args>
-            std::pair<event_t*, uint64_t> emplace_back(Args&&... args);
-            static uint64_t               correlationID(const OpList::Iterator& e);
+            template <class... Args> std::pair<event_t*, uint64_t> emplace_back(Args&&... args);
+            static uint64_t correlationID(const OpList::Iterator& e);
         } op_events_;
 
         // Per-function structured metadata, populated from RecordFunction::metadata().
@@ -434,13 +424,11 @@ public:
     void                 restart();
 
     // NB: This is a destructive operation.
-    std::pair<
-        std::vector<std::shared_ptr<Result>>,
+    std::pair<std::vector<std::shared_ptr<Result>>,
         std::unique_ptr<profiler::profiler_impl::impl::kineto::ActivityTraceWrapper>>
-    getRecords(
-        std::function<profiler::time_t(profiler::approx_time_t)> time_converter,
-        uint64_t                                                 start_time_ns,
-        uint64_t                                                 end_time_ns);
+    getRecords(std::function<profiler::time_t(profiler::approx_time_t)> time_converter,
+        uint64_t                                                        start_time_ns,
+        uint64_t                                                        end_time_ns);
 
 private:
     uint32_t                                                                id_;

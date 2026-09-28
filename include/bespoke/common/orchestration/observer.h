@@ -1,5 +1,24 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
+#include <cstdint>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -16,7 +35,7 @@ namespace profiler::profiler_impl::impl
 // ----------------------------------------------------------------------------
 // -- Profiler Config ---------------------------------------------------------
 // ----------------------------------------------------------------------------
-enum class PROFILER_VISIBILITY_ENUM ActivityType
+enum class PROFILER_VISIBILITY_ENUM ActivityType : std::uint8_t
 {
     CPU                   = 0,
     CUDA                  = 1,  // NVIDIA CUPTI kernels / runtime
@@ -32,7 +51,7 @@ inline std::string actToString(ActivityType t)
     return ActivityTypeNames[static_cast<int>(t)];
 }
 
-enum class PROFILER_VISIBILITY_ENUM ProfilerState
+enum class PROFILER_VISIBILITY_ENUM ProfilerState : std::uint8_t
 {
     Disabled = 0,
     CPU,                          // CPU-only profiling
@@ -47,7 +66,7 @@ enum class PROFILER_VISIBILITY_ENUM ProfilerState
     NUM_PROFILER_STATES,          // must be the last one
 };
 
-enum class PROFILER_VISIBILITY_ENUM ActiveProfilerType
+enum class PROFILER_VISIBILITY_ENUM ActiveProfilerType : std::uint8_t
 {
     NONE = 0,
     LEGACY,
@@ -59,19 +78,19 @@ enum class PROFILER_VISIBILITY_ENUM ActiveProfilerType
 
 struct PROFILER_VISIBILITY ExperimentalConfig
 {
-    PROFILER_API          ExperimentalConfig(std::vector<std::string> profiler_metrics    = {},
-        bool                                                 profiler_measure_per_kernel  = false,
-        bool                                                 verbose                      = false,
-        std::vector<std::string>                             performance_events           = {},
-        bool                                                 enable_cuda_sync_events      = false,
-        bool                                                 adjust_profiler_step         = false,
-        bool                                                 disable_external_correlation = false,
-        bool                                                 profile_all_threads          = false,
-        bool                                                 capture_overload_names       = false,
-        bool                                                 record_python_gc_info        = false,
-        bool                                                 expose_kineto_event_metadata = false,
-        std::string                                          custom_profiler_config       = "",
-        bool                                                 adjust_timestamps            = false);
+    PROFILER_API          ExperimentalConfig(std::vector<std::string> profiler_metrics = {},
+                 bool                                                 profiler_measure_per_kernel = false,
+                 bool                                                 verbose            = false,
+                 std::vector<std::string>                             performance_events = {},
+                 bool                                                 enable_cuda_sync_events = false,
+                 bool                                                 adjust_profiler_step = false,
+                 bool                                                 disable_external_correlation = false,
+                 bool                                                 profile_all_threads = false,
+                 bool                                                 capture_overload_names = false,
+                 bool                                                 record_python_gc_info = false,
+                 bool                                                 expose_kineto_event_metadata = false,
+                 std::string                                          custom_profiler_config = "",
+                 bool                                                 adjust_timestamps = false);
     PROFILER_API explicit operator bool() const;
 
     std::vector<std::string> profiler_metrics;

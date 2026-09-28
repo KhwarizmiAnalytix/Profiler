@@ -329,8 +329,7 @@ private:
  *
  * @tparam T Type of objects to allocate
  */
-template <typename T>
-class tracked_allocator
+template <typename T> class tracked_allocator
 {
 public:
     using value_type      = T;
@@ -341,8 +340,7 @@ public:
     using size_type       = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    template <typename U>
-    struct rebind
+    template <typename U> struct rebind
     {
         using other = tracked_allocator<U>;
     };
@@ -413,8 +411,7 @@ public:
      * @param other Other allocator
      * @return true if allocators are equivalent
      */
-    template <typename U>
-    bool operator==(const tracked_allocator<U>& other) const
+    template <typename U> bool operator==(const tracked_allocator<U>& other) const
     {
         return tracker_ == other.tracker_;
     }
@@ -425,8 +422,7 @@ public:
      * @param other Other allocator
      * @return true if allocators are not equivalent
      */
-    template <typename U>
-    bool operator!=(const tracked_allocator<U>& other) const
+    template <typename U> bool operator!=(const tracked_allocator<U>& other) const
     {
         return !(*this == other);
     }
@@ -436,8 +432,7 @@ private:
     profiler::memory_tracker* tracker_;
 
     /// Allow access to tracker_ from other template instantiations
-    template <typename U>
-    friend class tracked_allocator;
+    template <typename U> friend class tracked_allocator;
 };
 
 }  // namespace profiler

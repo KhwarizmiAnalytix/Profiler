@@ -74,10 +74,13 @@ double profiled_function()
             double sum = 0.0;
             for (int inner = 0; inner < k_size; ++inner)
             {
-                sum += lhs[static_cast<size_t>(row * k_size + inner)] *
-                       rhs[static_cast<size_t>(inner * k_size + col)];
+                sum += lhs[static_cast<size_t>(row) * static_cast<size_t>(k_size) +
+                           static_cast<size_t>(inner)] *
+                       rhs[static_cast<size_t>(inner) * static_cast<size_t>(k_size) +
+                           static_cast<size_t>(col)];
             }
-            out[static_cast<size_t>(row * k_size + col)] = sum;
+            out[static_cast<size_t>(row) * static_cast<size_t>(k_size) + static_cast<size_t>(col)] =
+                sum;
         }
     }
 
@@ -262,8 +265,7 @@ public:
     {
     }
 
-    float elapsed(
-        const profiler::profiler_impl::impl::ProfilerVoidEventStub*,
+    float elapsed(const profiler::profiler_impl::impl::ProfilerVoidEventStub*,
         const profiler::profiler_impl::impl::ProfilerVoidEventStub*) const override
     {
         return 0.0F;
@@ -337,8 +339,7 @@ PROFILERTEST(BackendFunction, itt_profiles_function)
     profiler::profiler_impl::ProfilerConfig config(profiler::profiler_impl::ProfilerState::ITT);
     try
     {
-        profiler::profiler_impl::enableProfiler(
-            config,
+        profiler::profiler_impl::enableProfiler(config,
             {profiler::profiler_impl::ActivityType::CPU},
             {profiler::RecordScope::USER_SCOPE});
     }
@@ -379,8 +380,7 @@ PROFILERTEST(BackendFunction, nvtx_profiles_function)
     profiler::profiler_impl::ProfilerConfig config(profiler::profiler_impl::ProfilerState::NVTX);
     try
     {
-        profiler::profiler_impl::enableProfiler(
-            config,
+        profiler::profiler_impl::enableProfiler(config,
             {profiler::profiler_impl::ActivityType::CPU},
             {profiler::RecordScope::USER_SCOPE});
     }

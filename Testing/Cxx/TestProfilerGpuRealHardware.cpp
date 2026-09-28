@@ -73,14 +73,14 @@ PROFILERTEST(GpuRealHardware, kernel_and_transfers_captured)
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 1024;
+    const int N     = 1024;
     const int bytes = N * sizeof(float);
 
     // Allocate device memory.
-    float* d_a = nullptr;
-    float* d_b = nullptr;
-    float* d_out = nullptr;
-    cudaError_t err = cudaMalloc(&d_a, bytes);
+    float*      d_a   = nullptr;
+    float*      d_b   = nullptr;
+    float*      d_out = nullptr;
+    cudaError_t err   = cudaMalloc(&d_a, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -89,8 +89,8 @@ PROFILERTEST(GpuRealHardware, kernel_and_transfers_captured)
     ASSERT_EQ(cudaMalloc(&d_out, bytes), cudaSuccess);
 
     // Allocate host memory.
-    float* h_a = new float[N];
-    float* h_b = new float[N];
+    float* h_a   = new float[N];
+    float* h_b   = new float[N];
     float* h_out = new float[N];
     for (int i = 0; i < N; ++i)
     {
@@ -187,14 +187,14 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 1024;
+    const int N     = 1024;
     const int bytes = N * sizeof(float);
 
     // Allocate device memory.
-    float* d_in = nullptr;
-    float* d_out1 = nullptr;
-    float* d_out2 = nullptr;
-    cudaError_t err = cudaMalloc(&d_in, bytes);
+    float*      d_in   = nullptr;
+    float*      d_out1 = nullptr;
+    float*      d_out2 = nullptr;
+    cudaError_t err    = cudaMalloc(&d_in, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -224,9 +224,9 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
                 cudaStreamDestroy(stream2);
             }
         }
-        float* d_in;
-        float* d_out1;
-        float* d_out2;
+        float*       d_in;
+        float*       d_out1;
+        float*       d_out2;
         cudaStream_t stream1;
         cudaStream_t stream2;
     } cleanup{d_in, d_out1, d_out2, stream1, stream2};
@@ -240,12 +240,10 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
 
     // Launch work on both streams concurrently.
     // Stream 1: device-to-device copy.
-    ASSERT_EQ(cudaMemcpyAsync(d_out1, d_in, bytes, cudaMemcpyDeviceToDevice, stream1),
-              cudaSuccess);
+    ASSERT_EQ(cudaMemcpyAsync(d_out1, d_in, bytes, cudaMemcpyDeviceToDevice, stream1), cudaSuccess);
 
     // Stream 2: another device-to-device copy.
-    ASSERT_EQ(cudaMemcpyAsync(d_out2, d_in, bytes, cudaMemcpyDeviceToDevice, stream2),
-              cudaSuccess);
+    ASSERT_EQ(cudaMemcpyAsync(d_out2, d_in, bytes, cudaMemcpyDeviceToDevice, stream2), cudaSuccess);
 
     // Synchronize both.
     ASSERT_EQ(cudaStreamSynchronize(stream1), cudaSuccess);
@@ -318,11 +316,11 @@ PROFILERTEST(GpuRealHardware, device_fill_captured)
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 4096;
+    const int N     = 4096;
     const int bytes = N * sizeof(float);
 
-    float* d_buf = nullptr;
-    cudaError_t err = cudaMalloc(&d_buf, bytes);
+    float*      d_buf = nullptr;
+    cudaError_t err   = cudaMalloc(&d_buf, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -374,13 +372,13 @@ PROFILERTEST(GpuRealHardware, cpu_overlap_with_gpu_work_attributed)
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 1024;
+    const int N     = 1024;
     const int bytes = N * sizeof(float);
 
-    float* d_a = nullptr;
-    float* d_b = nullptr;
-    float* d_out = nullptr;
-    cudaError_t err = cudaMalloc(&d_a, bytes);
+    float*      d_a   = nullptr;
+    float*      d_b   = nullptr;
+    float*      d_out = nullptr;
+    cudaError_t err   = cudaMalloc(&d_a, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -471,8 +469,8 @@ PROFILERTEST(GpuRealHardware, work_extending_beyond_stop_reported_honestly)
     // work rather than work that already finished.
     const size_t bytes = static_cast<size_t>(256) * 1024 * 1024;
 
-    void* d_buf = nullptr;
-    cudaError_t err = cudaMalloc(&d_buf, bytes);
+    void*       d_buf = nullptr;
+    cudaError_t err   = cudaMalloc(&d_buf, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -544,13 +542,13 @@ PROFILERTEST(GpuRealHardware, explicit_stream_event_mode_end_to_end)
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 1024;
+    const int N     = 1024;
     const int bytes = N * sizeof(float);
 
-    float* d_a = nullptr;
-    float* d_b = nullptr;
-    float* d_out = nullptr;
-    cudaError_t err = cudaMalloc(&d_a, bytes);
+    float*      d_a   = nullptr;
+    float*      d_b   = nullptr;
+    float*      d_out = nullptr;
+    cudaError_t err   = cudaMalloc(&d_a, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -571,8 +569,8 @@ PROFILERTEST(GpuRealHardware, explicit_stream_event_mode_end_to_end)
     } cleanup{d_a, d_b, d_out};
 
     profiler::capture_config config;
-    config.backend     = profiler::capture_backend::kineto_gpu_fallback;
-    config.activities  = {profiler::activity::cpu, profiler::activity::cuda};
+    config.backend    = profiler::capture_backend::kineto_gpu_fallback;
+    config.activities = {profiler::activity::cpu, profiler::activity::cuda};
 
     profiler::capture cap(config);
     if (!cap.prepare())
@@ -644,8 +642,8 @@ PROFILERTEST(GpuRealHardware, clock_calibration_produces_bounded_residual)
     EXPECT_GT(calibration.scale, 0.1);
     EXPECT_LT(calibration.scale, 10.0);
     EXPECT_GE(calibration.uncertainty_ns, 0.0);
-    EXPECT_LT(calibration.uncertainty_ns, 50.0e6) << "residual uncertainty too large: "
-                                                    << calibration.uncertainty_ns << " ns";
+    EXPECT_LT(calibration.uncertainty_ns, 50.0e6)
+        << "residual uncertainty too large: " << calibration.uncertainty_ns << " ns";
 
     // Calling again for the same device must hit the cache and return an
     // identical result (common/clock_calibration.h's
@@ -666,13 +664,13 @@ PROFILERTEST(GpuRealHardware, capture_populates_clock_uncertainty_for_gpu_events
         GTEST_SKIP() << "No CUDA device available";
     }
 
-    const int N = 1024;
+    const int N     = 1024;
     const int bytes = N * sizeof(float);
 
-    float* d_a = nullptr;
-    float* d_b = nullptr;
-    float* d_out = nullptr;
-    cudaError_t err = cudaMalloc(&d_a, bytes);
+    float*      d_a   = nullptr;
+    float*      d_b   = nullptr;
+    float*      d_out = nullptr;
+    cudaError_t err   = cudaMalloc(&d_a, bytes);
     if (err != cudaSuccess)
     {
         GTEST_SKIP() << "cudaMalloc failed: " << cudaGetErrorString(err);
@@ -760,7 +758,7 @@ PROFILERTEST(GpuRealHardware, session_reports_failure_after_cuda_runtime_error)
     // Inject a real CUDA runtime failure: an event stub that was never
     // recorded (get() == nullptr) is an invalid resource handle to
     // cudaEventSynchronize/cudaEventElapsedTime.
-    auto const                                      stubs = profiler::profiler_impl::impl::cudaStubs();
+    auto const stubs = profiler::profiler_impl::impl::cudaStubs();
     profiler::profiler_impl::impl::ProfilerVoidEventStub unrecorded_event =
         std::shared_ptr<CUevent_st>(nullptr, [](CUevent_st*) {});
     // elapsed() logs-and-swallows via impl::cudaCheck() rather than

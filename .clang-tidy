@@ -1,8 +1,6 @@
 ---
-# Local/IDE use. Not yet wired into CI: calibrating this against the full
-# existing tree (compile_commands.json across the KINETO/ITT configurations,
-# triaging pre-existing diagnostics) is a larger follow-up than this config
-# file — see CONTRIBUTING.md.
+# Wired into CMake via PROFILER_ENABLE_CLANG_TIDY=ON (cmake/ProfilerChecks.cmake).
+# Also used by IDE integrations (VS Code clangd, CLion).
 Checks: >
   -*,
   bugprone-*,

@@ -8,14 +8,14 @@ package(default_visibility = ["//visibility:public"])
 # KINETO backend: bespoke/base, bespoke/kineto, bespoke/common (no unwind)
 _KINETO_BACKEND_SRCS = glob(
     [
-        "include/kineto_*.cpp",
-        "include/kineto/**/*.cpp",
-        "include/bespoke/kineto/**/*.cpp",
-        "include/bespoke/common/**/*.cpp",
-        "include/bespoke/base/**/*.cpp",
+        "src/kineto_*.cpp",
+        "src/kineto/**/*.cpp",
+        "src/bespoke/kineto/**/*.cpp",
+        "src/bespoke/common/**/*.cpp",
+        "src/bespoke/base/**/*.cpp",
     ],
     exclude = [
-        "include/bespoke/common/unwind/**/*.cpp",
+        "src/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
@@ -33,15 +33,15 @@ _KINETO_BACKEND_SRCS = glob(
 # `#if PROFILER_HAS_KINETO`) but is harmlessly inert without it.
 _ITT_BACKEND_SRCS = glob(
     [
-        "include/bespoke/base/**/*.cpp",
-        "include/bespoke/common/**/*.cpp",
-        "include/bespoke/itt/**/*.cpp",
-        "include/bespoke/kineto/kineto_shim.cpp",
-        "include/bespoke/kineto/profiler_kineto.cpp",
-        "include/bespoke/kineto/kineto_client_interface.cpp",
+        "src/bespoke/base/**/*.cpp",
+        "src/bespoke/common/**/*.cpp",
+        "src/bespoke/itt/**/*.cpp",
+        "src/bespoke/kineto/kineto_shim.cpp",
+        "src/bespoke/kineto/profiler_kineto.cpp",
+        "src/bespoke/kineto/kineto_client_interface.cpp",
     ],
     exclude = [
-        "include/bespoke/common/unwind/**/*.cpp",
+        "src/bespoke/common/unwind/**/*.cpp",
         "Testing/**",
     ],
     allow_empty = True,
@@ -92,14 +92,13 @@ filegroup(
     name = "profiler_srcs",
     srcs = glob(
         [
-            "include/*.cpp",
-            "include/**/*.cpp",
+            "src/*.cpp",
+            "src/common/**/*.cpp",
         ],
         exclude = [
-            "include/native/**/*.cpp",
-            "include/bespoke/**",
-            "include/kineto_*.cpp",
-            "include/kineto/**/*.cpp",
+            "src/bespoke/**",
+            "src/kineto_*.cpp",
+            "src/kineto/**/*.cpp",
             "Testing/**",
         ],
         allow_empty = True,
@@ -110,7 +109,7 @@ cc_library(
     name = "Profiler",
     srcs = [
         ":profiler_srcs",
-    ] + glob(["include/native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
+    ] + glob(["src/native/**/*.cpp"], exclude = ["Testing/**"], allow_empty = True) + select({
         "//bazel:enable_itt": _ITT_BACKEND_SRCS,
         "//conditions:default": _KINETO_BACKEND_SRCS,
     }),

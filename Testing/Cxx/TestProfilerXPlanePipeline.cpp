@@ -193,8 +193,7 @@ PROFILERTEST(BackendXPlanePipeline, session_xspace_sort_merge_visitor_export)
     {
         xplane_visitor const merged_visitor = CreateTfXPlaneVisitor(&merged);
         size_t               merged_events  = 0;
-        merged_visitor.for_each_line(
-            [&](const xline_visitor& line)
+        merged_visitor.for_each_line([&](const xline_visitor& line)
             { line.for_each_event([&](const xevent_visitor& /*event*/) { ++merged_events; }); });
         EXPECT_EQ(merged_events, count_events(merged));
     }

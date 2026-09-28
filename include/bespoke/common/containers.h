@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <algorithm>
@@ -42,8 +60,7 @@ class AppendOnlyList
 {
 public:
     using array_t = block_t<T, ChunkSize>;
-    static_assert(
-        std::is_base_of_v<std::array<T, ChunkSize>, array_t>,
+    static_assert(std::is_base_of_v<std::array<T, ChunkSize>, array_t>,
         "AppendOnlyList expects raw low level pointer storage.");
     static_assert(ChunkSize > 0, "Block cannot be empty.");
 
@@ -56,12 +73,11 @@ public:
 
     size_t size() const { return n_blocks_ * ChunkSize - (size_t)(end_ - next_); }
 
-    template <class... Args>
-    T* emplace_back(Args&&... args)
+    template <class... Args> T* emplace_back(Args&&... args)
     {
         maybe_grow();
-        if constexpr (
-            std::is_trivially_destructible_v<T> && std::is_trivially_destructible_v<array_t>)
+        if constexpr (std::is_trivially_destructible_v<T> &&
+                      std::is_trivially_destructible_v<array_t>)
         {
             ::new ((void*)next_) T{std::forward<Args>(args)...};
         }
@@ -177,9 +193,9 @@ public:
             return a.first->data() + a.second;
         }
 
-        typename std::forward_list<array_t>::iterator block_;
-        size_t                                        current_{0};
-        size_t                                        size_{0};
+        std::forward_list<array_t>::iterator block_;
+        size_t                               current_{0};
+        size_t                               size_{0};
     };
 
     Iterator begin() { return Iterator(buffer_, size()); }
@@ -207,7 +223,7 @@ private:
     T*     end_{nullptr};
 
 protected:
-    typename std::forward_list<array_t>::iterator buffer_last_;
+    std::forward_list<array_t>::iterator buffer_last_;
 };
 
 }  // namespace profiler::profiler_impl::impl

@@ -103,7 +103,7 @@ PROFILERTEST(PublicApi, events_and_exported_trace_agree_on_event_names)
     std::remove(path.c_str());
     ASSERT_TRUE(session.write_trace(path));
 
-    std::ifstream    file(path);
+    std::ifstream file(path);
     ASSERT_TRUE(file.good());
     std::ostringstream contents;
     contents << file.rdbuf();
@@ -140,7 +140,9 @@ PROFILERTEST(PublicApi, write_kineto_hta_trace_has_required_hta_fields)
 
     profiler::session session(options);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("hta_field_probe_scope"); }
+    {
+        PROFILER_SCOPE("hta_field_probe_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     const std::string path = "public_api_hta_trace.json";
@@ -185,7 +187,9 @@ PROFILERTEST(PublicApi, write_kineto_hta_trace_fails_without_a_kineto_trace)
 
     profiler::session session(options);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("hta_no_kineto_probe_scope"); }
+    {
+        PROFILER_SCOPE("hta_no_kineto_probe_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     const std::string path = "public_api_hta_trace_should_not_exist.json";
@@ -285,7 +289,7 @@ PROFILERTEST(PublicApi, concurrent_child_thread_enrollment_does_not_race)
     profiler::capture cap;
     ASSERT_TRUE(cap.start());
 
-    constexpr int     kWorkerCount = 8;
+    constexpr int            kWorkerCount = 8;
     std::vector<std::thread> workers;
     workers.reserve(kWorkerCount);
     for (int i = 0; i < kWorkerCount; ++i)
@@ -439,7 +443,9 @@ PROFILERTEST(PublicApi, capture_event_carries_execution_location_and_kind)
 
     profiler::session session(options);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("event_contract_probe"); }
+    {
+        PROFILER_SCOPE("event_contract_probe");
+    }
     ASSERT_TRUE(session.stop());
 
     const profiler::capture_event* found = nullptr;

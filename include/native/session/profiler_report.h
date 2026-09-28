@@ -142,24 +142,24 @@ public:
 
 private:
     // Immutable snapshot captured once at construction -- see class comment.
-    bool                                               was_active_ = false;
-    profiler::steady_clock_t::time_point               start_time_snapshot_;
-    profiler::steady_clock_t::time_point               end_time_snapshot_;
-    std::shared_ptr<const profiler::profiler_scope_data> scope_tree_snapshot_;
-    bool                                               has_memory_stats_ = false;
-    profiler::memory_stats                             memory_snapshot_;
-    bool                                               has_statistics_ = false;
+    bool                                                           was_active_ = false;
+    profiler::steady_clock_t::time_point                           start_time_snapshot_;
+    profiler::steady_clock_t::time_point                           end_time_snapshot_;
+    std::shared_ptr<const profiler::profiler_scope_data>           scope_tree_snapshot_;
+    bool                                                           has_memory_stats_ = false;
+    profiler::memory_stats                                         memory_snapshot_;
+    bool                                                           has_statistics_ = false;
     std::unordered_map<std::string, profiler::statistical_metrics> timing_stats_snapshot_;
     std::unordered_map<std::string, profiler::statistical_metrics> memory_stats_by_name_snapshot_;
-    bool                                               has_xspace_ = false;
-    profiler::x_space                                  xspace_snapshot_;
+    bool                                                           has_xspace_ = false;
+    profiler::x_space                                              xspace_snapshot_;
 
     // Formatting options
-    int         precision_                   = 3;
-    std::string time_unit_                   = "ms";
-    std::string memory_unit_                 = "MB";
-    bool        include_thread_info_         = true;
-    bool        include_hierarchical_data_   = true;
+    int         precision_                    = 3;
+    std::string time_unit_                    = "ms";
+    std::string memory_unit_                  = "MB";
+    bool        include_thread_info_          = true;
+    bool        include_hierarchical_data_    = true;
     bool        include_statistical_analysis_ = true;
     bool        include_memory_details_       = true;
 
@@ -207,10 +207,9 @@ private:
         const profiler::profiler_scope_data& scope, std::stringstream& ss, int indent = 0) const;
     void process_scope_data_json_recursive(
         const profiler::profiler_scope_data& scope, std::stringstream& ss, int indent = 0) const;
-    void process_scope_data_csv_recursive(
-        const profiler::profiler_scope_data& scope,
-        std::vector<std::string>&            rows,
-        int                                  depth = 0) const;
+    void process_scope_data_csv_recursive(const profiler::profiler_scope_data& scope,
+        std::vector<std::string>&                                              rows,
+        int                                                                    depth = 0) const;
 };
 
 // Report builder with fluent interface

@@ -42,9 +42,9 @@ limitations under the License.
 #include "common/profiler_export.h"
 #include "common/profiler_macros.h"
 #include "common/profiler_strings.h"
-//#include "util/string_util.h"
+// #include "util/string_util.h"
 
-//#include "tsl/profiler/lib/context_types.h"
+// #include "tsl/profiler/lib/context_types.h"
 
 namespace profiler
 {
@@ -55,15 +55,13 @@ inline void HashCombine(std::size_t& seed, std::size_t hash)
     seed ^= hash + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-template <typename T>
-std::size_t HashOf(const T& val)
+template <typename T> std::size_t HashOf(const T& val)
 {
     return std::hash<T>{}(val);
 }
 
 // Variadic template for multiple arguments
-template <typename T, typename... Rest>
-std::size_t HashOf(const T& val, const Rest&... rest)
+template <typename T, typename... Rest> std::size_t HashOf(const T& val, const Rest&... rest)
 {
     std::size_t seed = HashOf(val);
     (HashCombine(seed, HashOf(rest)), ...);
@@ -71,15 +69,13 @@ std::size_t HashOf(const T& val, const Rest&... rest)
 }
 
 // Specialization for pairs
-template <typename T1, typename T2>
-struct PairHasher
+template <typename T1, typename T2> struct PairHasher
 {
     std::size_t operator()(const std::pair<T1, T2>& p) const { return HashOf(p.first, p.second); }
 };
 
 // Specialization for vectors
-template <typename T>
-struct VectorHasher
+template <typename T> struct VectorHasher
 {
     std::size_t operator()(const std::vector<T>& vec) const
     {
@@ -93,8 +89,7 @@ struct VectorHasher
 };
 
 // Specialization for strings and string_views
-template <>
-inline std::size_t HashOf(const std::string_view& val)
+template <> inline std::size_t HashOf(const std::string_view& val)
 {
     return std::hash<std::string_view>{}(val);
 }
@@ -601,16 +596,15 @@ public:
     static XFlow FromStatValue(uint64_t encoded) { return XFlow(encoded); }
 
     /* NOTE: std::HashOf is not consistent across processes (some process level
-   * salt is added), even different executions of the same program.
-   * However we are not tracking cross-host flows, i.e. A single flow's
-   * participating events are from the same XSpace. On the other hand,
-   * events from the same XSpace is always processed in the same profiler
-   * process. Flows from different hosts are unlikely to collide because of
-   * 2^56 hash space. Therefore, we can consider this is good for now. We should
-   * revisit the hash function when cross-hosts flows became more popular.
-   */
-    template <typename... Args>
-    static uint64_t GetFlowId(Args&&... args)
+     * salt is added), even different executions of the same program.
+     * However we are not tracking cross-host flows, i.e. A single flow's
+     * participating events are from the same XSpace. On the other hand,
+     * events from the same XSpace is always processed in the same profiler
+     * process. Flows from different hosts are unlikely to collide because of
+     * 2^56 hash space. Therefore, we can consider this is good for now. We should
+     * revisit the hash function when cross-hosts flows became more popular.
+     */
+    template <typename... Args> static uint64_t GetFlowId(Args&&... args)
     {
         return HashOf(std::forward<Args>(args)...) & kFlowMask;
     }

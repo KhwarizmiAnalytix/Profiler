@@ -150,13 +150,13 @@ PROFILERTEST(LockFreeQueue, push_pop_preserves_fifo_order_across_blocks)
     for (int i = 0; i < kCount; ++i)
     {
         int value = i;
-        queue.push(std::move(value));
+        queue.push(std::move(value));  // NOLINT(performance-move-const-arg)
     }
     for (int i = 0; i < kCount; ++i)
     {
         auto popped = queue.pop();
         ASSERT_TRUE(popped.has_value());
-        EXPECT_EQ(*popped, i);
+        EXPECT_EQ(popped.value(), i);
     }
     EXPECT_FALSE(queue.pop().has_value());
 }
@@ -168,7 +168,7 @@ PROFILERTEST(LockFreeQueue, pop_all_preserves_order_and_drains_queue)
     for (int i = 0; i < kCount; ++i)
     {
         int value = i;
-        queue.push(std::move(value));
+        queue.push(std::move(value));  // NOLINT(performance-move-const-arg)
     }
 
     profiler::BlockedQueue<int, kTestQueueBlockSize> drained  = queue.PopAll();
@@ -196,7 +196,7 @@ PROFILERTEST(LockFreeQueue, single_producer_single_consumer_threads_see_all_elem
             for (int i = 0; i < kCount; ++i)
             {
                 int value = i;
-                queue.push(std::move(value));
+                queue.push(std::move(value));  // NOLINT(performance-move-const-arg)
             }
         });
 
@@ -233,7 +233,7 @@ PROFILERTEST(LockFreeQueue, single_producer_single_consumer_threads_see_all_elem
 // call) -- and capacity recovers once draining frees a block.
 PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
 {
-    using Queue = profiler::LockFreeQueue<int, kTestQueueBlockSize>;
+    using Queue                 = profiler::LockFreeQueue<int, kTestQueueBlockSize>;
     constexpr size_t kMaxBlocks = 2;
     Queue            queue(kMaxBlocks);
 
@@ -244,7 +244,8 @@ PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
     for (size_t i = 0; i < capacity; ++i)
     {
         int value = static_cast<int>(i);
-        ASSERT_TRUE(queue.push(std::move(value))) << "push " << i << " of " << capacity;
+        ASSERT_TRUE(queue.push(std::move(value)))  // NOLINT(performance-move-const-arg)
+            << "push " << i << " of " << capacity;
     }
     EXPECT_EQ(queue.dropped_count(), 0u);
 
@@ -260,7 +261,7 @@ PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
     {
         auto popped = queue.pop();
         ASSERT_TRUE(popped.has_value());
-        EXPECT_EQ(*popped, static_cast<int>(i));
+        EXPECT_EQ(popped.value(), static_cast<int>(i));
     }
     EXPECT_FALSE(queue.pop().has_value());
 
@@ -269,7 +270,7 @@ PROFILERTEST(LockFreeQueue, push_drops_and_recovers_past_max_blocks)
     EXPECT_EQ(queue.dropped_count(), 2u);  // unchanged: this push succeeded
     auto popped = queue.pop();
     ASSERT_TRUE(popped.has_value());
-    EXPECT_EQ(*popped, 42);
+    EXPECT_EQ(popped.value(), 42);
 }
 
 // ---------------------------------------------------------------------------

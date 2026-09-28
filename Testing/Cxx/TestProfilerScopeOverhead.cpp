@@ -48,7 +48,7 @@ using namespace profiler;
 PROFILERTEST(ScopeOverhead, inactive_scope_never_allocates_data)
 {
     profiler_session inactive_session;  // never started
-    profiler_scope    scope("inactive_probe", &inactive_session);
+    profiler_scope   scope("inactive_probe", &inactive_session);
     EXPECT_TRUE(scope.data().name_.empty());
 }
 
@@ -143,7 +143,8 @@ PROFILERTEST(ScopeOverhead, active_scope_deep_nesting_stresses_pool_growth_and_s
     auto session = make_active_session();
     ASSERT_TRUE(session.start());
 
-    std::function<void(int)> recurse = [&](int depth) {
+    std::function<void(int)> recurse = [&](int depth)
+    {
         if (depth == 0)
         {
             return;

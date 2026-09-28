@@ -99,11 +99,10 @@ struct TraceMeArg
      * @param v Numeric value to convert
      */
     template <typename T>
-    TraceMeArg(
-        std::string_view k,
-        T                v,
-        typename std::enable_if<
-            std::is_arithmetic<T>::value && !std::is_same<T, bool>::value>::type* = nullptr)
+    TraceMeArg(std::string_view k,
+        T                       v,
+        typename std::enable_if<std::is_arithmetic<T>::value &&
+                                !std::is_same<T, bool>::value>::type* = nullptr)
         : key(k), value_storage_(std::to_string(v)), value(value_storage_)
     {
     }

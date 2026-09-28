@@ -32,6 +32,7 @@ limitations under the License.
 ==============================================================================*/
 #pragma once
 
+#include <cstdint>
 #include <memory>  // for unique_ptr
 
 #include "native/core/profiler_interface.h"  // for profiler_interface
@@ -90,7 +91,7 @@ private:
     /**
      * @brief Enumeration for profiler state tracking
      */
-    enum class profiler_state_enum
+    enum class profiler_state_enum : std::uint8_t
     {
         INIT         = 0,  ///< Initial state
         START        = 1,  ///< Started state

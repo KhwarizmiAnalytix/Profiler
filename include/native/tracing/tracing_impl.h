@@ -31,15 +31,15 @@ inline bool event_collector::is_enabled()
 }  // namespace profiler::tracing
 
 // Stub tracing macros for portability.
-#define PROFILER_TRACELITERAL(a) \
-    do                           \
-    {                            \
+#define PROFILER_TRACELITERAL(a)                                                                   \
+    do                                                                                             \
+    {                                                                                              \
     } while (0)
-#define PROFILER_TRACESTRING(s) \
-    do                          \
-    {                           \
+#define PROFILER_TRACESTRING(s)                                                                    \
+    do                                                                                             \
+    {                                                                                              \
     } while (0)
-#define PROFILER_TRACEPRINTF(format, ...) \
-    do                                    \
-    {                                     \
+#define PROFILER_TRACEPRINTF(format, ...)                                                          \
+    do                                                                                             \
+    {                                                                                              \
     } while (0)

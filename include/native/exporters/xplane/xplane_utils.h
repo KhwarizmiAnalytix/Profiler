@@ -69,8 +69,7 @@ std::vector<const xplane*> find_planes(const x_space& space, const F& predicate)
 }
 
 // Returns mutable planes with the given predicate.
-template <typename F>
-std::vector<xplane*> find_mutable_planes(x_space* space, const F& predicate)
+template <typename F> std::vector<xplane*> find_mutable_planes(x_space* space, const F& predicate)
 {
     std::vector<xplane*> result;
     for (xplane& plane : *space->mutable_planes())
@@ -117,8 +116,7 @@ void remove_empty_planes(x_space* space);
 void remove_empty_lines(xplane* plane);
 
 // Sort lines in plane with a provided comparator.
-template <class Compare>
-void sort_xlines_by(xplane* plane, Compare comp)
+template <class Compare> void sort_xlines_by(xplane* plane, Compare comp)
 {
     std::sort(plane->mutable_lines()->begin(), plane->mutable_lines()->end(), comp);
 }
@@ -200,8 +198,7 @@ uint64_t GetDevicePlaneFingerprint(const xplane& plane);
 template <typename XPlanePointerIterator>
 void SortPlanesById(XPlanePointerIterator begin, XPlanePointerIterator end)
 {
-    std::sort(
-        begin,
+    std::sort(begin,
         end,
         [&](const xplane* a, const xplane* b)
         {

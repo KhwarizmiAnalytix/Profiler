@@ -39,8 +39,8 @@ limitations under the License.
 #include "common/flat_hash.h"
 #include "common/profiler_macros.h"
 
-//#include "absl/synchronization/mutex.h"
-//#include "absl/base/thread_annotations.h"
+// #include "absl/synchronization/mutex.h"
+// #include "absl/base/thread_annotations.h"
 namespace profiler
 {
 
@@ -53,8 +53,7 @@ namespace profiler
 // The thread-local instance is destroyed when the thread exits, unless
 // StartRecording has been called. During recording, if a thread exits, its
 // thread-local instance of T is kept alive until StopRecording is called.
-template <typename T>
-class per_thread
+template <typename T> class per_thread
 {
 public:
     // Returns the thread-local instance of T.
@@ -78,7 +77,6 @@ public:
         return Registry::Get().StopRecording();
     }
 
-private:
     // Prevent instantiation.
     per_thread()  = delete;
     ~per_thread() = delete;
@@ -150,11 +148,11 @@ private:
             }
         }
 
-    private:
-        Registry() = default;
-
         Registry(const Registry&)       = delete;
         void operator=(const Registry&) = delete;
+
+    private:
+        Registry() = default;
 
         std::mutex                                                 mutex_;
         profiler::flat_hash_map<std::shared_ptr<T>, bool> threads_ PROFILER_GUARDED_BY(mutex_);

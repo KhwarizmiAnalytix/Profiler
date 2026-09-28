@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <cstdint>
@@ -39,9 +57,9 @@ struct PROFILER_VISIBILITY ProfilerStubs
     virtual float elapsed(
         const ProfilerVoidEventStub* event, const ProfilerVoidEventStub* event2) const = 0;
 
-    virtual void mark(const char* name) const                                          = 0;
-    virtual void rangePush(const char* name) const                                     = 0;
-    virtual void rangePop() const                                                      = 0;
+    virtual void mark(const char* name) const      = 0;
+    virtual void rangePush(const char* name) const = 0;
+    virtual void rangePop() const                  = 0;
     virtual bool enabled() const { return false; }
     virtual void onEachDevice(std::function<void(int)> op) const = 0;
     virtual void synchronize() const                             = 0;
@@ -49,8 +67,8 @@ struct PROFILER_VISIBILITY ProfilerStubs
     /// Record an event on an explicit stream (Phase 4, design-review.md section
     /// 6.6). stream_ptr can be nullptr to use the default stream. Defaults to
     /// record(device, event, cpu_ns) if not overridden (preserves old behavior).
-    virtual void record_with_stream(void* stream_ptr, int16_t* device,
-                                    ProfilerVoidEventStub* event, int64_t* cpu_ns) const
+    virtual void record_with_stream(
+        void* stream_ptr, int16_t* device, ProfilerVoidEventStub* event, int64_t* cpu_ns) const
     {
         (void)stream_ptr;
         record(device, event, cpu_ns);

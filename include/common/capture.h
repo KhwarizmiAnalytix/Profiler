@@ -37,7 +37,7 @@ namespace profiler
  * Kineto build with CUPTI. Metal support was removed; numeric identities of
  * the retained values are preserved.
  */
-enum class activity
+enum class activity : std::uint8_t
 {
     cpu  = 0,
     cuda = 1,
@@ -49,7 +49,7 @@ enum class activity
  * `automatic` selects the backend this library was built with (`PROFILER_BACKEND`).
  * NVTX is a runtime instrumentation state, not a CMake backend.
  */
-enum class capture_backend
+enum class capture_backend : std::uint8_t
 {
     automatic,
     kineto,
@@ -68,7 +68,7 @@ enum class capture_backend
  * requests e.g. activity::cuda on a machine without a GPU and currently
  * expects a quiet CPU-only capture; opt in explicitly instead.
  */
-enum class capture_policy
+enum class capture_policy : std::uint8_t
 {
     best_effort,
     required,
@@ -112,10 +112,10 @@ struct capture_event
     // device_index/resource_id identify which device/stream/queue produced a
     // GPU-side event and stay at their construction-time defaults (CPU, -1, 0)
     // for CPU-side events.
-    uint64_t    thread_id     = 0;
-    device_enum device_type   = device_enum::CPU;
-    int         device_index  = -1;
-    int64_t     resource_id   = 0;
+    uint64_t    thread_id    = 0;
+    device_enum device_type  = device_enum::CPU;
+    int         device_index = -1;
+    int64_t     resource_id  = 0;
 
     // Correlation/async: kept at their source's native 64-bit width rather
     // than truncated (section 6.3 explicitly forbids truncating native

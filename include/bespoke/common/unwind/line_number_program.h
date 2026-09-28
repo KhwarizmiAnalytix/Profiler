@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <tuple>
 
 #include "bespoke/common/unwind/debug_info.h"
@@ -116,8 +134,7 @@ struct LineNumberProgram
                     case DW_LNCT_directory_index:
                     {
                         file_directory_index_.emplace_back(readData(L, member.form));
-                        UNWIND_CHECK(
-                            file_directory_index_.back() < include_directories_.size(),
+                        UNWIND_CHECK(file_directory_index_.back() < include_directories_.size(),
                             "directory index out of range");
                     }
                     break;
@@ -163,8 +180,7 @@ struct LineNumberProgram
                 file_directory_index_.push_back(directory_index);
             }
         }
-        UNWIND_CHECK(
-            maximum_operations_per_instruction_ == 1,
+        UNWIND_CHECK(maximum_operations_per_instruction_ == 1,
             "maximum_operations_per_instruction_ must be 1");
         UNWIND_CHECK(minimum_instruction_length_ == 1, "minimum_instruction_length_ must be 1");
         readProgram();
@@ -185,8 +201,7 @@ struct LineNumberProgram
     }
     std::string filename(uint64_t index)
     {
-        return fmt::format(
-            "{}/{}",
+        return fmt::format("{}/{}",
             include_directories_.at(file_directory_index_.at(index)),
             file_names_.at(index));
     }
@@ -229,8 +244,7 @@ private:
             start_address_ = address_;
         }
         PRINT_LINE_TABLE("{:x}\t{}\t{}\n", address_, filename(entry_.file), entry_.line);
-        UNWIND_CHECK(
-            entry_.file < file_names_.size(),
+        UNWIND_CHECK(entry_.file < file_names_.size(),
             "file index {} > {} entries",
             entry_.file,
             file_names_.size());
@@ -259,8 +273,7 @@ private:
                 auto op2 = int64_t(op - opcode_base_);
                 address_ += op2 / line_range_;
                 entry_.line += line_base_ + (op2 % line_range_);
-                PRINT_INST(
-                    "address += {}, line += {}\n",
+                PRINT_INST("address += {}, line += {}\n",
                     op2 / line_range_,
                     line_base_ + (op2 % line_range_));
                 produceEntry();
@@ -287,8 +300,7 @@ private:
                         address_ = program_.read<uint64_t>();
                         if (!shadow_)
                         {
-                            PRINT_INST(
-                                "set address {:x} {:x} {:x}\n",
+                            PRINT_INST("set address {:x} {:x} {:x}\n",
                                 address_,
                                 min_address_,
                                 max_address_);
@@ -354,8 +366,7 @@ private:
                 }
             }
         }
-        PRINT_INST(
-            "{:x}: end {:x}\n",
+        PRINT_INST("{:x}: end {:x}\n",
             ((char*)program_.loc() - s_.debug_line.data),
             program_end_ - s_.debug_line.data);
     }

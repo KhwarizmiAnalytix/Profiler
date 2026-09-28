@@ -70,13 +70,13 @@ namespace
 {
 
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer) || __has_feature(undefined_behavior_sanitizer) || \
+#if __has_feature(address_sanitizer) || __has_feature(undefined_behavior_sanitizer) ||             \
     __has_feature(thread_sanitizer)
 #define PROFILER_SOAK_TEST_HAS_SANITIZER 1
 #else
 #define PROFILER_SOAK_TEST_HAS_SANITIZER 0
 #endif
-#elif defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_UNDEFINED__) || \
+#elif defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_UNDEFINED__) ||                          \
     defined(__SANITIZE_THREAD__)
 #define PROFILER_SOAK_TEST_HAS_SANITIZER 1
 #else
@@ -147,7 +147,7 @@ void run_one_cycle(int cycle_index)
                     // ephemeral thread, fixed there.
                     std::string const name = "soak_scope_" + std::to_string(cycle_index) + "_" +
                                              std::to_string(t) + "_" + std::to_string(i);
-                    PROFILER_SCOPE(name.c_str());
+                    PROFILER_SCOPE(name.c_str());  // NOLINT(readability-redundant-string-cstr)
                 }
             });
     }

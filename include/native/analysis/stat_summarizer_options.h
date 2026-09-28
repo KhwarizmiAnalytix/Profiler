@@ -38,14 +38,8 @@ namespace profiler
 struct stat_summarizer_options
 {
     stat_summarizer_options()
-        : show_run_order(true),
-          run_order_limit(0),
-          show_time(true),
-          time_limit(10),
-          show_memory(true),
-          memory_limit(10),
-          show_type(true),
-          show_summary(true),
+        : show_run_order(true), run_order_limit(0), show_time(true), time_limit(10),
+          show_memory(true), memory_limit(10), show_type(true), show_summary(true),
           format_as_csv(false)
     {
     }

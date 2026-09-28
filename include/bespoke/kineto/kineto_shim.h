@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <memory>
@@ -83,13 +101,12 @@ struct TraceWrapper
 
     // The caller is expected to hold a mutex when calling `addCPUActivity`.
     // TODO: Profiler-specific method commented out
-    activity_t* addCPUActivity(
-        const std::string&      name,
-        const activity_type_t   type,
-        const DeviceAndResource device_and_resource,
-        const uint64_t          correlation_id,
-        const int64_t           start_time,
-        const int64_t           end_time);
+    activity_t* addCPUActivity(const std::string& name,
+        const activity_type_t                     type,
+        const DeviceAndResource                   device_and_resource,
+        const uint64_t                            correlation_id,
+        const int64_t                             start_time,
+        const int64_t                             end_time);
 
     void transferCpuTrace(int64_t end_time);
 
@@ -123,8 +140,7 @@ private:
 
 // TODO: Profiler-specific types commented out
 using ActivitySet = std::set<profiler::profiler_impl::ActivityType>;
-PROFILER_API void prepareTrace(
-    const bool                                               cpuOnly,
+PROFILER_API void prepareTrace(const bool                    cpuOnly,
     const ActivitySet&                                       activities,
     const profiler::profiler_impl::impl::ExperimentalConfig& config,
     const std::string&                                       trace_id = "");
@@ -139,11 +155,10 @@ PROFILER_API void                 popUserCorrelationId();
 PROFILER_API void                 recordThreadInfo();
 PROFILER_API bool                 collectivesProfilerExists();
 
-PROFILER_API void logInvariantViolation(
-    const std::string& assertion,
-    const std::string& error,
-    const std::string& profile_id,
-    const std::string& group_profile_id);
+PROFILER_API void logInvariantViolation(const std::string& assertion,
+    const std::string&                                     error,
+    const std::string&                                     profile_id,
+    const std::string&                                     group_profile_id);
 
 }  // namespace impl::kineto
 

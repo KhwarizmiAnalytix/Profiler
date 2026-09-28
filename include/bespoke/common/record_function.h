@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <array>
@@ -30,8 +48,7 @@ enum class RecordScope : uint8_t
 
 namespace std
 {
-template <>
-struct hash<profiler::RecordScope>
+template <> struct hash<profiler::RecordScope>
 {
     size_t operator()(const profiler::RecordScope& sc) const
     {
@@ -359,22 +376,22 @@ PROFILER_API std::optional<StepCallbacks> getStepCallbacksUnlessEmpty(RecordScop
 // PROFILER_RECORD_* (not RECORD_*) so these do not collide with LibTorch's
 // ATen/record_function.h macros of the same unprefixed names.
 #ifndef PROFILER_RECORD_FUNCTION_WITH_SCOPE
-#define PROFILER_RECORD_FUNCTION_WITH_SCOPE(scope, fn) \
-    profiler::RecordFunction guard(scope);             \
-    guard.setSourceLocation(__FILE__, __LINE__);       \
-    if (guard.isActive())                              \
-    {                                                  \
-        guard.before(fn);                              \
+#define PROFILER_RECORD_FUNCTION_WITH_SCOPE(scope, fn)                                             \
+    profiler::RecordFunction guard(scope);                                                         \
+    guard.setSourceLocation(__FILE__, __LINE__);                                                   \
+    if (guard.isActive())                                                                          \
+    {                                                                                              \
+        guard.before(fn);                                                                          \
     }
 #endif
 
 #ifndef PROFILER_RECORD_FUNCTION
-#define PROFILER_RECORD_FUNCTION(fn) \
+#define PROFILER_RECORD_FUNCTION(fn)                                                               \
     PROFILER_RECORD_FUNCTION_WITH_SCOPE(profiler::RecordScope::FUNCTION, fn)
 #endif
 
 #ifndef PROFILER_RECORD_USER_SCOPE
-#define PROFILER_RECORD_USER_SCOPE(fn) \
+#define PROFILER_RECORD_USER_SCOPE(fn)                                                             \
     PROFILER_RECORD_FUNCTION_WITH_SCOPE(profiler::RecordScope::USER_SCOPE, fn)
 #endif
 
@@ -443,9 +460,9 @@ private:
 // without starting it. Chain record_function_metadata_builder(guard_name, fn)
 // .with_metadata(...) immediately after to attach metadata and start it --
 // see the class comment above for why start is deferred to the builder.
-#define PROFILER_RECORD_FUNCTION_WITH_METADATA(guard_name, fn)            \
-    profiler::RecordFunction guard_name(profiler::RecordScope::FUNCTION); \
-    guard_name.setSourceLocation(__FILE__, __LINE__)
+#define PROFILER_RECORD_FUNCTION_WITH_METADATA(guard_name, fn)                                     \
+    profiler::RecordFunction guard_name(profiler::RecordScope::FUNCTION);                          \
+    guard_name.setSourceLocation(__FILE__, __LINE__)  // NOLINT(bugprone-macro-parentheses)
 
 /**
  * addThreadLocalCallback adds a thread local callback to run with

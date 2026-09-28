@@ -33,7 +33,7 @@ namespace profiler
 class xstat
 {
 public:
-    enum class value_case_type : uint16_t
+    enum class value_case_type : uint8_t
     {
         kInt64Value,
         kUint64Value,
@@ -163,8 +163,7 @@ private:
     int64_t metadata_id_ = 0;
     bool    ref_value_   = false;  // Flag to distinguish between regular int64 and reference values
 
-    std::variant<
-        double,               // index 0
+    std::variant<double,      // index 0
         uint64_t,             // index 1
         int64_t,              // index 2
         std::string,          // index 3
@@ -257,7 +256,7 @@ private:
 class xevent
 {
 public:
-    enum class data_case_type : uint16_t
+    enum class data_case_type : uint8_t
     {
         kOffsetPs,
         kNumOccurrences,
@@ -288,7 +287,7 @@ public:
         {
             Data new_data;
             new_data.num_occurrences = occurrences;
-            data_                    = std::move(new_data);
+            data_                    = new_data;
         }
         else
         {

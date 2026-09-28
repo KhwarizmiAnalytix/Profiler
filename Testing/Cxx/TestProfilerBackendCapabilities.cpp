@@ -129,7 +129,8 @@ PROFILERTEST(BackendCapabilities, required_unavailable_gpu_activity_fails_start)
 // this same-process check -- whether it actually starts still depends on the
 // compiled backend/OS, but it must never fail for the reason the required
 // case above does.
-PROFILERTEST(BackendCapabilities, best_effort_unavailable_gpu_activity_does_not_fail_for_that_reason)
+PROFILERTEST(
+    BackendCapabilities, best_effort_unavailable_gpu_activity_does_not_fail_for_that_reason)
 {
     const backend_capabilities& caps = discover_backend_capabilities();
     if (caps.supports(activity::cuda) || caps.supports(activity::hip))
@@ -144,7 +145,7 @@ PROFILERTEST(BackendCapabilities, best_effort_unavailable_gpu_activity_does_not_
     opts.policy          = capture_policy::best_effort;
     opts.activities      = {activity::cpu, activity::cuda};
 
-    session session(opts);
+    session    session(opts);
     bool const started = session.start();
     if (started)
     {

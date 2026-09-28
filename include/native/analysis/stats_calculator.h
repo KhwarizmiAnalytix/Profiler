@@ -49,8 +49,7 @@ limitations under the License.
 namespace profiler
 {
 
-template <typename ValueType, typename HighPrecisionValueType = double>
-class stat
+template <typename ValueType, typename HighPrecisionValueType = double> class stat
 {
 public:
     void update_stat(ValueType v)
@@ -142,8 +141,8 @@ public:
     }
 
 private:
-    ValueType              first_       = 0;
-    ValueType              newest_      = 0;
+    ValueType first_  = 0;
+    ValueType newest_ = 0;
     // lowest(), not min(): for floating-point ValueType, min() is the smallest
     // positive normalized value, not the most negative representable one -- an
     // all-negative series would never update max_ away from that near-zero
@@ -178,8 +177,8 @@ public:
             return std::numeric_limits<ValueType>::quiet_NaN();
         }
         std::vector<ValueType> values = values_;
-        const size_t index = (percentile == 100) ? (values.size() - 1)
-                                                   : (values.size() * percentile / 100);
+        const size_t           index =
+            (percentile == 100) ? (values.size() - 1) : (values.size() * percentile / 100);
         std::nth_element(values.begin(), values.begin() + index, values.end());
         return values[index];
     }
@@ -235,7 +234,7 @@ private:
 class PROFILER_VISIBILITY stats_calculator
 {
 public:
-    enum class sorting_metric_enum
+    enum class sorting_metric_enum : std::uint8_t
     {
         BY_NAME,
         BY_RUN_ORDER,
@@ -252,10 +251,9 @@ public:
 
     PROFILER_API std::string get_short_summary() const;
 
-    PROFILER_API void compute_stats_by_type(
-        std::map<std::string, int64_t>* node_type_map_count,
-        std::map<std::string, int64_t>* node_type_map_time,
-        std::map<std::string, int64_t>* node_type_map_memory,
+    PROFILER_API void compute_stats_by_type(std::map<std::string, int64_t>* node_type_map_count,
+        std::map<std::string, int64_t>*                                     node_type_map_time,
+        std::map<std::string, int64_t>*                                     node_type_map_memory,
         std::map<std::string, int64_t>* node_type_map_times_called,
         int64_t*                        accumulated_us) const;
 
@@ -286,22 +284,20 @@ public:
 
     const std::map<std::string, detail>& get_details() const { return details_; }
 
-    PROFILER_API void add_node_stats(
-        const std::string& name,
-        const std::string& type,
-        int64_t            run_order,
-        int64_t            elapsed_time,
-        int64_t            mem_used);
+    PROFILER_API void add_node_stats(const std::string& name,
+        const std::string&                              type,
+        int64_t                                         run_order,
+        int64_t                                         elapsed_time,
+        int64_t                                         mem_used);
 
 private:
     void order_nodes_by_metric(
         sorting_metric_enum sorting_metric, std::vector<const detail*>* details) const;
 
     std::string header_string(const std::string& title) const;
-    std::string column_string(
-        const detail&        detail,
-        const int64_t        cumulative_stat_on_node,
-        const stat<int64_t>& stat) const;
+    std::string column_string(const detail& detail,
+        const int64_t                       cumulative_stat_on_node,
+        const stat<int64_t>&                stat) const;
 
     stat<int64_t> run_total_us_;
     stat<int64_t> memory_;

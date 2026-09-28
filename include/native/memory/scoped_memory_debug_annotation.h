@@ -85,11 +85,10 @@ public:
 
     // This constructor keeps the pending_op_name and pending_step_id from parent
     // (if any).  Otherwise it overwrites with op_name.
-    explicit scoped_memory_debug_annotation(
-        const char*                    op_name,
-        const char*                    region_type,
-        int32_t                        data_type,
-        std::function<std::string()>&& pending_shape_func)
+    explicit scoped_memory_debug_annotation(const char* op_name,
+        const char*                                     region_type,
+        int32_t                                         data_type,
+        std::function<std::string()>&&                  pending_shape_func)
     {
         memory_debug_annotation* thread_local_annotation = thread_memory_debug_annotation();
         last_annotation_                                 = *thread_local_annotation;
@@ -102,12 +101,11 @@ public:
         thread_local_annotation->pending_shape_func  = std::move(pending_shape_func);
     }
 
-    explicit scoped_memory_debug_annotation(
-        const char*                    op_name,
-        int64_t                        step_id,
-        const char*                    region_type,
-        int32_t                        data_type,
-        std::function<std::string()>&& pending_shape_func)
+    explicit scoped_memory_debug_annotation(const char* op_name,
+        int64_t                                         step_id,
+        const char*                                     region_type,
+        int32_t                                         data_type,
+        std::function<std::string()>&&                  pending_shape_func)
     {
         memory_debug_annotation* thread_local_annotation = thread_memory_debug_annotation();
         last_annotation_                                 = *thread_local_annotation;

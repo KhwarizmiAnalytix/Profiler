@@ -137,14 +137,14 @@ public:
     PROFILER_API static void disable_in_child_thread();
 
 private:
-    session_options                   options_{};
-    std::shared_ptr<profiler_session> native_;
-    std::unique_ptr<capture>          inst_;
-    std::unique_ptr<capture_result>   inst_result_;
+    session_options                    options_{};
+    std::shared_ptr<profiler_session>  native_;
+    std::unique_ptr<capture>           inst_;
+    std::unique_ptr<capture_result>    inst_result_;
     mutable std::vector<capture_event> xspace_events_cache_;
     mutable bool                       xspace_events_cached_ = false;
-    std::string                       last_error_;
-    bool                              active_ = false;
+    std::string                        last_error_;
+    bool                               active_ = false;
 };
 
 }  // namespace profiler

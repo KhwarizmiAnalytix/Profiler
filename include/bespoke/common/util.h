@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <cstddef>
@@ -14,22 +32,22 @@
 #include "bespoke/common/record_function.h"
 #include "common/profiler_export.h"
 #include "common/profiler_macros.h"
-//#include "util/hash.h"
+// #include "util/hash.h"
 
 // #include <profiler/csrc/jit/frontend/source_range.h>
 // These are Profiler-specific headers not available in Profiler
 
 // TODO: replace with pytorch/rfcs#43 when it is ready.
-#define SOFT_ASSERT(cond, ...)                                                   \
-    [&]() -> bool                                                                \
-    {                                                                            \
-        if PROFILER_UNLIKELY (!(cond))                                           \
-        {                                                                        \
-            profiler::profiler_impl::impl::logSoftAssert(                        \
-                __func__, __FILE__, static_cast<uint32_t>(__LINE__), #cond, ""); \
-            return false;                                                        \
-        }                                                                        \
-        return true;                                                             \
+#define SOFT_ASSERT(cond, ...)                                                                     \
+    [&]() -> bool                                                                                  \
+    {                                                                                              \
+        if PROFILER_UNLIKELY (!(cond))                                                             \
+        {                                                                                          \
+            profiler::profiler_impl::impl::logSoftAssert(                                          \
+                __func__, __FILE__, static_cast<uint32_t>(__LINE__), #cond, "");                   \
+            return false;                                                                          \
+        }                                                                                          \
+        return true;                                                                               \
     }()
 
 namespace profiler::detail
@@ -51,9 +69,8 @@ PROFILER_API bool softAssertRaises();
 PROFILER_API void setSoftAssertRaises(std::optional<bool> value);
 PROFILER_API void logSoftAssert(
     const char* func, const char* file, uint32_t line, const char* cond, const char* args);
-//TODO: Profiler-specific functions commented out
-inline void logSoftAssert(
-    const char*                                func,
+// TODO: Profiler-specific functions commented out
+inline void logSoftAssert(const char*          func,
     const char*                                file,
     uint32_t                                   line,
     const char*                                cond,
@@ -67,8 +84,7 @@ PROFILER_API void logSoftAssert(
 using shape = std::variant<std::vector<int64_t>, std::vector<std::vector<int64_t>>>;
 constexpr int TENSOR_LIST_DISPLAY_LENGTH_LIMIT = 30;
 
-std::string getNvtxStr(
-    const char*                                                      name,
+std::string getNvtxStr(const char*                                   name,
     int64_t                                                          sequence_nr,
     const std::vector<std::vector<int64_t>>&                         shapes,
     profiler::RecordFunctionHandle                                   op_id        = 0,
@@ -97,8 +113,7 @@ std::string shapeToStr(const std::vector<int64_t>& shape);
 // pointer can still be outlived by a concurrent pop() destroying the
 // pointee -- a separate, larger lifetime-ownership redesign finding 7 also
 // flags, not attempted here.
-template <typename T>
-class PROFILER_VISIBILITY GlobalStateManager
+template <typename T> class PROFILER_VISIBILITY GlobalStateManager
 {
 public:
     static GlobalStateManager& singleton()
@@ -112,7 +127,7 @@ public:
         std::scoped_lock const lock(singleton().mutex_);
         if (singleton().state_)
         {
-            //LOG(WARNING) << "GlobalStatePtr already exists!";
+            // LOG(WARNING) << "GlobalStatePtr already exists!";
         }
         else
         {
@@ -129,7 +144,7 @@ public:
     static std::shared_ptr<T> pop()
     {
         std::scoped_lock const lock(singleton().mutex_);
-        auto             out = singleton().state_;
+        auto                   out = singleton().state_;
         singleton().state_.reset();
         return out;
     }
@@ -137,7 +152,7 @@ public:
 private:
     GlobalStateManager() = default;
 
-    std::mutex          mutex_;
+    std::mutex         mutex_;
     std::shared_ptr<T> state_;
 };
 

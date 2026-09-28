@@ -107,13 +107,14 @@ namespace
 // design-review.md section 8's "Unicode/escaped metadata" scenario (see the
 // file comment above for why this is a name rather than structured
 // metadata).
-constexpr const char* kUnicodeScopeName = "golden_unicode_\xE4\xBD\xA0\xE5\xA5\xBD_\"quoted\"_\\backslash";
+constexpr const char* kUnicodeScopeName =
+    "golden_unicode_\xE4\xBD\xA0\xE5\xA5\xBD_\"quoted\"_\\backslash";
 
 constexpr const char* kOuterScope     = "golden_outer_scope";
 constexpr const char* kNestedScope    = "golden_nested_scope";
 constexpr const char* kRecursiveScope = "golden_recursive_scope";
 constexpr const char* kSharedName     = "golden_shared_name_from_call_site";
-constexpr int          kRecursionDepth = 3;
+constexpr int         kRecursionDepth = 3;
 
 void recursive_scope(int depth_remaining)
 {
@@ -172,14 +173,14 @@ void write_golden_summary(const std::map<std::string, int>& counts)
         {
             switch (c)
             {
-                case '"':
-                    out << "\\\"";
-                    break;
-                case '\\':
-                    out << "\\\\";
-                    break;
-                default:
-                    out << c;
+            case '"':
+                out << "\\\"";
+                break;
+            case '\\':
+                out << "\\\\";
+                break;
+            default:
+                out << c;
             }
         }
         out << "\": " << count;
@@ -212,14 +213,13 @@ PROFILERTEST(CrossBackendGolden, kineto_backend_observes_expected_identities)
 {
     using namespace profiler::profiler_impl;
 
-    ProfilerConfig const config(
-        ProfilerState::KINETO,
+    ProfilerConfig const                            config(ProfilerState::KINETO,
         /*report_input_shapes=*/false,
         /*profile_memory=*/false,
         /*with_stack=*/false,
         /*with_flops=*/false,
         /*with_modules=*/false);
-    const std::set<ActivityType> activities{ActivityType::CPU};
+    const std::set<ActivityType>                    activities{ActivityType::CPU};
     const std::unordered_set<profiler::RecordScope> scopes{profiler::RecordScope::USER_SCOPE};
 
     try
@@ -280,8 +280,7 @@ public:
     {
     }
 
-    float elapsed(
-        const profiler::profiler_impl::impl::ProfilerVoidEventStub*,
+    float elapsed(const profiler::profiler_impl::impl::ProfilerVoidEventStub*,
         const profiler::profiler_impl::impl::ProfilerVoidEventStub*) const override
     {
         return 0.0F;

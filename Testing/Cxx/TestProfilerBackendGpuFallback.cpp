@@ -81,7 +81,9 @@ PROFILERTEST(BackendGpuFallback, cuda_or_hip_fallback_round_trips_elapsed_time)
 
     {
         PROFILER_RECORD_USER_SCOPE(kGpuFallbackScope);
-        for (volatile int spin = 0; spin < 100000; ++spin) {}
+        for (volatile int spin = 0; spin < 100000; ++spin)
+        {
+        }
     }
 
     auto profiler_result = profiler::profiler_impl::disableProfiler();
@@ -130,7 +132,9 @@ PROFILERTEST(BackendGpuFallback, stream_aware_record_and_nonblocking_query)
     EXPECT_GT(cpu_ns, 0);
 
     // Spin a bit to create measurable elapsed time.
-    for (volatile int spin = 0; spin < 100000; ++spin) {}
+    for (volatile int spin = 0; spin < 100000; ++spin)
+    {
+    }
 
     stubs->record_with_stream(nullptr, &device, &event2, &cpu_ns);
 

@@ -47,27 +47,27 @@ workload: mean 0.170 ms, std-dev 0.000 ms, count 1
 
 === Node Stats (from XSpace) ===
 ============================== Run Order ==============================
-	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
-	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
-	                                   Scope	    0.039	    0.037	 30.928%	 65.979%	     0.000	        4	compute
-	                                   Scope	    0.053	    0.041	 34.021%	100.000%	     0.000	        4	pass
+                               [node type]    [first]   [avg ms]       [%]    [cdf%]    [mem KB]  [times called]  [Name]
+                                     Scope      0.170      0.170   35.052%   35.052%       0.000          1  workload
+                                     Scope      0.039      0.037   30.928%   65.979%       0.000          4  compute
+                                     Scope      0.053      0.041   34.021%  100.000%       0.000          4  pass
 
 ============================== Top by Computation Time ==============================
-	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
-	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
-	                                   Scope	    0.053	    0.041	 34.021%	 69.072%	     0.000	        4	pass
-	                                   Scope	    0.039	    0.037	 30.928%	100.000%	     0.000	        4	compute
+                               [node type]    [first]   [avg ms]       [%]    [cdf%]    [mem KB]  [times called]  [Name]
+                                     Scope      0.170      0.170   35.052%   35.052%       0.000          1  workload
+                                     Scope      0.053      0.041   34.021%   69.072%       0.000          4  pass
+                                     Scope      0.039      0.037   30.928%  100.000%       0.000          4  compute
 
 ============================== Top by Memory Use ==============================
-	                             [node type]	  [first]	 [avg ms]	     [%]	  [cdf%]	  [mem KB]	[times called]	[Name]
-	                                   Scope	    0.170	    0.170	 35.052%	 35.052%	     0.000	        1	workload
-	                                   Scope	    0.053	    0.041	 34.021%	 69.072%	     0.000	        4	pass
-	                                   Scope	    0.039	    0.037	 30.928%	100.000%	     0.000	        4	compute
+                               [node type]    [first]   [avg ms]       [%]    [cdf%]    [mem KB]  [times called]  [Name]
+                                     Scope      0.170      0.170   35.052%   35.052%       0.000          1  workload
+                                     Scope      0.053      0.041   34.021%   69.072%       0.000          4  pass
+                                     Scope      0.039      0.037   30.928%  100.000%       0.000          4  compute
 
 Number of nodes executed: 3
 ============================== Summary by node type ==============================
-	                             [Node type]	  [count]	  [avg ms]	    [avg %]	    [cdf %]	  [mem KB]	[times called]
-	                                   Scope	        3	     0.485	   100.000%	   100.000%	     0.000	        9
+                               [Node type]    [count]    [avg ms]      [avg %]      [cdf %]    [mem KB]  [times called]
+                                     Scope          3       0.485     100.000%     100.000%       0.000          9
 
 Timings (microseconds): count=1 curr=485
 Memory (bytes): count=0

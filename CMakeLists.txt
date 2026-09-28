@@ -26,6 +26,7 @@ include(ProfilerDependencies)
 include(ProfilerCoverage)
 include(ProfilerSanitizers)
 include(ProfilerLinking)
+include(ProfilerChecks)
 
 set(CMAKE_CXX_STANDARD ${PROFILER_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -169,26 +170,27 @@ if(PROFILER_ENABLE_KINETO AND TARGET Kineto::kineto)
     list(APPEND PROFILER_DEPENDENCY_LIBS Kineto::kineto)
 endif()
 
-set(PROFILER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(PROFILER_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(PROFILER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-set(profiler_headers "${PROFILER_SRC_DIR}/profiler.h")
+set(profiler_headers "${PROFILER_INCLUDE_DIR}/profiler.h")
 set(profiler_sources "")
 
-file(GLOB common_util_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/common/*.h")
+file(GLOB common_util_headers LIST_DIRECTORIES false "${PROFILER_INCLUDE_DIR}/common/*.h")
 file(GLOB common_util_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/common/*.cpp")
-file(GLOB util_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/util/*.h")
+file(GLOB util_headers LIST_DIRECTORIES false "${PROFILER_INCLUDE_DIR}/util/*.h")
 list(APPEND profiler_headers ${common_util_headers} ${util_headers})
 list(APPEND profiler_sources ${common_util_sources})
 
-file(GLOB_RECURSE native_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.h")
+file(GLOB_RECURSE native_headers LIST_DIRECTORIES false "${PROFILER_INCLUDE_DIR}/native/*.h")
 file(GLOB_RECURSE native_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/native/*.cpp")
 list(APPEND profiler_headers ${native_headers})
 list(APPEND profiler_sources ${native_sources})
 
 if(PROFILER_ENABLE_KINETO)
     file(GLOB_RECURSE kineto_headers LIST_DIRECTORIES false
-         "${PROFILER_SRC_DIR}/bespoke/base/*.h" "${PROFILER_SRC_DIR}/bespoke/kineto/*.h"
-         "${PROFILER_SRC_DIR}/bespoke/common/*.h"
+         "${PROFILER_INCLUDE_DIR}/bespoke/base/*.h" "${PROFILER_INCLUDE_DIR}/bespoke/kineto/*.h"
+         "${PROFILER_INCLUDE_DIR}/bespoke/common/*.h"
     )
     file(GLOB_RECURSE kineto_sources LIST_DIRECTORIES false
          "${PROFILER_SRC_DIR}/bespoke/base/*.cpp" "${PROFILER_SRC_DIR}/bespoke/kineto/*.cpp"
@@ -206,11 +208,11 @@ if(PROFILER_ENABLE_ITT)
         file(
             GLOB_RECURSE itt_base_headers
             LIST_DIRECTORIES false
-            "${PROFILER_SRC_DIR}/bespoke/base/*.h"
-            "${PROFILER_SRC_DIR}/bespoke/common/*.h"
-            "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_shim.h"
-            "${PROFILER_SRC_DIR}/bespoke/kineto/profiler_kineto.h"
-            "${PROFILER_SRC_DIR}/bespoke/kineto/kineto_client_interface.h"
+            "${PROFILER_INCLUDE_DIR}/bespoke/base/*.h"
+            "${PROFILER_INCLUDE_DIR}/bespoke/common/*.h"
+            "${PROFILER_INCLUDE_DIR}/bespoke/kineto/kineto_shim.h"
+            "${PROFILER_INCLUDE_DIR}/bespoke/kineto/profiler_kineto.h"
+            "${PROFILER_INCLUDE_DIR}/bespoke/kineto/kineto_client_interface.h"
         )
         file(
             GLOB_RECURSE itt_base_sources
@@ -225,7 +227,7 @@ if(PROFILER_ENABLE_ITT)
         list(APPEND profiler_sources ${itt_base_sources})
         set(PROFILER_NEEDS_FMT_HEADER_ONLY ON)
     endif()
-    file(GLOB_RECURSE itt_headers LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/bespoke/itt/*.h")
+    file(GLOB_RECURSE itt_headers LIST_DIRECTORIES false "${PROFILER_INCLUDE_DIR}/bespoke/itt/*.h")
     file(GLOB_RECURSE itt_sources LIST_DIRECTORIES false "${PROFILER_SRC_DIR}/bespoke/itt/*.cpp")
     list(APPEND profiler_headers ${itt_headers})
     list(APPEND profiler_sources ${itt_sources})
@@ -249,6 +251,7 @@ if(PROFILER_ENABLE_COVERAGE)
 endif()
 profiler_enable_sanitizer(Profiler)
 profiler_keep_static_registrations(Profiler)
+profiler_enable_checks(Profiler)
 
 set_target_properties(
     Profiler
@@ -269,9 +272,11 @@ endif()
 
 target_include_directories(
     Profiler
-    PUBLIC $<BUILD_INTERFACE:${PROFILER_SRC_DIR}> $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    PUBLIC $<BUILD_INTERFACE:${PROFILER_INCLUDE_DIR}>
+           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Testing>
-           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing> $<INSTALL_INTERFACE:include>
+           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/Testing>
+           $<INSTALL_INTERFACE:include>
 )
 
 if(PROFILER_STANDALONE)
@@ -405,7 +410,7 @@ if(PROFILER_ENABLE_INSTALL)
     )
     foreach(_profiler_public_header ${_profiler_public_headers})
         get_filename_component(_profiler_public_header_dir "${_profiler_public_header}" DIRECTORY)
-        install(FILES "${PROFILER_SRC_DIR}/${_profiler_public_header}"
+        install(FILES "${PROFILER_INCLUDE_DIR}/${_profiler_public_header}"
                 DESTINATION "include/${_profiler_public_header_dir}"
         )
     endforeach()
@@ -532,6 +537,7 @@ $<$<BOOL:${_profiler_static_third_party_includes}>:set_property(TARGET Profiler:
     endif()
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ProfilerConfig.cmake" DESTINATION lib/cmake/Profiler)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProfilerLinking.cmake"
+                  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProfilerChecks.cmake"
             DESTINATION lib/cmake/Profiler
     )
 endif()

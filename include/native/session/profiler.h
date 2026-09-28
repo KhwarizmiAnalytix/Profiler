@@ -404,10 +404,7 @@ public:
      * @brief Retrieve the session start timestamp (nanoseconds)
      * @return Start timestamp
      */
-    profiler::steady_clock_t::time_point session_start_time() const
-    {
-        return start_time_;
-    }
+    profiler::steady_clock_t::time_point session_start_time() const { return start_time_; }
 
     /**
      * @brief Retrieve the session end timestamp (nanoseconds)
@@ -465,7 +462,8 @@ public:
      * (design-review.md finding 5) -- prefer this over build_scope_tree()
      * when the tree needs to outlive the call that obtained it.
      */
-    PROFILER_API std::shared_ptr<const profiler::profiler_scope_data> build_scope_tree_shared() const;
+    PROFILER_API std::shared_ptr<const profiler::profiler_scope_data> build_scope_tree_shared()
+        const;
 
 private:
     friend class profiler_session_builder;

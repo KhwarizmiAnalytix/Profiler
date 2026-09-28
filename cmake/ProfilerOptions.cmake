@@ -50,6 +50,9 @@ option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found
 option(PROFILER_REQUIRE_NVTX "Fail configure if NVTX is missing" OFF)
 option(PROFILER_REQUIRE_HIP "Fail configure if HIP was requested but not found" OFF)
 option(PROFILER_ENABLE_COVERAGE "Instrument the Profiler library with --coverage (GCC/Clang)" OFF)
+option(PROFILER_ENABLE_CLANG_TIDY "Run clang-tidy on Profiler sources during compilation" OFF)
+option(PROFILER_ENABLE_CPPCHECK "Run cppcheck on Profiler sources during compilation" OFF)
+option(PROFILER_ENABLE_IWYU "Run include-what-you-use on Profiler sources during compilation" OFF)
 
 set(PROFILER_SANITIZER
     ""
@@ -60,7 +63,9 @@ set(PROFILER_SANITIZER
 
 set(PROFILER_CXX_STANDARD "20" CACHE STRING "C++ standard")
 
-set(PROFILER_THIRD_PARTY_DIR ""
-    CACHE PATH "Directory containing vendored fmt/, kineto/, ittapi/, googletest/, benchmark/ sources; \
+set(PROFILER_THIRD_PARTY_DIR
+    ""
+    CACHE PATH
+          "Directory containing vendored fmt/, kineto/, ittapi/, googletest/, benchmark/ sources; \
 defaults to <repo>/third_party when unset"
 )

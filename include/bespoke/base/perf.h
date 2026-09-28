@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 
 #include <array>
@@ -56,7 +74,7 @@ public:
     ~PerfEvent();
 
     /* Setup perf events with the Linux Kernel, attaches perf to this process
-   * using perf_event_open(2) */
+     * using perf_event_open(2) */
     void Init();
 
     /* Stop incrementing hardware counters for this event */
@@ -69,7 +87,7 @@ public:
     void Reset() const;
 
     /* Returns PerfCounter values for this event from kernel, on non supported
-   * platforms this always returns zero */
+     * platforms this always returns zero */
     uint64_t ReadCounter() const;
 
 private:
@@ -89,7 +107,7 @@ public:
     void Enable();
 
     /* Disable counting and fill in the caller supplied container with delta
-   * calculated from the start count values since last Enable() */
+     * calculated from the start count values since last Enable() */
     void Disable(perf_counters_t& /*vals*/);
 
 private:

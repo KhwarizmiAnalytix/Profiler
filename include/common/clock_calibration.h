@@ -40,7 +40,7 @@ struct clock_calibration
     /// Apply the calibration: cpu_ns = scale * device_ns + offset_ns.
     uint64_t apply(uint64_t device_ns) const
     {
-        return static_cast<uint64_t>(scale * static_cast<int64_t>(device_ns) + offset_ns);
+        return static_cast<uint64_t>(scale * static_cast<double>(device_ns) + offset_ns);
     }
 };
 

@@ -54,8 +54,7 @@ namespace profiler
 /// Using 64 bit size is desirable for cases like small_vector<char>, where a
 /// 32 bit size would limit the vector to ~4GB. SmallVectors are used for
 /// buffering bitcode output - which can exceed 4GB.
-template <class Size_T>
-class PROFILER_VISIBILITY SmallVectorBase
+template <class Size_T> class PROFILER_VISIBILITY SmallVectorBase
 {
 protected:
     void*  BeginX;
@@ -106,8 +105,7 @@ using SmallVectorSizeType =
     std::conditional_t<sizeof(T) < 4 && sizeof(void*) >= 8, uint64_t, uint32_t>;
 
 /// Figure out the offset of the first element.
-template <class T, typename = void>
-struct SmallVectorAlignmentAndSize
+template <class T, typename = void> struct SmallVectorAlignmentAndSize
 {
     // NOLINTNEXTLINE(*c-arrays*)
     alignas(SmallVectorBase<SmallVectorSizeType<T>>) char Base[sizeof(
@@ -129,17 +127,14 @@ class SmallVectorTemplateCommon : public SmallVectorBase<SmallVectorSizeType<T>>
     /// SmallVectorStorage is properly-aligned even for small-size of 0.
     void* getFirstEl() const
     {
-        return const_cast<void*>(reinterpret_cast<const void*>(
-            reinterpret_cast<const char*>(this) +
-            offsetof(SmallVectorAlignmentAndSize<T>, FirstEl)));
+        return const_cast<void*>(
+            reinterpret_cast<const void*>(reinterpret_cast<const char*>(this) +
+                                          offsetof(SmallVectorAlignmentAndSize<T>, FirstEl)));
     }
     // Space after 'FirstEl' is clobbered, do not add any instance vars after it.
 
 protected:
-    SmallVectorTemplateCommon(size_t Size)
-        : Base(SmallVectorTemplateCommon::getFirstEl(), Size)
-    {
-    }
+    SmallVectorTemplateCommon(size_t Size) : Base(SmallVectorTemplateCommon::getFirstEl(), Size) {}
 
     void grow_pod(size_t MinSize, size_t TSize)
     {
@@ -202,10 +197,9 @@ protected:
     {
         (void)Elt;      // Suppress unused variable warning
         (void)NewSize;  // Suppress unused variable warning
-        assert(
-            isSafeToReferenceAfterResize(Elt, NewSize) &&
-            "Attempting to reference an element of the vector in an operation "
-            "that invalidates it");
+        assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
+               "Attempting to reference an element of the vector in an operation "
+               "that invalidates it");
     }
 
     /// Check whether Elt will be invalidated by increasing the size of the
@@ -223,8 +217,7 @@ protected:
         this->assertSafeToReferenceAfterResize(From, 0);
         this->assertSafeToReferenceAfterResize(To - 1, 0);
     }
-    template <
-        class ItTy,
+    template <class ItTy,
         std::enable_if_t<!std::is_same_v<std::remove_const_t<ItTy>, T*>, bool> = false>
     void assertSafeToReferenceAfterClear(ItTy /*unused*/, ItTy /*unused*/)
     {
@@ -238,8 +231,7 @@ protected:
         this->assertSafeToAdd(From, To - From);
         this->assertSafeToAdd(To - 1, To - From);
     }
-    template <
-        class ItTy,
+    template <class ItTy,
         std::enable_if_t<!std::is_same_v<std::remove_const_t<ItTy>, T*>, bool> = false>
     void assertSafeToAddRange(ItTy /*unused*/, ItTy /*unused*/)
     {
@@ -368,8 +360,7 @@ public:
 ///
 /// XXX: if build fails here fall back to PROFILER_IS_TRIVIALLY_COPYABLE and make a
 /// note
-template <
-    typename T,
+template <typename T,
     bool = (std::is_trivially_copy_constructible_v<T>) &&
            (std::is_trivially_move_constructible_v<T>) && std::is_trivially_destructible_v<T>>
 class SmallVectorTemplateBase : public SmallVectorTemplateCommon<T>
@@ -393,16 +384,14 @@ protected:
 
     /// Move the range [I, E) into the uninitialized memory starting with "Dest",
     /// constructing elements as needed.
-    template <typename It1, typename It2>
-    static void uninitialized_move(It1 I, It1 E, It2 Dest)
+    template <typename It1, typename It2> static void uninitialized_move(It1 I, It1 E, It2 Dest)
     {
         std::uninitialized_copy(std::make_move_iterator(I), std::make_move_iterator(E), Dest);
     }
 
     /// Copy the range [I, E) onto the uninitialized memory starting with "Dest",
     /// constructing elements as needed.
-    template <typename It1, typename It2>
-    static void uninitialized_copy(It1 I, It1 E, It2 Dest)
+    template <typename It1, typename It2> static void uninitialized_copy(It1 I, It1 E, It2 Dest)
     {
         std::uninitialized_copy(I, E, Dest);
     }
@@ -455,8 +444,7 @@ protected:
         this->set_size(NumElts);
     }
 
-    template <typename... ArgTypes>
-    T& growAndEmplaceBack(ArgTypes&&... Args)
+    template <typename... ArgTypes> T& growAndEmplaceBack(ArgTypes&&... Args)
     {
         // Grow manually in case one of Args is an internal reference.
         size_t NewCapacity = 0;
@@ -529,8 +517,7 @@ void SmallVectorTemplateBase<T, TriviallyCopyable>::takeAllocationForGrow(
 /// method implementations that are designed to work with trivially copyable
 /// T's. This allows using memcpy in place of copy/move construction and
 /// skipping destruction.
-template <typename T>
-class SmallVectorTemplateBase<T, true> : public SmallVectorTemplateCommon<T>
+template <typename T> class SmallVectorTemplateBase<T, true> : public SmallVectorTemplateCommon<T>
 {
     friend class SmallVectorTemplateCommon<T>;
 
@@ -550,8 +537,7 @@ protected:
 
     /// Move the range [I, E) onto the uninitialized memory
     /// starting with "Dest", constructing elements into it as needed.
-    template <typename It1, typename It2>
-    static void uninitialized_move(It1 I, It1 E, It2 Dest)
+    template <typename It1, typename It2> static void uninitialized_move(It1 I, It1 E, It2 Dest)
     {
         // Just do a copy.
         uninitialized_copy(I, E, Dest);
@@ -559,8 +545,7 @@ protected:
 
     /// Copy the range [I, E) onto the uninitialized memory
     /// starting with "Dest", constructing elements into it as needed.
-    template <typename It1, typename It2>
-    static void uninitialized_copy(It1 I, It1 E, It2 Dest)
+    template <typename It1, typename It2> static void uninitialized_copy(It1 I, It1 E, It2 Dest)
     {
         // Arbitrary iterator types; just use the basic implementation.
         std::uninitialized_copy(I, E, Dest);
@@ -569,10 +554,9 @@ protected:
     /// Copy the range [I, E) onto the uninitialized memory
     /// starting with "Dest", constructing elements into it as needed.
     template <typename T1, typename T2>
-    static void uninitialized_copy(
-        T1* I,
-        T1* E,
-        T2* Dest,
+    static void uninitialized_copy(T1* I,
+        T1*                            E,
+        T2*                            Dest,
         std::enable_if_t<std::is_same_v<std::remove_const_t<T1>, T2>>* /*unused*/
         = nullptr)
     {
@@ -615,8 +599,7 @@ protected:
         this->set_size(NumElts);
     }
 
-    template <typename... ArgTypes>
-    T& growAndEmplaceBack(ArgTypes&&... Args)
+    template <typename... ArgTypes> T& growAndEmplaceBack(ArgTypes&&... Args)
     {
         // Use push_back with a copy in case Args has an internal reference,
         // side-stepping reference invalidation problems without losing the realloc
@@ -638,20 +621,19 @@ public:
 
 /// This class consists of common code factored out of the small_vector class to
 /// reduce code duplication based on the small_vector 'N' template parameter.
-template <typename T>
-class SmallVectorImpl : public SmallVectorTemplateBase<T>
+template <typename T> class SmallVectorImpl : public SmallVectorTemplateBase<T>
 {
     using SuperClass = SmallVectorTemplateBase<T>;
 
 public:
-    using iterator       = typename SuperClass::iterator;
-    using const_iterator = typename SuperClass::const_iterator;
-    using reference      = typename SuperClass::reference;
-    using size_type      = typename SuperClass::size_type;
+    using iterator       = SuperClass::iterator;
+    using const_iterator = SuperClass::const_iterator;
+    using reference      = SuperClass::reference;
+    using size_type      = SuperClass::size_type;
 
 protected:
     using SmallVectorTemplateBase<T>::TakesParamByValue;
-    using ValueParamT = typename SuperClass::ValueParamT;
+    using ValueParamT = SuperClass::ValueParamT;
 
     // Default ctor - Initialize to empty.
     explicit SmallVectorImpl(unsigned N) : SmallVectorTemplateBase<T>(N) {}
@@ -674,8 +656,7 @@ public:
     }
 
 private:
-    template <bool ForOverwrite>
-    void resizeImpl(size_type N)
+    template <bool ForOverwrite> void resizeImpl(size_type N)
     {
         if (N < this->size())
         {
@@ -737,11 +718,10 @@ public:
     void swap(SmallVectorImpl& RHS) noexcept;
 
     /// Add the specified range to the end of the small_vector.
-    template <
-        typename in_iter,
-        typename = std::enable_if_t<std::is_convertible_v<
-            typename std::iterator_traits<in_iter>::iterator_category,
-            std::input_iterator_tag>>>
+    template <typename in_iter,
+        typename = std::enable_if_t<
+            std::is_convertible_v<typename std::iterator_traits<in_iter>::iterator_category,
+                std::input_iterator_tag>>>
     void append(in_iter in_start, in_iter in_end)
     {
         this->assertSafeToAddRange(in_start, in_end);
@@ -784,11 +764,10 @@ public:
     // FIXME: Consider assigning over existing elements, rather than clearing &
     // re-initializing them - for all assign(...) variants.
 
-    template <
-        typename in_iter,
-        typename = std::enable_if_t<std::is_convertible_v<
-            typename std::iterator_traits<in_iter>::iterator_category,
-            std::input_iterator_tag>>>
+    template <typename in_iter,
+        typename = std::enable_if_t<
+            std::is_convertible_v<typename std::iterator_traits<in_iter>::iterator_category,
+                std::input_iterator_tag>>>
     void assign(in_iter in_start, in_iter in_end)
     {
         this->assertSafeToReferenceAfterClear(in_start, in_end);
@@ -813,7 +792,7 @@ public:
         std::move(I + 1, this->end(), I);
         // Drop the last elt.
         this->pop_back();
-        return (N);
+        return N;
     }
 
     iterator erase(iterator S, iterator E)
@@ -826,16 +805,14 @@ public:
         // Drop the last elts.
         this->destroy_range(I, this->end());
         this->set_size(I - this->begin());
-        return (N);
+        return N;
     }
 
 private:
-    template <class ArgType>
-    iterator insert_one_impl(iterator I, ArgType&& Elt)
+    template <class ArgType> iterator insert_one_impl(iterator I, ArgType&& Elt)
     {
         // Callers ensure that ArgType is derived from T.
-        static_assert(
-            std::is_same<std::remove_const_t<std::remove_reference_t<ArgType>>, T>::value,
+        static_assert(std::is_same<std::remove_const_t<std::remove_reference_t<ArgType>>, T>::value,
             "ArgType must be derived from T!");
 
         if (I == this->end())
@@ -858,8 +835,7 @@ private:
 
         // If we just moved the element we're inserting, be sure to update
         // the reference (never happens if TakesParamByValue).
-        static_assert(
-            !TakesParamByValue || std::is_same_v<ArgType, T>,
+        static_assert(!TakesParamByValue || std::is_same_v<ArgType, T>,
             "ArgType must be 'T' when taking by value!");
         if (!TakesParamByValue && this->isReferenceToRange(EltPtr, I, this->end()))
             ++EltPtr;
@@ -906,8 +882,7 @@ public:
         if (size_t(this->end() - I) >= NumToInsert)
         {
             T* OldEnd = this->end();
-            append(
-                std::move_iterator<iterator>(this->end() - NumToInsert),
+            append(std::move_iterator<iterator>(this->end() - NumToInsert),
                 std::move_iterator<iterator>(this->end()));
 
             // Copy the existing elements that get replaced.
@@ -944,11 +919,10 @@ public:
         return I;
     }
 
-    template <
-        typename ItTy,
-        typename = std::enable_if_t<std::is_convertible_v<
-            typename std::iterator_traits<ItTy>::iterator_category,
-            std::input_iterator_tag>>>
+    template <typename ItTy,
+        typename = std::enable_if_t<
+            std::is_convertible_v<typename std::iterator_traits<ItTy>::iterator_category,
+                std::input_iterator_tag>>>
     iterator insert(iterator I, ItTy From, ItTy To)
     {
         // Convert iterator to elt# to avoid invalidating iterator when we reserve()
@@ -980,8 +954,7 @@ public:
         if (size_t(this->end() - I) >= NumToInsert)
         {
             T* OldEnd = this->end();
-            append(
-                std::move_iterator<iterator>(this->end() - NumToInsert),
+            append(std::move_iterator<iterator>(this->end() - NumToInsert),
                 std::move_iterator<iterator>(this->end()));
 
             // Copy the existing elements that get replaced.
@@ -1015,8 +988,7 @@ public:
 
     void insert(iterator I, std::initializer_list<T> IL) { insert(I, IL.begin(), IL.end()); }
 
-    template <typename... ArgTypes>
-    reference emplace_back(ArgTypes&&... Args)
+    template <typename... ArgTypes> reference emplace_back(ArgTypes&&... Args)
     {
         if PROFILER_UNLIKELY (this->size() >= this->capacity())
             return this->growAndEmplaceBack(std::forward<ArgTypes>(Args)...);
@@ -1045,8 +1017,7 @@ public:
     }
 };
 
-template <typename T>
-void SmallVectorImpl<T>::swap(SmallVectorImpl<T>& RHS) noexcept
+template <typename T> void SmallVectorImpl<T>::swap(SmallVectorImpl<T>& RHS) noexcept
 {
     if (this == &RHS)
         return;
@@ -1211,8 +1182,7 @@ SmallVectorImpl<T>& SmallVectorImpl<T>::operator=(SmallVectorImpl<T>&& RHS) noex
 
 /// Storage for the small_vector elements.  This is specialized for the N=0 case
 /// to avoid allocating unnecessary storage.
-template <typename T, unsigned N>
-struct SmallVectorStorage
+template <typename T, unsigned N> struct SmallVectorStorage
 {
     alignas(T) char InlineElts[N * sizeof(T)];
 };
@@ -1220,24 +1190,21 @@ struct SmallVectorStorage
 /// We need the storage to be properly aligned even for small-size of 0 so that
 /// the pointer math in \a SmallVectorTemplateCommon::getFirstEl() is
 /// well-defined.
-template <typename T>
-struct alignas(T) SmallVectorStorage<T, 0>  //NOLINT
+template <typename T> struct alignas(T) SmallVectorStorage<T, 0>  // NOLINT
 {
 };
 
 /// Forward declaration of small_vector so that
 /// calculateSmallVectorDefaultInlinedElements can reference
 /// `sizeof(small_vector<T, 0>)`.
-template <typename T, unsigned N>
-class /* LLVM_GSL_OWNER */ small_vector;
+template <typename T, unsigned N> class /* LLVM_GSL_OWNER */ small_vector;
 
 /// Helper class for calculating the default number of inline elements for
 /// `small_vector<T>`.
 ///
 /// This should be migrated to a constexpr function when our minimum
 /// compiler support is enough for multi-statement constexpr functions.
-template <typename T>
-struct CalculateSmallVectorDefaultInlinedElements
+template <typename T> struct CalculateSmallVectorDefaultInlinedElements
 {
     // Parameter controlling the default number of inlined elements
     // for `small_vector<T>`.
@@ -1270,8 +1237,7 @@ struct CalculateSmallVectorDefaultInlinedElements
     // 32-bit hosts, dodging the issue. The reverse situation, where development
     // happens on a 32-bit host and then fails due to sizeof(T) *increasing* on a
     // 64-bit host, is expected to be very rare.
-    static_assert(
-        sizeof(T) <= 256,
+    static_assert(sizeof(T) <= 256,
         "You are trying to use a default number of inlined elements for "
         "`small_vector<T>` but `sizeof(T)` is really big! Please use an "
         "explicit number of inlined elements with `small_vector<T, N>` to make "
@@ -1318,11 +1284,10 @@ public:
         this->assign(Size, Value);
     }
 
-    template <
-        typename ItTy,
-        typename = std::enable_if_t<std::is_convertible_v<
-            typename std::iterator_traits<ItTy>::iterator_category,
-            std::input_iterator_tag>>>
+    template <typename ItTy,
+        typename = std::enable_if_t<
+            std::is_convertible_v<typename std::iterator_traits<ItTy>::iterator_category,
+                std::input_iterator_tag>>>
     small_vector(ItTy S, ItTy E) : SmallVectorImpl<T>(N)
     {
         this->append(S, E);
@@ -1330,12 +1295,10 @@ public:
 
     // note: The enable_if restricts Container to types that have a .begin() and
     // .end() that return valid input iterators.
-    template <
-        typename Container,
+    template <typename Container,
         std::enable_if_t<
-            std::is_convertible_v<
-                typename std::iterator_traits<
-                    decltype(std::declval<Container>().begin())>::iterator_category,
+            std::is_convertible_v<typename std::iterator_traits<decltype(std::declval<Container>()
+                                          .begin())>::iterator_category,
                 std::input_iterator_tag> &&
                 std::is_convertible_v<
                     typename std::iterator_traits<
@@ -1370,12 +1333,10 @@ public:
 
     // note: The enable_if restricts Container to types that have a .begin() and
     // .end() that return valid input iterators.
-    template <
-        typename Container,
+    template <typename Container,
         std::enable_if_t<
-            std::is_convertible_v<
-                typename std::iterator_traits<
-                    decltype(std::declval<Container>().begin())>::iterator_category,
+            std::is_convertible_v<typename std::iterator_traits<decltype(std::declval<Container>()
+                                          .begin())>::iterator_category,
                 std::input_iterator_tag> &&
                 std::is_convertible_v<
                     typename std::iterator_traits<
@@ -1412,12 +1373,10 @@ public:
 
     // note: The enable_if restricts Container to types that have a .begin() and
     // .end() that return valid input iterators.
-    template <
-        typename Container,
+    template <typename Container,
         std::enable_if_t<
-            std::is_convertible_v<
-                typename std::iterator_traits<
-                    decltype(std::declval<Container>().begin())>::iterator_category,
+            std::is_convertible_v<typename std::iterator_traits<decltype(std::declval<Container>()
+                                          .begin())>::iterator_category,
                 std::input_iterator_tag> &&
                 std::is_convertible_v<
                     typename std::iterator_traits<
@@ -1438,8 +1397,7 @@ public:
     }
 };
 
-template <typename T, unsigned N>
-inline size_t capacity_in_bytes(const small_vector<T, N>& X)
+template <typename T, unsigned N> inline size_t capacity_in_bytes(const small_vector<T, N>& X)
 {
     return X.capacity_in_bytes();
 }
@@ -1473,8 +1431,7 @@ small_vector<ValueTypeFromRangeType<R>, Size> to_vector(R&& Range)
     return {std::begin(Range), std::end(Range)};
 }
 template <typename R>
-small_vector<
-    ValueTypeFromRangeType<R>,
+small_vector<ValueTypeFromRangeType<R>,
     CalculateSmallVectorDefaultInlinedElements<ValueTypeFromRangeType<R>>::value>
 // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
 to_vector(R&& Range)
@@ -1489,14 +1446,18 @@ namespace std
 
 /// Implement std::swap in terms of small_vector swap.
 template <typename T>
-inline void swap(profiler::SmallVectorImpl<T>& LHS, profiler::SmallVectorImpl<T>& RHS) noexcept
+inline void swap(  // NOLINT(bugprone-std-namespace-modification)
+    profiler::SmallVectorImpl<T>& LHS,
+    profiler::SmallVectorImpl<T>& RHS) noexcept
 {
     LHS.swap(RHS);
 }
 
 /// Implement std::swap in terms of small_vector swap.
 template <typename T, unsigned N>
-inline void swap(profiler::small_vector<T, N>& LHS, profiler::small_vector<T, N>& RHS) noexcept
+inline void swap(  // NOLINT(bugprone-std-namespace-modification)
+    profiler::small_vector<T, N>& LHS,
+    profiler::small_vector<T, N>& RHS) noexcept
 {
     LHS.swap(RHS);
 }

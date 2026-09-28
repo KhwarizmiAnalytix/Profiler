@@ -147,8 +147,7 @@ inline static bool simple_atod(std::string_view str, double* out)
     return true;
 }
 
-template <typename IntType>
-bool simple_atoi(std::string_view str, IntType* out)
+template <typename IntType> bool simple_atoi(std::string_view str, IntType* out)
 {
     // Check that the output type is an integer
     static_assert(std::is_integral<IntType>::value, "SimpleAtoi requires an integer type.");
@@ -205,8 +204,7 @@ bool simple_atoi(std::string_view str, IntType* out)
     return true;
 }
 
-template <typename T>
-class xstats_builder
+template <typename T> class xstats_builder
 {
 public:
     explicit xstats_builder(T* stats_owner, xplane_builder* stats_metadata_owner)
@@ -216,8 +214,7 @@ public:
 
     // NOTE: A stat shouldn't have existed for the given metadata.
     // Adds a stat for the given metadata and sets its value.
-    template <typename ValueT>
-    void add_stat_value(const x_stat_metadata& metadata, ValueT&& value)
+    template <typename ValueT> void add_stat_value(const x_stat_metadata& metadata, ValueT&& value)
     {
         set_stat_value(std::forward<ValueT>(value), add_stat(metadata));
     }
@@ -268,8 +265,7 @@ public:
 
     void reserve_stats(size_t num_stats) { stats_owner_->mutable_stats()->reserve(num_stats); }
 
-    template <typename ForEachStatFunc>
-    void ForEachStat(ForEachStatFunc&& for_each_stat)
+    template <typename ForEachStatFunc> void ForEachStat(ForEachStatFunc&& for_each_stat)
     {
         for (xstat& stat : *stats_owner_->mutable_stats())
         {
@@ -323,17 +319,14 @@ private:
         // compatibility.
         stat->set_value((int64_t)value);
     }
-    template <
-        typename Int,
-        std::enable_if_t<
-            std::conjunction<std::is_integral<Int>, std::is_signed<Int>>::value,
+    template <typename Int,
+        std::enable_if_t<std::conjunction<std::is_integral<Int>, std::is_signed<Int>>::value,
             bool> = true>
     static void set_stat_value(Int value, xstat* stat)
     {
         stat->set_value((int64_t)value);
     }
-    template <
-        typename UInt,
+    template <typename UInt,
         std::enable_if_t<
             std::conjunction<std::is_integral<UInt>, std::negation<std::is_signed<UInt>>>::value,
             bool> = true>
@@ -507,13 +500,12 @@ public:
         }
     }
 
-    PROFILER_API xevent_builder
-    add_event(const timespan& timespan, const xevent_metadata& metadata);
+    PROFILER_API xevent_builder add_event(
+        const timespan& timespan, const xevent_metadata& metadata);
     PROFILER_API xevent_builder add_event(const xevent_metadata& metadata);
     PROFILER_API xevent_builder add_event(const xevent& event);
 
-    template <typename ForEachEventFunc>
-    void ForEachEvent(ForEachEventFunc&& for_each_event)
+    template <typename ForEachEventFunc> void ForEachEvent(ForEachEventFunc&& for_each_event)
     {
         for (xevent& event : *line_->mutable_events())
         {
@@ -541,8 +533,7 @@ public:
 
     void ReserveLines(size_t num_lines) { plane_->mutable_lines()->reserve(num_lines); }
 
-    template <typename ForEachLineFunc>
-    void ForEachLine(ForEachLineFunc&& for_each_line)
+    template <typename ForEachLineFunc> void ForEachLine(ForEachLineFunc&& for_each_line)
     {
         for (xline& line : *plane_->mutable_lines())
         {
@@ -629,8 +620,7 @@ const x_stat_metadata& xstats_builder<T>::get_or_create_stat_metadata(std::strin
     return *stats_metadata_owner_->get_or_create_stat_metadata(value);
 }
 
-template <typename T>
-std::string_view xstats_builder<T>::StrOrRefValue(const xstat& stat)
+template <typename T> std::string_view xstats_builder<T>::StrOrRefValue(const xstat& stat)
 {
     switch (stat.value_case())
     {

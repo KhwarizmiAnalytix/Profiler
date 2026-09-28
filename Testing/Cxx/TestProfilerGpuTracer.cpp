@@ -219,7 +219,8 @@ PROFILERTEST(BackendGpuTracer, kernel_carries_launching_scope_annotation)
 
     const std::string chrome = session.generate_chrome_trace_json();
     ASSERT_FALSE(chrome.empty());
-    EXPECT_NE(chrome.find("\"annotation\":\"" + std::string(kLaunchScope) + "\""), std::string::npos)
+    EXPECT_NE(
+        chrome.find("\"annotation\":\"" + std::string(kLaunchScope) + "\""), std::string::npos)
         << "GPU kernel event should carry its launching CPU scope as an annotation stat";
 }
 
@@ -328,8 +329,8 @@ PROFILERTEST(BackendGpuTracer, export_xspace_filters_stale_generation)
     ASSERT_NE(gpu, nullptr);
     EXPECT_EQ(count_events(*gpu), 1u);
 
-    bool                  saw_live = false;
-    xplane_visitor const  visitor  = CreateTfXPlaneVisitor(gpu);
+    bool                 saw_live = false;
+    xplane_visitor const visitor  = CreateTfXPlaneVisitor(gpu);
     visitor.for_each_line(
         [&](const xline_visitor& line)
         {

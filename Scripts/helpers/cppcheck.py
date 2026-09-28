@@ -1,19 +1,17 @@
-"""
-Cppcheck Static Analysis Helper Module
-This module handles static code analysis using cppcheck.
-"""
+# Copyright (c) Profiler Contributors.
+# SPDX-License-Identifier: Apache-2.0
+"""Cppcheck static analysis helper module."""
 
 import os
 import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
-# Source directories that make up the Profiler library (mirrors
-# CMakeLists.txt's file(GLOB[_RECURSE] ...) roots under include/:
-# common/*.{h,cpp}, native/**, the bespoke/{base,common,itt,kineto}
-# backend tree, and util/env.h -- minus Testing/, third_party/,
-# examples/, consumer/, docs/).
-_SOURCE_DIRS = ["include"]
+# Source directories scanned by cppcheck.  cppcheck 2.x only picks up
+# .c/.cc/.cpp/.cxx files from directory arguments (not .h files), so we
+# point it at src/ where the implementation files live; include/ is added
+# via -I so cppcheck resolves headers referenced by those .cpp files.
+_SOURCE_DIRS = ["src"]
 
 
 @dataclass
@@ -65,7 +63,8 @@ def get_logical_processor_count() -> int:
     try:
         import psutil  # type: ignore[import-untyped]
 
-        return psutil.cpu_count(logical=True)  # type: ignore[no-untyped-call,no-any-return]
+        count = psutil.cpu_count(logical=True)  # type: ignore[no-untyped-call]
+        return count  # type: ignore[no-any-return]
     except ImportError:
         try:
             count = os.cpu_count()
@@ -119,10 +118,11 @@ def build_cppcheck_command(
         "--suppress=toomanyconfigs",
         "--suppress=unmatchedSuppression",
         "--suppress=checkersReport",
+        "--suppress=normalCheckLevelMaxBranches",
         # Note: -j (parallel) is intentionally omitted -- cppcheck does not support
         # --output-file when -j > 1 (output goes to stdout only in parallel mode).
         "-I",
-        "Profiler",
+        "include",
         f"--output-file={output_file}",
     ]
 

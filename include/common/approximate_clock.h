@@ -37,8 +37,7 @@ namespace profiler
 {
 
 using time_t         = int64_t;
-using steady_clock_t = std::conditional_t<
-    std::chrono::high_resolution_clock::is_steady,
+using steady_clock_t = std::conditional_t<std::chrono::high_resolution_clock::is_steady,
     std::chrono::high_resolution_clock,
     std::chrono::steady_clock>;
 
@@ -59,14 +58,12 @@ inline time_t getTime(PROFILER_UNUSED bool allow_monotonic = false)
     return static_cast<time_t>(now.tv_sec) * 1000000000 + static_cast<time_t>(now.tv_usec) * 1000;
 #elif defined(_WIN32) || defined(__MACH__)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
-               steady_clock_t::now().time_since_epoch())
+        steady_clock_t::now().time_since_epoch())
         .count();
 #else
     // clock_gettime is *much* faster than std::chrono implementation on Linux
-    struct timespec t
-    {
-    };
-    auto mode = CLOCK_REALTIME;
+    struct timespec t{};
+    auto            mode = CLOCK_REALTIME;
     if (allow_monotonic)
     {
         mode = CLOCK_MONOTONIC;
@@ -94,8 +91,7 @@ inline auto getApproximateTime()
 }
 
 using approx_time_t = decltype(getApproximateTime());
-static_assert(
-    std::is_same_v<approx_time_t, int64_t> || std::is_same_v<approx_time_t, uint64_t>,
+static_assert(std::is_same_v<approx_time_t, int64_t> || std::is_same_v<approx_time_t, uint64_t>,
     "Expected either int64_t (`getTime`) or uint64_t (some TSC reads).");
 
 // Convert `getCount` results to Nanoseconds since unix epoch.

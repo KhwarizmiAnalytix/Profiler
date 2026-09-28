@@ -1,0 +1,37 @@
+[project]
+name = "profiler"
+version = "0.1.0"
+description = "Standalone C++ profiler library"
+requires-python = ">=3.9"
+classifiers = []
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "third_party",
+    "build",
+    "bazel-.*",
+    "__pycache__",
+    "examples",
+]
+
+[[tool.mypy.overrides]]
+module = ["setup", "Scripts.setup"]
+disable_error_code = ["no-redef"]
+
+[tool.pyrefly]
+project_includes = ["Scripts", "examples"]
+project_excludes = [
+    "third_party",
+    "build",
+    "build_*",
+    "__pycache__",
+    ".git",
+    "bazel-*",
+    "Scripts/setup.py",
+    "examples",
+]
+python_version = "3.12"

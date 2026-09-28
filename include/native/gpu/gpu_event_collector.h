@@ -66,9 +66,10 @@ public:
     /// Export GPU events to XSpace, filtering out stale events from prior runs
     /// (those whose generation doesn't match current_generation). Counts dropped
     /// events in *out_stale_event_count if provided.
-    bool export_xspace(x_space* space, uint64_t end_gpu_ns,
-                       uint64_t current_generation = 0,
-                       uint64_t* out_stale_event_count = nullptr);
+    bool export_xspace(x_space* space,
+        uint64_t                end_gpu_ns,
+        uint64_t                current_generation    = 0,
+        uint64_t*               out_stale_event_count = nullptr);
 
 private:
     std::mutex                    mu_;

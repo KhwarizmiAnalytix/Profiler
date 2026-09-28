@@ -1,3 +1,21 @@
+/*
+ * Profiler
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #pragma once
 #include <cstdint>
 #include <optional>
@@ -70,8 +88,7 @@ private:
             debug_abbrev_offset_ = is_64bit_ ? L.read<uint64_t>() : L.read<uint32_t>();
             address_size         = L.read<uint8_t>();
         }
-        LOG_INFO(
-            "compilation unit at offset {:x} with length {:x} and debug_abbrev_offset {:x}\n",
+        LOG_INFO("compilation unit at offset {:x} with length {:x} and debug_abbrev_offset {:x}\n",
             offset,
             length_,
             debug_abbrev_offset_);
@@ -172,9 +189,8 @@ private:
                 LOG_INFO("setting range_ptr to {:x} {:x}\n", range_offset, form);
                 range_ptr_.emplace(range_offset, form);
             }
-            else if (
-                form == DW_FORM_udata || form == DW_FORM_rnglistx || form == DW_FORM_strx ||
-                form == DW_FORM_loclistx || form == DW_FORM_addrx)
+            else if (form == DW_FORM_udata || form == DW_FORM_rnglistx || form == DW_FORM_strx ||
+                     form == DW_FORM_loclistx || form == DW_FORM_addrx)
             {
                 L.readULEB128();
             }

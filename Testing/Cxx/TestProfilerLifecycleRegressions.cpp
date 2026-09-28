@@ -63,7 +63,9 @@ PROFILERTEST(LifecycleRegressions, second_export_does_not_report_false_success)
 
     profiler::session session(opts);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("lifecycle_export_scope"); }
+    {
+        PROFILER_SCOPE("lifecycle_export_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     const std::string path1 = "lifecycle_regression_export_1.json";
@@ -102,7 +104,9 @@ PROFILERTEST(LifecycleRegressions, write_trace_does_not_switch_format_on_kineto_
 
     profiler::session session(opts);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("write_trace_no_format_switch_scope"); }
+    {
+        PROFILER_SCOPE("write_trace_no_format_switch_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     const std::string path1 = "lifecycle_no_format_switch_1.json";
@@ -158,7 +162,9 @@ PROFILERTEST(LifecycleRegressions, restart_does_not_leak_previous_run_events)
 
     profiler::session session(opts);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("first_run_scope"); }
+    {
+        PROFILER_SCOPE("first_run_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     ASSERT_TRUE(session.start());
@@ -184,7 +190,9 @@ PROFILERTEST(LifecycleRegressions, events_falls_back_to_xspace_for_native_only_s
 
     profiler::session session(opts);
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("native_only_events_scope"); }
+    {
+        PROFILER_SCOPE("native_only_events_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     bool found = false;
@@ -209,7 +217,9 @@ PROFILERTEST(LifecycleRegressions, report_outlives_a_session_restart)
     profiler::session         session(opts);
 
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("report_lifetime_scope"); }
+    {
+        PROFILER_SCOPE("report_lifetime_scope");
+    }
     ASSERT_TRUE(session.stop());
 
     auto report   = session.generate_report();
@@ -228,7 +238,9 @@ PROFILERTEST(LifecycleRegressions, report_outlives_a_session_restart)
 
     // Restart (and stop again) replaces the session's native profiler_session.
     ASSERT_TRUE(session.start());
-    { PROFILER_SCOPE("second_run_scope"); }  // distinct name: proves no cross-run bleed too
+    {
+        PROFILER_SCOPE("second_run_scope");
+    }  // distinct name: proves no cross-run bleed too
     ASSERT_TRUE(session.stop());
 
     // The old report/hotspot report must still be safe to read, and must
@@ -249,14 +261,16 @@ PROFILERTEST(LifecycleRegressions, report_outlives_a_session_restart)
 // this case as safe as the restart case above.
 PROFILERTEST(LifecycleRegressions, report_outlives_session_destruction)
 {
-    std::shared_ptr<profiler::profiler_report>  report;
-    std::shared_ptr<profiler::hotspot_report>   hotspots;
+    std::shared_ptr<profiler::profiler_report> report;
+    std::shared_ptr<profiler::hotspot_report>  hotspots;
 
     {
         profiler::session_options opts;
         profiler::session         session(opts);
         ASSERT_TRUE(session.start());
-        { PROFILER_SCOPE("destroyed_session_scope"); }
+        {
+            PROFILER_SCOPE("destroyed_session_scope");
+        }
         ASSERT_TRUE(session.stop());
 
         report   = session.generate_report();
@@ -266,8 +280,7 @@ PROFILERTEST(LifecycleRegressions, report_outlives_session_destruction)
     }  // session destroyed here, not just restarted.
 
     EXPECT_FALSE(report->generate_console_report().empty());
-    EXPECT_NE(
-        report->generate_console_report().find("destroyed_session_scope"), std::string::npos);
+    EXPECT_NE(report->generate_console_report().find("destroyed_session_scope"), std::string::npos);
     EXPECT_NE(hotspots->table().find("destroyed_session_scope"), std::string::npos);
     // top_down_tree() dereferences the scope tree lazily, not just at
     // construction -- the specific case that needed real shared ownership.

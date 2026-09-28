@@ -190,7 +190,7 @@ PROFILERTEST(BackendOutput, console_report_text)
 // -----------------------------------------------------------------------------
 PROFILERTEST(BackendOutput, file_format_exports_console_text)
 {
-    profiler_options opts = make_report_options(profiler_options::output_format_enum::FILE);
+    profiler_options  opts = make_report_options(profiler_options::output_format_enum::FILE);
     const std::string path = "backend_output_file_report.txt";
 
     profiler_session session(opts);
@@ -257,8 +257,7 @@ PROFILERTEST(BackendOutput, csv_report_rows)
 
     const std::string csv = report->generate_csv_report();
     EXPECT_FALSE(csv.empty());
-    EXPECT_NE(
-        csv.find("Scope,Depth,Thread,Duration(ms),Memory Delta Mean,Memory Delta Max"),
+    EXPECT_NE(csv.find("Scope,Depth,Thread,Duration(ms),Memory Delta Mean,Memory Delta Max"),
         std::string::npos);
     EXPECT_NE(csv.find(kOuterScope), std::string::npos);
     EXPECT_NE(csv.find(kInnerScope), std::string::npos);

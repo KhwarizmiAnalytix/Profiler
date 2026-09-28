@@ -23,7 +23,7 @@
 namespace profiler
 {
 
-enum class device_enum : int16_t
+enum class device_enum : std::uint8_t
 {
     CPU         = 0,
     CUDA        = 1,

@@ -103,8 +103,8 @@ enum class traceme_level_enum
  * operations based on their expected computational expense, enabling selective profiling
  * of performance-critical operations while filtering out noise from lightweight operations.
  *
- * @param is_expensive True if the operation is computationally expensive (e.g., matrix multiplication,
- *                     convolution), false for lightweight operations (e.g., element-wise operations,
+ * @param is_expensive True if the operation is computationally expensive (e.g., matrix
+ * multiplication, convolution), false for lightweight operations (e.g., element-wise operations,
  *                     shape manipulations)
  * @return Trace level: INFO (2) for expensive operations that should be visible by default
  *         in profiler UI, VERBOSE (3) for cheap operations shown only in detailed views
@@ -208,8 +208,8 @@ public:
     {
         // PROFILER_CHECK_DEBUG(level >= 1, "level is less than 1");
 #if !defined(IS_MOBILE_PLATFORM)
-        if PROFILER_UNLIKELY (
-            traceme_recorder::active(level) && traceme_recorder::check_filter(filter_mask))
+        if PROFILER_UNLIKELY (traceme_recorder::active(level) &&
+                              traceme_recorder::check_filter(filter_mask))
         {
             name_.Emplace(std::string(name));
             start_time_ = get_current_time_nanos();
@@ -300,18 +300,16 @@ public:
      * traceme trace([&]() { return traceme_op(op_name, op_type); });
      * ```
      */
-    template <
-        typename NameGeneratorT,
+    template <typename NameGeneratorT,
         std::enable_if_t<std::is_invocable_v<NameGeneratorT>, bool> = true>
-    explicit traceme(
-        NameGeneratorT&& name_generator,
-        int              level       = 1,
-        uint64_t         filter_mask = kTraceFilterDefaultMask)
+    explicit traceme(NameGeneratorT&& name_generator,
+        int                           level       = 1,
+        uint64_t                      filter_mask = kTraceFilterDefaultMask)
     {
         // PROFILER_CHECK_DEBUG(level >= 1, "level is less than 1");
 #if !defined(IS_MOBILE_PLATFORM)
-        if PROFILER_UNLIKELY (
-            traceme_recorder::active(level) && traceme_recorder::check_filter(filter_mask))
+        if PROFILER_UNLIKELY (traceme_recorder::active(level) &&
+                              traceme_recorder::check_filter(filter_mask))
         {
             name_.Emplace(std::forward<NameGeneratorT>(name_generator)());
             start_time_ = get_current_time_nanos();
@@ -459,8 +457,7 @@ public:
      * });
      * ```
      */
-    template <
-        typename MetadataGeneratorT,
+    template <typename MetadataGeneratorT,
         std::enable_if_t<std::is_invocable_v<MetadataGeneratorT>, bool> = true>
     void append_metadata(MetadataGeneratorT&& metadata_generator)
     {
@@ -514,23 +511,20 @@ public:
      * traceme::activity_end(id);
      * ```
      */
-    template <
-        typename NameGeneratorT,
+    template <typename NameGeneratorT,
         std::enable_if_t<std::is_invocable_v<NameGeneratorT>, bool> = true>
-    static int64_t activity_start(
-        NameGeneratorT&& name_generator,
-        int              level       = 1,
-        uint64_t         filter_mask = kTraceFilterDefaultMask)
+    static int64_t activity_start(NameGeneratorT&& name_generator,
+        int                                        level       = 1,
+        uint64_t                                   filter_mask = kTraceFilterDefaultMask)
     {
 #if !defined(IS_MOBILE_PLATFORM)
-        if PROFILER_UNLIKELY (
-            traceme_recorder::active(level) && traceme_recorder::check_filter(filter_mask))
+        if PROFILER_UNLIKELY (traceme_recorder::active(level) &&
+                              traceme_recorder::check_filter(filter_mask))
         {
             int64_t activity_id = traceme_recorder::new_activity_id();
-            traceme_recorder::record(
-                {std::forward<NameGeneratorT>(name_generator)(),
-                 get_current_time_nanos(),
-                 -activity_id});
+            traceme_recorder::record({std::forward<NameGeneratorT>(name_generator)(),
+                get_current_time_nanos(),
+                -activity_id});
             return activity_id;
         }
 #endif
@@ -555,8 +549,8 @@ public:
         std::string_view name, int level = 1, uint64_t filter_mask = kTraceFilterDefaultMask)
     {
 #if !defined(IS_MOBILE_PLATFORM)
-        if PROFILER_UNLIKELY (
-            traceme_recorder::active(level) && traceme_recorder::check_filter(filter_mask))
+        if PROFILER_UNLIKELY (traceme_recorder::active(level) &&
+                              traceme_recorder::check_filter(filter_mask))
         {
             int64_t activity_id = traceme_recorder::new_activity_id();
             traceme_recorder::record({std::string(name), get_current_time_nanos(), -activity_id});
@@ -651,23 +645,20 @@ public:
      * });
      * ```
      */
-    template <
-        typename NameGeneratorT,
+    template <typename NameGeneratorT,
         std::enable_if_t<std::is_invocable_v<NameGeneratorT>, bool> = true>
-    static void instant_activity(
-        NameGeneratorT&& name_generator,
-        int              level       = 1,
-        uint64_t         filter_mask = kTraceFilterDefaultMask)
+    static void instant_activity(NameGeneratorT&& name_generator,
+        int                                       level       = 1,
+        uint64_t                                  filter_mask = kTraceFilterDefaultMask)
     {
 #if !defined(IS_MOBILE_PLATFORM)
-        if PROFILER_UNLIKELY (
-            traceme_recorder::active(level) && traceme_recorder::check_filter(filter_mask))
+        if PROFILER_UNLIKELY (traceme_recorder::active(level) &&
+                              traceme_recorder::check_filter(filter_mask))
         {
             int64_t now = get_current_time_nanos();
-            traceme_recorder::record(
-                {std::forward<NameGeneratorT>(name_generator)(),
-                 /*start_time=*/now,
-                 /*end_time=*/now});
+            traceme_recorder::record({std::forward<NameGeneratorT>(name_generator)(),
+                /*start_time=*/now,
+                /*end_time=*/now});
         }
 #endif
     }
