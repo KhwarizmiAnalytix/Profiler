@@ -32,7 +32,6 @@ limitations under the License.
 ==============================================================================*/
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <vector>
 
@@ -46,18 +45,20 @@ namespace profiler
  * @brief Factory function type for creating profiler interfaces
  *
  * A profiler_factory returns an instance of ProfilerInterface if ProfileOptions
- * require it. Otherwise, it might return nullptr.
+ * require it. Otherwise, it might return nullptr. This is a function pointer
+ * so registration during static initialization cannot throw.
  */
-using profiler_factory = std::function<std::unique_ptr<profiler_interface>(const profile_options&)>;
+using profiler_factory = std::unique_ptr<profiler_interface> (*)(const profile_options&);
 
 /**
  * @brief Registers a profiler factory
  *
- * Should be invoked at most once per factory.
+ * Should be invoked at most once per factory. noexcept so a failed allocation
+ * cannot escape static initialization.
  *
  * @param factory The profiler factory function to register
  */
-PROFILER_API void register_profiler_factory(profiler_factory factory);
+PROFILER_API void register_profiler_factory(profiler_factory factory) noexcept;
 
 /**
  * @brief Creates profiler instances using registered factories

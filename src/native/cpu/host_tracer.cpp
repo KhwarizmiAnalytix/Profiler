@@ -95,10 +95,16 @@ host_tracer::host_tracer(int host_trace_level, uint64_t filter_mask)
 
 host_tracer::~host_tracer()
 {
-    // Call stop directly without virtual dispatch since we're in destructor
-    // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
-    // cppcheck-suppress virtualCallInConstructor
-    host_tracer::stop();  // Explicitly call this class's stop() to avoid virtual dispatch
+    try
+    {
+        // Call stop directly without virtual dispatch since we're in destructor
+        // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
+        // cppcheck-suppress virtualCallInConstructor
+        host_tracer::stop();  // Explicitly call this class's stop() to avoid virtual dispatch
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
+    }
 }
 
 profiler_status host_tracer::start()

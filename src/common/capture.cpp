@@ -181,9 +181,9 @@ capture::~capture()
         {
             (void)stop();
         }
-        catch (...)
+        catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
         {
-        }  // NOLINT(bugprone-empty-catch)
+        }
     }
 }
 
@@ -206,9 +206,9 @@ capture& capture::operator=(capture&& other) noexcept
         {
             (void)stop();
         }
-        catch (...)
+        catch (...)  // NOLINT(bugprone-empty-catch) -- move must not throw
         {
-        }  // NOLINT(bugprone-empty-catch)
+        }
     }
     config_         = std::move(other.config_);
     prepared_       = other.prepared_;

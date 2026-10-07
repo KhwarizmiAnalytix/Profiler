@@ -67,7 +67,7 @@ std::vector<capture_event> events_from_xspace(const x_space& space)
         const auto& stat_metadata_map  = plane.stat_metadata();
         for (size_t line_idx = 0; line_idx < plane.lines_size(); ++line_idx)
         {
-            const auto& line = plane.lines(line_idx);
+            const auto& line = plane.lines(static_cast<int>(line_idx));
             for (const auto& event : line.events())
             {
                 capture_event out;
@@ -76,8 +76,8 @@ std::vector<capture_event> events_from_xspace(const x_space& space)
                 {
                     out.name = it->second.name();
                 }
-                out.start_ns = static_cast<uint64_t>(line.timestamp_ns()) +
-                               static_cast<uint64_t>(event.offset_ps()) / 1000;
+                out.start_ns    = static_cast<uint64_t>(line.timestamp_ns()) +
+                                  static_cast<uint64_t>(event.offset_ps()) / 1000;
                 out.duration_ns = static_cast<uint64_t>(event.duration_ps()) / 1000;
                 for (const auto& stat : event.stats())
                 {
@@ -131,9 +131,9 @@ session::~session()
         {
             (void)stop();
         }
-        catch (...)
+        catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
         {
-        }  // NOLINT(bugprone-empty-catch)
+        }
     }
 }
 
@@ -160,9 +160,9 @@ session& session::operator=(session&& other) noexcept
         {
             (void)stop();
         }
-        catch (...)
+        catch (...)  // NOLINT(bugprone-empty-catch) -- move must not throw
         {
-        }  // NOLINT(bugprone-empty-catch)
+        }
     }
     options_                    = std::move(other.options_);
     native_                     = std::move(other.native_);

@@ -60,8 +60,10 @@ static inline std::string get_thread_name()
 namespace internal
 {
 
-std::atomic<int>      g_trace_level(traceme_recorder::kTracingDisabled);
-std::atomic<uint64_t> g_trace_filter_bitmap{(std::numeric_limits<uint64_t>::max)()};
+std::atomic<int> g_trace_level(traceme_recorder::kTracingDisabled);
+// Parentheses keep the Windows max macro from consuming this call.
+std::atomic<uint64_t> g_trace_filter_bitmap{
+    (std::numeric_limits<uint64_t>::max)()};  // NOLINT(readability-redundant-parentheses)
 
 // g_trace_level implementation must be lock-free for faster execution of the
 // TraceMe API. This can be commented (if compilation is failing) but execution

@@ -149,11 +149,18 @@ public:
 
     ~gpu_tracer() override
     {
-        if (recording_)
+        if (!recording_)
+        {
+            return;
+        }
+        try
         {
             // NOLINTNEXTLINE(clang-analyzer-optin.cplusplus.VirtualCall)
             // cppcheck-suppress virtualCallInConstructor
             gpu_tracer::stop();
+        }
+        catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+        {
         }
     }
 

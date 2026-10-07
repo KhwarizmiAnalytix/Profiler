@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <numeric>
 
@@ -53,10 +54,11 @@ namespace profiler
 
 void statistical_metrics::reset()
 {
-    min_value     = (std::numeric_limits<double>::max)();
-    max_value     = (std::numeric_limits<double>::lowest)();
-    mean          = 0.0;
-    median        = 0.0;
+    // Parentheses keep the Windows max macro from consuming this call.
+    min_value = (std::numeric_limits<double>::max)();  // NOLINT(readability-redundant-parentheses)
+    max_value = std::numeric_limits<double>::lowest();
+    mean      = 0.0;
+    median    = 0.0;
     std_deviation = 0.0;
     variance      = 0.0;
     sum           = 0.0;
@@ -298,7 +300,9 @@ double statistical_analyzer::calculate_trend_slope(const std::string& series_nam
         sum_x2 += x * x;
     }
 
-    double const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+    double const n_as_double = static_cast<double>(n);
+    double const slope =
+        (n_as_double * sum_xy - sum_x * sum_y) / (n_as_double * sum_x2 - sum_x * sum_x);
     return slope;
 }
 
@@ -521,7 +525,7 @@ std::vector<double> statistical_analyzer::detect_outliers(
 
     // Calculate mean and standard deviation
     double const sum  = std::accumulate(data.begin(), data.end(), 0.0);
-    double const mean = sum / data.size();
+    double const mean = sum / static_cast<double>(data.size());
 
     double variance_sum = 0.0;
     for (double const value : data)
@@ -529,7 +533,7 @@ std::vector<double> statistical_analyzer::detect_outliers(
         double const diff = value - mean;
         variance_sum += diff * diff;
     }
-    double const std_dev = std::sqrt(variance_sum / data.size());
+    double const std_dev = std::sqrt(variance_sum / static_cast<double>(data.size()));
 
     // Find outliers using z-score method
     std::vector<double> outliers;
@@ -551,7 +555,7 @@ void statistical_analyzer::trim_series_if_needed(std::vector<double>& series) co
     {
         // Remove oldest samples (from the beginning)
         size_t const excess = series.size() - max_samples_per_series_;
-        series.erase(series.begin(), series.begin() + excess);
+        series.erase(series.begin(), series.begin() + static_cast<std::ptrdiff_t>(excess));
     }
 }
 
@@ -562,7 +566,7 @@ void statistical_analyzer::trim_time_series_if_needed(
     {
         // Remove oldest samples (from the beginning)
         size_t const excess = series.size() - max_samples_per_series_;
-        series.erase(series.begin(), series.begin() + excess);
+        series.erase(series.begin(), series.begin() + static_cast<std::ptrdiff_t>(excess));
     }
 }
 
@@ -579,14 +583,21 @@ statistical_analysis_scope::statistical_analysis_scope(
 
 statistical_analysis_scope::~statistical_analysis_scope()
 {
-    if (active_)
+    if (!active_)
+    {
+        return;
+    }
+    try
     {
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration =
             std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_);
-        double const duration_ms = duration.count() / 1000.0;
+        double const duration_ms = static_cast<double>(duration.count()) / 1000.0;
 
         analyzer_.add_timing_sample(name_, duration_ms);
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
     }
 }
 
@@ -598,7 +609,7 @@ void statistical_analysis_scope::add_checkpoint(const std::string& label)
     // Add timing sample for this checkpoint
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(checkpoint_time - start_time_);
-    double const duration_ms = duration.count() / 1000.0;
+    double const duration_ms = static_cast<double>(duration.count()) / 1000.0;
     analyzer_.add_timing_sample(name_ + "_" + label, duration_ms);
 }
 
@@ -616,7 +627,7 @@ profiler::statistical_metrics statistical_analysis_scope::get_checkpoint_stats()
     {
         auto duration =
             std::chrono::duration_cast<std::chrono::microseconds>(checkpoint.second - start_time_);
-        double const duration_ms = duration.count() / 1000.0;
+        double const duration_ms = static_cast<double>(duration.count()) / 1000.0;
         checkpoint_times.push_back(duration_ms);
     }
 

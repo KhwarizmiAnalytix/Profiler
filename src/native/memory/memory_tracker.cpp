@@ -61,9 +61,16 @@ memory_tracker::memory_tracker() = default;
 
 memory_tracker::~memory_tracker()
 {
-    if (tracking_.load())
+    if (!tracking_.load())
+    {
+        return;
+    }
+    try
     {
         stop_tracking();
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
     }
 }
 
@@ -395,9 +402,16 @@ memory_tracking_scope::memory_tracking_scope(profiler::memory_tracker& tracker, 
 
 memory_tracking_scope::~memory_tracking_scope()
 {
-    if (active_)
+    if (!active_)
+    {
+        return;
+    }
+    try
     {
         tracker_.take_snapshot("end_" + label_);
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
     }
 }
 

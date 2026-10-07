@@ -79,7 +79,7 @@ std::unique_ptr<profiler_interface> CreatePythonTracer(const profile_options& pr
     return std::make_unique<python_tracer_stub>(requested_level);
 }
 
-auto register_python_tracer_factory = []
+const int register_python_tracer_factory = []() noexcept
 {
     register_profiler_factory(&CreatePythonTracer);
     return 0;

@@ -46,11 +46,11 @@ namespace
 std::unique_ptr<profiler_interface> CreateHostTracer(const profile_options& profile_options)
 {
     host_tracer_options options;
-    options.trace_level = profile_options.host_tracer_level();
+    options.trace_level = static_cast<int>(profile_options.host_tracer_level());
     return create_host_tracer(options);
 }
 
-auto register_host_tracer_factory = []
+const int register_host_tracer_factory = []() noexcept
 {
     register_profiler_factory(&CreateHostTracer);
     return 0;

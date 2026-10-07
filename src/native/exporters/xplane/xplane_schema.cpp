@@ -34,6 +34,7 @@ limitations under the License.
 #include "native/exporters/xplane/xplane_schema.h"
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -91,7 +92,7 @@ template <typename ReverseM, typename M> ReverseM ReverseMap(const M& m)
 // Returns a pointer to the const value associated with the given key if it
 // exists, or NULL otherwise.
 template <class Collection>
-const typename Collection::value_type::second_type* FindOrNull(
+const Collection::value_type::second_type* FindOrNull(
     const Collection& collection, const typename Collection::value_type::first_type& key)
 {
     auto const it = collection.find(key);
@@ -632,34 +633,53 @@ bool IsInternalStat(std::optional<int64_t> stat_type)
 // const std::string_view kMegaScaleReductionFinished     = "MegaScale: Reduction Finished";
 // const std::string_view kMegaScaleCompressionStart      = "MegaScale: Compression";
 // const std::string_view kMegaScaleCompressionFinished   = "MegaScale: Compression Finished";
-const std::string_view kMegaScaleDcnReceive        = "MegaScale: DCN Receive";
-const std::string_view kMegaScaleDcnSend           = "MegaScale: DCN Send";
-const std::string_view kMegaScaleDcnSendFinished   = "MegaScale: DCN Send Finished";
-const std::string_view kMegaScaleDcnMemAllocate    = "MegaScale: DCN Memory Allocate";
-const std::string_view kMegaScaleDcnMemCopy        = "MegaScale: DCN Memory Copy";
-const std::string_view kMegaScaleTopologyDiscovery = "MegaScale: Topology Discovery";
-const std::string_view kMegaScaleBarrier           = "MegaScale: Barrier";
-const std::string_view kMegaScaleHostCommand       = "MegaScale: Host Command";
-const std::string_view kMegaScaleD2HTransferStart  = "MegaScale: device_option to Host Transfer";
+namespace
+{
+// Call the pointer+length constructor directly. It is non-throwing on libc++,
+// libstdc++, and the MSVC STL. The const-char* constructor is not, and braced
+// initialization can select a different overload on MSVC.
+template <std::size_t N> constexpr std::string_view string_literal(const char (&text)[N]) noexcept
+{
+    return std::string_view(text, N - 1);
+}
+}  // namespace
+
+const std::string_view kMegaScaleDcnReceive      = string_literal("MegaScale: DCN Receive");
+const std::string_view kMegaScaleDcnSend         = string_literal("MegaScale: DCN Send");
+const std::string_view kMegaScaleDcnSendFinished = string_literal("MegaScale: DCN Send Finished");
+const std::string_view kMegaScaleDcnMemAllocate  = string_literal("MegaScale: DCN Memory Allocate");
+const std::string_view kMegaScaleDcnMemCopy      = string_literal("MegaScale: DCN Memory Copy");
+const std::string_view kMegaScaleTopologyDiscovery =
+    string_literal("MegaScale: Topology Discovery");
+const std::string_view kMegaScaleBarrier     = string_literal("MegaScale: Barrier");
+const std::string_view kMegaScaleHostCommand = string_literal("MegaScale: Host Command");
+const std::string_view kMegaScaleD2HTransferStart =
+    string_literal("MegaScale: device_option to Host Transfer");
 const std::string_view kMegaScaleD2HTransferFinished =
-    "MegaScale: device_option to Host Transfer Finished";
-const std::string_view kMegaScaleH2DTransferStart = "MegaScale: Host to device_option Transfer";
+    string_literal("MegaScale: device_option to Host Transfer Finished");
+const std::string_view kMegaScaleH2DTransferStart =
+    string_literal("MegaScale: Host to device_option Transfer");
 const std::string_view kMegaScaleH2DTransferFinished =
-    "MegaScale: Host to device_option Transfer Finished";
-const std::string_view kMegaScaleReductionStart        = "MegaScale: Reduction";
-const std::string_view kMegaScaleReductionFinished     = "MegaScale: Reduction Finished";
-const std::string_view kMegaScaleCompressionStart      = "MegaScale: Compression";
-const std::string_view kMegaScaleCompressionFinished   = "MegaScale: Compression Finished";
-const std::string_view kMegaScaleDecompressionStart    = "MegaScale: Decompression";
-const std::string_view kMegaScaleDecompressionFinished = "MegaScale: Decompression Finished";
-const char             kXProfMetadataKey[]             = "key";
-const char             kXProfMetadataFlow[]            = "flow";
-const char             kXProfMetadataTransfers[]       = "transfers";
-const char             kXProfMetadataBufferSize[]      = "buffer_size";
+    string_literal("MegaScale: Host to device_option Transfer Finished");
+const std::string_view kMegaScaleReductionStart = string_literal("MegaScale: Reduction");
+const std::string_view kMegaScaleReductionFinished =
+    string_literal("MegaScale: Reduction Finished");
+const std::string_view kMegaScaleCompressionStart = string_literal("MegaScale: Compression");
+const std::string_view kMegaScaleCompressionFinished =
+    string_literal("MegaScale: Compression Finished");
+const std::string_view kMegaScaleDecompressionStart = string_literal("MegaScale: Decompression");
+const std::string_view kMegaScaleDecompressionFinished =
+    string_literal("MegaScale: Decompression Finished");
+const char kXProfMetadataKey[]        = "key";
+const char kXProfMetadataFlow[]       = "flow";
+const char kXProfMetadataTransfers[]  = "transfers";
+const char kXProfMetadataBufferSize[] = "buffer_size";
 
 // String constants for threadpool_listener.
-const std::string_view kThreadpoolListenerRecord      = "ThreadpoolListener::Record";
-const std::string_view kThreadpoolListenerStartRegion = "ThreadpoolListener::StartRegion";
-const std::string_view kThreadpoolListenerStopRegion  = "ThreadpoolListener::StopRegion";
-const std::string_view kThreadpoolListenerRegion      = "ThreadpoolListener::Region";
+const std::string_view kThreadpoolListenerRecord = string_literal("ThreadpoolListener::Record");
+const std::string_view kThreadpoolListenerStartRegion =
+    string_literal("ThreadpoolListener::StartRegion");
+const std::string_view kThreadpoolListenerStopRegion =
+    string_literal("ThreadpoolListener::StopRegion");
+const std::string_view kThreadpoolListenerRegion = string_literal("ThreadpoolListener::Region");
 }  // namespace profiler

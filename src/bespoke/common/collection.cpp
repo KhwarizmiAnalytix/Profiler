@@ -158,7 +158,7 @@ template <typename T> struct StealOrDefault
     StealOrDefault& operator=(StealOrDefault&&)      = delete;
     ~StealOrDefault() { container_.get().clear(); }
 
-    typename T::Iterator::value_type operator()()
+    T::Iterator::value_type operator()()
     {
         if (it_.exhausted())
         {
@@ -171,7 +171,7 @@ template <typename T> struct StealOrDefault
     }
 
     std::reference_wrapper<T> container_;
-    typename T::Iterator      it_;
+    T::Iterator               it_;
 };
 }  // namespace
 
@@ -750,14 +750,14 @@ private:
             noTID,  // Placeholder
             device_and_resource,
             ExtraFields<EventType::Kineto>{activity->name(),
-                    activity->duration(),
-                    static_cast<uint64_t>(activity->correlationId()),
-                    activity->type(),
-                    {/*id=*/static_cast<uint32_t>(activity->flowId()),
+                activity->duration(),
+                static_cast<uint64_t>(activity->correlationId()),
+                activity->type(),
+                {/*id=*/static_cast<uint32_t>(activity->flowId()),
                     /*type=*/static_cast<uint32_t>(activity->flowType()),
                     /*start=*/static_cast<uint32_t>(activity->flowStart())},
-                    {},
-                    {}});
+                {},
+                {}});
         event->hidden_ = isHiddenEvent(activity);
         // NB: It's tempting to set `event->kineto_activity_`; however we can only
         // guarantee that the events we passed to Kineto are of type
@@ -1016,7 +1016,7 @@ void build_tree(std::vector<std::shared_ptr<Result>>& sorted_events)
         }
     };
 
-    auto pop_event = [&stacks](std::shared_ptr<Result> event)
+    auto pop_event = [&stacks](const std::shared_ptr<Result>& event)
     {
         if (event->finished_)
         {

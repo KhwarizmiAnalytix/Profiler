@@ -18,6 +18,7 @@
 
 #include "bespoke/kineto/kineto_shim.h"
 
+#include <array>
 #include <sstream>
 #include <type_traits>
 
@@ -44,7 +45,7 @@ namespace profiler_impl::impl::kineto
 #if PROFILER_HAS_KINETO
 namespace
 {
-const std::set<libkineto::ActivityType> kCpuTypes{
+constexpr std::array<libkineto::ActivityType, 9> kCpuTypes{
     libkineto::ActivityType::CPU_OP,
     libkineto::ActivityType::CPU_INSTANT_EVENT,
     libkineto::ActivityType::USER_ANNOTATION,
@@ -56,7 +57,7 @@ const std::set<libkineto::ActivityType> kCpuTypes{
     libkineto::ActivityType::PRIVATEUSE1_DRIVER,
 };
 
-const std::set<libkineto::ActivityType> kCudaTypes = {
+constexpr std::array<libkineto::ActivityType, 7> kCudaTypes{
     libkineto::ActivityType::GPU_MEMCPY,
     libkineto::ActivityType::GPU_MEMSET,
     libkineto::ActivityType::GPU_USER_ANNOTATION,
@@ -66,7 +67,7 @@ const std::set<libkineto::ActivityType> kCudaTypes = {
     libkineto::ActivityType::CUDA_DRIVER,
     libkineto::ActivityType::OVERHEAD,
 };
-const std::set<libkineto::ActivityType> kPrivateUse1Types = {
+constexpr std::array<libkineto::ActivityType, 6> kPrivateUse1Types{
     libkineto::ActivityType::GPU_MEMCPY,
     libkineto::ActivityType::GPU_MEMSET,
     libkineto::ActivityType::GPU_USER_ANNOTATION,
@@ -250,7 +251,6 @@ public:
 
     void prepareTraceWithExperimentalOptions(std::set<libkineto::ActivityType>&& enabled_activities)
     {
-#if PROFILER_HAS_KINETO
         std::set<libkineto::ActivityType> k_activities = std::move(enabled_activities);
         k_activities.insert(libkineto::ActivityType::CUDA_PROFILER_RANGE);
 
@@ -279,9 +279,6 @@ public:
         configss << "CUSTOM_CONFIG=" << config_.custom_profiler_config << "\n";
 
         libkineto::api().activityProfiler().prepareTrace(k_activities, configss.str());
-#else
-        (void)enabled_activities;
-#endif  // PROFILER_HAS_KINETO
     }
 
 private:
@@ -507,7 +504,6 @@ profiler::device_enum deviceTypeFromActivity(
     case libkineto::ActivityType::PRIVATEUSE1_RUNTIME:
     case libkineto::ActivityType::PRIVATEUSE1_DRIVER:
     case libkineto::ActivityType::OVERHEAD:
-        return profiler::device_enum::CPU;
     default:
         return profiler::device_enum::CPU;
     }

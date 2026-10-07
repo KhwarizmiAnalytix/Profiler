@@ -72,7 +72,7 @@ public:
     void register_factory(profiler_factory factory)
     {
         std::scoped_lock const lock(mutex_);
-        factories_.push_back(std::move(factory));
+        factories_.push_back(factory);
     }
 
     /**
@@ -121,9 +121,15 @@ private:
 
 }  // namespace
 
-void register_profiler_factory(profiler_factory factory)
+void register_profiler_factory(profiler_factory factory) noexcept
 {
-    factory_registry::instance().register_factory(std::move(factory));
+    try
+    {
+        factory_registry::instance().register_factory(factory);
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- static init must not throw
+    {
+    }
 }
 
 std::vector<std::unique_ptr<profiler_interface>> create_profilers(const profile_options& options)

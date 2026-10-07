@@ -23,6 +23,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <mutex>
 #include <random>
@@ -419,6 +421,18 @@ int CacheEntry::sampleTries(double p) const
 // ============================================================================
 // == LocalCallbackManager: Implementation ====================================
 // ============================================================================
+
+// mt19937's default seed is predictable. std::random_device throws on some
+// MinGW libstdc++ builds and when the OS entropy source cannot be opened, so
+// mix a clock reading instead. steady_clock is available on Linux, macOS, and
+// Windows and this is not the engine's default seed.
+std::mt19937::result_type sampler_seed() noexcept
+{
+    const auto ticks =
+        static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    return static_cast<std::mt19937::result_type>(ticks ^ (ticks >> 32) ^ 0x9E3779B9u);
+}
+
 LocalCallbackManager& LocalCallbackManager::get()
 {
 #ifdef PROFILER_PREFER_CUSTOM_THREAD_LOCAL_STORAGE
@@ -430,7 +444,7 @@ LocalCallbackManager& LocalCallbackManager::get()
 #endif  // defined(PROFILER_PREFER_CUSTOM_THREAD_LOCAL_STORAGE)
 }
 
-LocalCallbackManager::LocalCallbackManager()
+LocalCallbackManager::LocalCallbackManager() : generator_(sampler_seed())
 {
     for (auto i : profiler::irange(NumRecordScopes))
     {

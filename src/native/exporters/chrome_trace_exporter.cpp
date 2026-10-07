@@ -151,7 +151,7 @@ std::string export_to_chrome_trace_json(const x_space& space, bool pretty_print)
         // Iterate through all lines (threads) in the plane
         for (size_t line_idx = 0; line_idx < plane.lines_size(); ++line_idx)
         {
-            const auto&   line = plane.lines(line_idx);
+            const auto&   line = plane.lines(static_cast<int>(line_idx));
             int64_t const tid  = line.id() > 0 ? line.id() : static_cast<int64_t>(line_idx + 1);
 
             // Add thread name metadata event

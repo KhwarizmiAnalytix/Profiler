@@ -110,8 +110,7 @@ profiler::profiler_options to_profiler_options(const profiler::session_options& 
 
 profiler_session::profiler_session() : profiler_session(profiler::profiler_options{}) {}
 
-profiler_session::profiler_session(profiler::profiler_options options)
-    : options_(std::move(options))
+profiler_session::profiler_session(profiler::profiler_options options) : options_(options)
 {
     initialize_components();
 }
@@ -123,11 +122,23 @@ profiler_session::profiler_session(const profiler::session_options& options)
 
 profiler_session::~profiler_session()
 {
-    if (active_.load())
+    try
     {
-        stop();
+        if (active_.load())
+        {
+            stop();
+        }
     }
-    cleanup_components();
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
+    }
+    try
+    {
+        cleanup_components();
+    }
+    catch (...)  // NOLINT(bugprone-empty-catch) -- destructor must not throw
+    {
+    }
 }
 
 bool profiler_session::start()
@@ -512,7 +523,8 @@ void profiler_scope::stop()
     // Preserve sub-microsecond precision through to this ms value rather than
     // truncating to a whole microsecond first (design-review.md finding 10).
     double const duration_ms =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time_).count() /
+        static_cast<double>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time_).count()) /
         1000000.0;
 
     // session_ is guaranteed non-null here due to the early-return check above

@@ -199,8 +199,8 @@ xevent_builder xline_builder::add_event(const timespan& timespan, const xevent_m
     xevent* event = line_->add_events();
     event->set_metadata_id(metadata.id());
     xevent_builder builder(line_, plane_, event);
-    builder.SetOffsetPs(timespan.begin_ps());
-    builder.SetDurationPs(timespan.duration_ps());
+    builder.SetOffsetPs(static_cast<int64_t>(timespan.begin_ps()));
+    builder.SetDurationPs(static_cast<int64_t>(timespan.duration_ps()));
     return builder;
 }
 

@@ -57,6 +57,12 @@ namespace profiler
 {
 namespace
 {
+// Parentheses keep the Windows max macro from consuming this call.
+template <typename T> constexpr T numeric_max() noexcept
+{
+    return (std::numeric_limits<T>::max)();  // NOLINT(readability-redundant-parentheses)
+}
+
 bool StartsWith(std::string_view str, std::string_view prefix)
 {
 #if __cplusplus >= 202002L
@@ -367,7 +373,7 @@ void NormalizeTimestamps(xplane* plane, uint64_t start_time_ns)
     {
         if (line.timestamp_ns() >= static_cast<int64_t>(start_time_ns))
         {
-            line.set_timestamp_ns(line.timestamp_ns() - start_time_ns);
+            line.set_timestamp_ns(line.timestamp_ns() - static_cast<int64_t>(start_time_ns));
         }
     }
 }
@@ -648,7 +654,7 @@ std::optional<xevent_visitor> XEventContextTracker::GetContainingEvent(const tim
             return current_event;
         }
     }
-    for (int i = current_index_ + 1; i < static_cast<int>(line_->events_size()); ++i)
+    for (int64_t i = current_index_ + 1; i < static_cast<int64_t>(line_->events_size()); ++i)
     {
         xevent_visitor current_event(plane_, line_, &line_->events(i));
         if (static_cast<uint64_t>(current_event.timestamp_ps()) > event.end_ps())
@@ -683,7 +689,7 @@ std::optional<xevent_visitor> XEventContextTracker::GetOverlappingEvent(const ti
             return current_event;
         }
     }
-    for (int i = current_index_ + 1; i < static_cast<int>(line_->events_size()); ++i)
+    for (int64_t i = current_index_ + 1; i < static_cast<int64_t>(line_->events_size()); ++i)
     {
         xevent_visitor current_event(plane_, line_, &line_->events(i));
         if (static_cast<uint64_t>(current_event.timestamp_ps()) > event.end_ps())
@@ -756,12 +762,14 @@ void AggregateXPlane(const xplane& full_trace, xplane& aggregated_trace)
                             ? last_op_end_ps
                             : timespan.end_ps();
                     const auto&   group_stat = event.get_stat(StatType::kGroupId);
-                    int64_t const group_id   = group_stat.has_value()
-                                                   ? group_stat->int_or_uint_value()
-                                                   : std::numeric_limits<uint64_t>::max();
+                    int64_t const group_id =
+                        group_stat.has_value()
+                            ? static_cast<int64_t>(group_stat->int_or_uint_value())
+                            : static_cast<int64_t>(numeric_max<uint64_t>());
 
                     StatByEvent& line_stats = stats[line.id()][group_id];
-                    line_stats[event.id()].stat.update_stat(timespan.duration_ps());
+                    line_stats[event.id()].stat.update_stat(
+                        static_cast<int64_t>(timespan.duration_ps()));
                     // PROFILER_CHECK_DEBUG(                                       //NOLINT
                     // event_stack.empty() || !(event < event_stack.back()));  //NOLINT
                     while (!event_stack.empty() &&
@@ -772,9 +780,9 @@ void AggregateXPlane(const xplane& full_trace, xplane& aggregated_trace)
                     if (!event_stack.empty())
                     {
                         line_stats[event_stack.back().id()].children_duration +=
-                            timespan.duration_ps();
+                            static_cast<int64_t>(timespan.duration_ps());
                     }
-                    event_stack.push_back(std::move(event));
+                    event_stack.push_back(event);
                 });
         });
 

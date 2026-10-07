@@ -19,6 +19,7 @@
 #include "bespoke/kineto/hotspot_report.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <iomanip>
 #include <numeric>
 #include <sstream>
@@ -33,7 +34,7 @@ namespace profiler::profiler_impl
 namespace
 {
 
-enum class time_domain
+enum class time_domain : std::uint8_t
 {
     cpu,
     cuda,

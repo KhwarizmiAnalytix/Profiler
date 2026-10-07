@@ -228,7 +228,7 @@ std::string profiler_report::build_xspace_stats_summary() const
                             event.get_stat(static_cast<int64_t>(StatType::kRequestedBytes));
                         bytes.has_value())
                     {
-                        mem_used = bytes->int_or_uint_value();
+                        mem_used = static_cast<int64_t>(bytes->int_or_uint_value());
                     }
                     else
                     {
@@ -306,7 +306,8 @@ std::string profiler_report::generate_json_report() const
     {
         auto const duration_ns =
             std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        ss << "    \"duration_ms\": " << format_double(duration_ns / 1'000'000.0) << "\n";
+        ss << "    \"duration_ms\": "
+           << format_double(static_cast<double>(duration_ns) / 1'000'000.0) << "\n";
     }
     else
     {
@@ -549,11 +550,11 @@ std::string profiler_report::format_memory_size(size_t bytes) const
 {
     if (memory_unit_ == "MB")
     {
-        return format_double(bytes / (1024.0 * 1024.0)) + " MB";
+        return format_double(static_cast<double>(bytes) / (1024.0 * 1024.0)) + " MB";
     }
     if (memory_unit_ == "KB")
     {
-        return format_double(bytes / 1024.0) + " KB";
+        return format_double(static_cast<double>(bytes) / 1024.0) + " KB";
     }
     return format_double(static_cast<double>(bytes)) + " bytes";
 }

@@ -50,7 +50,7 @@ std::unique_ptr<profiler_interface> CreateGpuTracer(const profile_options& optio
     return create_gpu_tracer(options);
 }
 
-auto register_gpu_tracer_factory = []
+const int register_gpu_tracer_factory = []() noexcept
 {
     register_profiler_factory(&CreateGpuTracer);
     return 0;

@@ -149,9 +149,9 @@ void convert_complete_events_to_xplane(
 
     for (auto& thread : events)
     {
-        xline_builder xline = xplane.get_or_create_line(thread.thread.tid);
+        xline_builder xline = xplane.get_or_create_line(static_cast<int64_t>(thread.thread.tid));
         xline.SetName(thread.thread.name);
-        xline.SetTimestampNs(start_timestamp_ns);
+        xline.SetTimestampNs(static_cast<int64_t>(start_timestamp_ns));
         xline.ReserveEvents(thread.events.size());
 
         while (!thread.events.empty())
