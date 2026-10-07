@@ -1137,7 +1137,7 @@ int64_t adjust_timestamps_dfs(std::shared_ptr<Result>& r, int64_t new_start_time
         int64_t const children_total_duration = std::accumulate(r->children_.begin(),
             r->children_.end(),
             int64_t{0},
-            [](int64_t acc, std::shared_ptr<Result>& child)
+            [](int64_t acc, const std::shared_ptr<Result>& child)
             { return acc + (child->endTimeNS() - child->start_time_ns_); });
 
         int64_t child_start_time = r->endTimeNS() - children_total_duration;
@@ -1190,7 +1190,8 @@ RecordQueue::getRecords(std::function<profiler::time_t(profiler::approx_time_t)>
 
     // Lambda that checks that only the right side of the base intersects with
     // ev_start and ev_end
-    auto right_intersection_only = [&](ProfilerStepInfo base, int64_t ev_start, int64_t ev_end)
+    auto right_intersection_only =
+        [&](const ProfilerStepInfo& base, int64_t ev_start, int64_t ev_end)
     {
         return (base.start_time_ns < ev_start) &&
                (base.end_time_ns <= ev_end && base.end_time_ns > ev_start);

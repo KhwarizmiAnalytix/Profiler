@@ -1,0 +1,3 @@
+// Profiler is a library. cppcheck scans src/ only, so functions used from
+// tests, examples, benchmarks, and downstream projects are reported unused.
+unusedFunction

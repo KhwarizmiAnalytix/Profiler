@@ -343,7 +343,9 @@ public:
      * **Behavior**: If this object has an active trace, it's stopped before
      * taking ownership of the other object's trace.
      */
-    traceme& operator=(traceme&& other) noexcept
+    // start_time_ is left unchanged when other is inactive, so a move from an
+    // empty traceme does not drop a trace that is already running here.
+    traceme& operator=(traceme&& other) noexcept  // cppcheck-suppress operatorEqVarError
     {
 #if !defined(IS_MOBILE_PLATFORM)
         if PROFILER_UNLIKELY (other.start_time_ != kUntracedActivity)

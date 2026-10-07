@@ -134,7 +134,10 @@ class SmallVectorTemplateCommon : public SmallVectorBase<SmallVectorSizeType<T>>
     // Space after 'FirstEl' is clobbered, do not add any instance vars after it.
 
 protected:
-    SmallVectorTemplateCommon(size_t Size) : Base(SmallVectorTemplateCommon::getFirstEl(), Size) {}
+    explicit SmallVectorTemplateCommon(size_t Size)
+        : Base(SmallVectorTemplateCommon::getFirstEl(), Size)
+    {
+    }
 
     void grow_pod(size_t MinSize, size_t TSize)
     {
@@ -371,9 +374,9 @@ protected:
     static constexpr bool TakesParamByValue = false;
     using ValueParamT                       = const T&;
 
-    SmallVectorTemplateBase(size_t Size) : SmallVectorTemplateCommon<T>(Size) {}
+    explicit SmallVectorTemplateBase(size_t Size) : SmallVectorTemplateCommon<T>(Size) {}
 
-    static void destroy_range(T* S, T* E)
+    static void destroy_range(const T* S, T* E)
     {
         while (S != E)
         {
@@ -425,7 +428,10 @@ protected:
 
     /// Reserve enough space to add one element, and return the updated element
     /// pointer in case it was a reference to the storage.
-    T* reserveForParamAndGetAddress(T& Elt, size_t N = 1)
+    // T& selects this overload so the returned pointer is mutable. It cannot
+    // be const T& without colliding with the const overload above.
+    T* reserveForParamAndGetAddress(
+        T& Elt, size_t N = 1)  // cppcheck-suppress constParameterReference
     {
         return const_cast<T*>(this->reserveForParamAndGetAddressImpl(this, Elt, N));
     }
@@ -449,7 +455,7 @@ protected:
         // Grow manually in case one of Args is an internal reference.
         size_t NewCapacity = 0;
         T*     NewElts     = malloc_for_grow(0, NewCapacity);
-        ::new ((void*)(NewElts + this->size())) T(std::forward<ArgTypes>(Args)...);
+        ::new (static_cast<void*>(NewElts + this->size())) T(std::forward<ArgTypes>(Args)...);
         moveElementsForGrow(NewElts);
         takeAllocationForGrow(NewElts, NewCapacity);
         this->set_size(this->size() + 1);
@@ -460,7 +466,7 @@ public:
     void push_back(const T& Elt)
     {
         const T* EltPtr = reserveForParamAndGetAddress(Elt);
-        ::new ((void*)this->end()) T(*EltPtr);
+        ::new (static_cast<void*>(this->end())) T(*EltPtr);
         this->set_size(this->size() + 1);
     }
 
@@ -468,7 +474,7 @@ public:
     void push_back(T&& Elt)
     {
         T* EltPtr = reserveForParamAndGetAddress(Elt);
-        ::new ((void*)this->end()) T(::std::move(*EltPtr));
+        ::new (static_cast<void*>(this->end())) T(::std::move(*EltPtr));
         this->set_size(this->size() + 1);
     }
 
@@ -530,7 +536,7 @@ protected:
     /// parameters by value.
     using ValueParamT = std::conditional_t<TakesParamByValue, T, const T&>;
 
-    SmallVectorTemplateBase(size_t Size) : SmallVectorTemplateCommon<T>(Size) {}
+    explicit SmallVectorTemplateBase(size_t Size) : SmallVectorTemplateCommon<T>(Size) {}
 
     // No need to do a destroy loop for POD's.
     static void destroy_range(T* /*unused*/, T* /*unused*/) {}
@@ -581,7 +587,10 @@ protected:
 
     /// Reserve enough space to add one element, and return the updated element
     /// pointer in case it was a reference to the storage.
-    T* reserveForParamAndGetAddress(T& Elt, size_t N = 1)
+    // T& selects this overload so the returned pointer is mutable. It cannot
+    // be const T& without colliding with the const overload above.
+    T* reserveForParamAndGetAddress(
+        T& Elt, size_t N = 1)  // cppcheck-suppress constParameterReference
     {
         return const_cast<T*>(this->reserveForParamAndGetAddressImpl(this, Elt, N));
     }
@@ -667,9 +676,9 @@ private:
             this->reserve(N);
             for (auto I = this->end(), E = this->begin() + N; I != E; ++I)
                 if (ForOverwrite)
-                    new (&*I) T;
+                    new (static_cast<void*>(I)) T;
                 else
-                    new (&*I) T();
+                    new (static_cast<void*>(I)) T();
             this->set_size(N);
         }
     }
@@ -828,7 +837,7 @@ private:
         std::remove_reference_t<ArgType>* EltPtr = this->reserveForParamAndGetAddress(Elt);
         I                                        = this->begin() + Index;
 
-        ::new ((void*)this->end()) T(::std::move(this->back()));
+        ::new (static_cast<void*>(this->end())) T(::std::move(this->back()));
         // Push everything else over.
         std::move_backward(I, this->end() - 1, this->end());
         this->set_size(this->size() + 1);
@@ -993,7 +1002,7 @@ public:
         if PROFILER_UNLIKELY (this->size() >= this->capacity())
             return this->growAndEmplaceBack(std::forward<ArgTypes>(Args)...);
 
-        ::new ((void*)this->end()) T(std::forward<ArgTypes>(Args)...);
+        ::new (static_cast<void*>(this->end())) T(std::forward<ArgTypes>(Args)...);
         this->set_size(this->size() + 1);
         return this->back();
     }
@@ -1349,7 +1358,7 @@ public:
         return *this;
     }
 
-    small_vector(SmallVectorImpl<T>&& RHS) noexcept(
+    explicit small_vector(SmallVectorImpl<T>&& RHS) noexcept(
         std::is_nothrow_move_assignable_v<SmallVectorImpl<T>>)
         : SmallVectorImpl<T>(N)
     {
@@ -1364,6 +1373,9 @@ public:
         return *this;
     }
 
+    // Restores move-assignment from the base. Other operator= overloads in this
+    // class would otherwise hide SmallVectorImpl::operator=.
+    // cppcheck-suppress duplInheritedMember
     small_vector& operator=(SmallVectorImpl<T>&& RHS) noexcept(
         std::is_nothrow_move_constructible_v<SmallVectorImpl<T>>)
     {

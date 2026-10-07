@@ -189,7 +189,7 @@ void ProfilerStateBase::removeCallback()
 
 bool profilerEnabled()
 {
-    auto* state_ptr = ProfilerStateBase::get(/*global=*/false);
+    const auto* state_ptr = ProfilerStateBase::get(/*global=*/false);
     return (state_ptr != nullptr) && !state_ptr->config().disabled();
 }
 
@@ -201,7 +201,7 @@ ActiveProfilerType profilerType()
 
 profiler::profiler_impl::impl::ProfilerConfig getProfilerConfig()
 {
-    auto* state_ptr = ProfilerStateBase::get(/*global=*/false);
+    const auto* state_ptr = ProfilerStateBase::get(/*global=*/false);
     // PROFILER_CHECK(state_ptr, "Tried to access profiler config, but profiler is not enabled!");
     return state_ptr->config();
 }

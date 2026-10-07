@@ -34,6 +34,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -112,10 +113,10 @@ std::vector<xevent_metadata*> xplane_builder::get_or_create_events_metadata(
 {
     std::vector<xevent_metadata*> metadata;
     metadata.reserve(names.size());
-    for (std::string_view const name : names)
-    {
-        metadata.push_back(get_or_create_event_metadata(name));
-    }
+    std::transform(names.begin(),
+        names.end(),
+        std::back_inserter(metadata),
+        [this](std::string_view name) { return get_or_create_event_metadata(name); });
     return metadata;
 }
 

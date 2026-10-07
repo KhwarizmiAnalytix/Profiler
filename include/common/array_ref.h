@@ -92,8 +92,7 @@ public:
     /* implicit */ constexpr array_ref() : Data(nullptr), Length(0) {}
 
     /// Construct an array_ref from a single element.
-    // TODO Make this explicit
-    constexpr array_ref(const T& OneElt) : Data(&OneElt), Length(1) {}
+    explicit constexpr array_ref(const T& OneElt) : Data(&OneElt), Length(1) {}
 
     /// Construct an array_ref from a pointer and length.
     constexpr array_ref(const T* data, size_t length) : Data(data), Length(length)
@@ -111,6 +110,7 @@ public:
     /// avoid instantiating SmallVectorTemplateCommon<T> whenever we
     /// copy-construct an array_ref.
     template <typename U>
+    // cppcheck-suppress noExplicitConstructor
     /* implicit */ array_ref(const SmallVectorTemplateCommon<T, U>& Vec)
         : Data(Vec.data()), Length(Vec.size())
     {
@@ -120,7 +120,7 @@ public:
     template <typename Container,
         typename U = decltype(std::declval<Container>().data()),
         typename   = std::enable_if_t<(std::is_same_v<U, T*> || std::is_same_v<U, T const*>)>>
-    /* implicit */ array_ref(const Container& container)
+    /* implicit */ array_ref(const Container& container)  // cppcheck-suppress noExplicitConstructor
         : Data(container.data()), Length(container.size())
     {
         debugCheckNullptrInvariant();
@@ -131,6 +131,7 @@ public:
     // std::vector<bool>, because array_ref can't work on a std::vector<bool>
     // bitfield.
     template <typename A>
+    // cppcheck-suppress noExplicitConstructor
     /* implicit */ array_ref(const std::vector<T, A>& Vec) : Data(Vec.data()), Length(Vec.size())
     {
         static_assert(!std::is_same_v<T, bool>,
@@ -139,6 +140,7 @@ public:
 
     /// Construct an array_ref from a std::array
     template <size_t N>
+    // cppcheck-suppress noExplicitConstructor
     /* implicit */ constexpr array_ref(const std::array<T, N>& Arr) : Data(Arr.data()), Length(N)
     {
     }
@@ -146,12 +148,14 @@ public:
     /// Construct an array_ref from a C array.
     template <size_t N>
     // NOLINTNEXTLINE(*c-arrays*)
+    // cppcheck-suppress noExplicitConstructor
     /* implicit */ constexpr array_ref(const T (&Arr)[N]) : Data(Arr), Length(N)
     {
     }
 
     /// Construct an array_ref from a std::initializer_list.
-    /* implicit */ constexpr array_ref(const std::initializer_list<T>& Vec)
+    /* implicit */ constexpr array_ref(
+        const std::initializer_list<T>& Vec)  // cppcheck-suppress noExplicitConstructor
         : Data(std::begin(Vec) == std::end(Vec) ? static_cast<T*>(nullptr) : std::begin(Vec)),
           Length(Vec.size())
     {

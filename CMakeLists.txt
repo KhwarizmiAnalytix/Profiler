@@ -23,7 +23,12 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProfilerOptions)
 include(ProfilerDependencies)
-include(ProfilerCoverage)
+# Coverage gate — appends --coverage / -fprofile-instr-generate directory-wide (every target
+# configured afterward, library and tests alike, is instrumented), unlike the other per-target
+# cmake/Profiler*.cmake modules below.
+if(PROFILER_ENABLE_COVERAGE)
+    include(ProfilerCoverage)
+endif()
 include(ProfilerSanitizers)
 include(ProfilerLinking)
 include(ProfilerChecks)
@@ -246,9 +251,6 @@ if(PROFILER_NEEDS_FMT_HEADER_ONLY)
     target_compile_definitions(Profiler PRIVATE FMT_HEADER_ONLY=1)
 endif()
 
-if(PROFILER_ENABLE_COVERAGE)
-    profiler_enable_coverage(Profiler)
-endif()
 profiler_enable_sanitizer(Profiler)
 profiler_keep_static_registrations(Profiler)
 profiler_enable_checks(Profiler)

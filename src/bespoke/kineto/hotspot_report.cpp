@@ -19,6 +19,7 @@
 #include "bespoke/kineto/hotspot_report.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <iomanip>
 #include <numeric>
@@ -292,15 +293,15 @@ void render_tree(
 
 hotspot_report::hotspot_report(const ProfilerResult& result) : roots_(result.event_tree())
 {
-    std::unordered_map<std::string, hotspot_entry> hotspots;
+    std::unordered_map<std::string, hotspot_entry> entries_by_name;
     std::vector<std::string>                       path;
     for (const auto& root : roots_)
     {
-        accumulate(root, path, hotspots, call_stacks_);
+        accumulate(root, path, entries_by_name, call_stacks_);
     }
 
-    hotspots_.reserve(hotspots.size());
-    for (auto& [name, entry] : hotspots)
+    hotspots_.reserve(entries_by_name.size());
+    for (auto& [name, entry] : entries_by_name)
     {
         hotspots_.push_back(std::move(entry));
     }
@@ -368,12 +369,10 @@ std::string hotspot_report::table(const std::string& sort_by, size_t row_limit) 
     const bool show_xpu  = self_xpu_total > 0;
 
     constexpr size_t kNumericWidth = 12;
-    size_t           name_width    = 20;
-    name_width                     = std::max(name_width, std::string("Name").size());
-    for (size_t i = 0; i < shown; ++i)
-    {
-        name_width = std::max(name_width, rows[i].name.size());
-    }
+    const size_t     name_width    = std::accumulate(rows.begin(),
+        rows.begin() + static_cast<std::ptrdiff_t>(shown),
+        std::max(std::size_t{20}, std::string("Name").size()),
+        [](size_t width, const hotspot_entry& row) { return std::max(width, row.name.size()); });
 
     std::vector<std::string> headers{
         "Name", "Self CPU %", "Self CPU", "CPU total %", "CPU total", "CPU time avg"};

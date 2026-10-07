@@ -710,12 +710,12 @@ bool hasThreadLocalCallbacks()
     return anyEnabled(get_record_function_tls_().sorted_tls_callbacks_);
 }
 
-CallbackHandle addThreadLocalCallback(RecordFunctionCallback cb)
+CallbackHandle addThreadLocalCallback(const RecordFunctionCallback& cb)
 {
     return LocalCallbackManager::get().addCallback(cb);
 }
 
-CallbackHandle addGlobalCallback(RecordFunctionCallback cb)
+CallbackHandle addGlobalCallback(const RecordFunctionCallback& cb)
 {
     return GlobalCallbackManager::get().addCallback(cb);
 }

@@ -19,7 +19,9 @@
 #include "native/analysis/hotspot_report.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <iomanip>
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string_view>
@@ -235,15 +237,15 @@ hotspot_report::hotspot_report(std::shared_ptr<const profiler_scope_data> root)
         return;
     }
 
-    std::unordered_map<std::string, hotspot_entry> hotspots;
+    std::unordered_map<std::string, hotspot_entry> entries_by_name;
     std::vector<std::string>                       path;
-    accumulate(*root_, path, hotspots, call_stacks_);
+    accumulate(*root_, path, entries_by_name, call_stacks_);
 
-    hotspots_.reserve(hotspots.size());
-    for (auto& entry_pair : hotspots)
-    {
-        hotspots_.push_back(std::move(entry_pair.second));
-    }
+    hotspots_.reserve(entries_by_name.size());
+    std::transform(entries_by_name.begin(),
+        entries_by_name.end(),
+        std::back_inserter(hotspots_),
+        [](auto& entry_pair) { return std::move(entry_pair.second); });
     std::sort(hotspots_.begin(),
         hotspots_.end(),
         [](const hotspot_entry& a, const hotspot_entry& b)
@@ -261,13 +263,11 @@ std::string hotspot_report::top_down_tree() const
     uint64_t           root_total = 0;
     if (root_->name_ == kSyntheticRootName)
     {
-        for (const auto& child : root_->children_)
-        {
-            if (child != nullptr)
-            {
-                root_total += node_total_ns(*child);
-            }
-        }
+        root_total = std::accumulate(root_->children_.begin(),
+            root_->children_.end(),
+            uint64_t{0},
+            [](uint64_t sum, const auto& child)
+            { return child == nullptr ? sum : sum + node_total_ns(*child); });
         if (root_total == 0)
         {
             root_total = node_total_ns(*root_);
@@ -323,12 +323,10 @@ std::string hotspot_report::table(const std::string& sort_by, size_t row_limit) 
         [](uint64_t sum, const hotspot_entry& entry) { return sum + entry.self_time_ns; });
 
     constexpr size_t kNumericWidth = 12;
-    size_t           name_width    = 20;
-    name_width                     = std::max(name_width, std::string("Name").size());
-    for (size_t i = 0; i < shown; ++i)
-    {
-        name_width = std::max(name_width, rows[i].name.size());
-    }
+    const size_t     name_width    = std::accumulate(rows.begin(),
+        rows.begin() + static_cast<std::ptrdiff_t>(shown),
+        std::max(std::size_t{20}, std::string("Name").size()),
+        [](size_t width, const hotspot_entry& row) { return std::max(width, row.name.size()); });
 
     const std::vector<std::string> headers{
         "Name", "Self CPU %", "Self CPU", "CPU total %", "CPU total", "CPU time avg", "# of Calls"};

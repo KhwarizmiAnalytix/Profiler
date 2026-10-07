@@ -49,7 +49,7 @@ option(PROFILER_ENABLE_INSTALL "Install headers and CMake package" ${PROFILER_ST
 option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found" OFF)
 option(PROFILER_REQUIRE_NVTX "Fail configure if NVTX is missing" OFF)
 option(PROFILER_REQUIRE_HIP "Fail configure if HIP was requested but not found" OFF)
-option(PROFILER_ENABLE_COVERAGE "Instrument the Profiler library with --coverage (GCC/Clang)" OFF)
+option(PROFILER_ENABLE_COVERAGE "Instrument this directory scope with coverage flags (GCC/Clang/MSVC)" OFF)
 option(PROFILER_ENABLE_CLANG_TIDY "Run clang-tidy on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_CPPCHECK "Run cppcheck on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_IWYU "Run include-what-you-use on Profiler sources during compilation" OFF)

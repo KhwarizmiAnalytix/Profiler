@@ -40,16 +40,16 @@ namespace utils
  */
 inline std::string str_error(int err_num)
 {
-    char buffer[256];
-
 #if defined(__GLIBC__) && defined(_GNU_SOURCE)
     // GNU version of strerror_r returns char*
+    char  buffer[256];
     char* result = strerror_r(err_num, buffer, sizeof(buffer));
     return std::string(result);
 #elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) ||                        \
     (defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 200112L)
     // POSIX version of strerror_r returns int
-    int result = strerror_r(err_num, buffer, sizeof(buffer));
+    char buffer[256];
+    int  result = strerror_r(err_num, buffer, sizeof(buffer));
     if (result == 0)
     {
         return std::string(buffer);
@@ -60,6 +60,7 @@ inline std::string str_error(int err_num)
     }
 #elif defined(_WIN32)
     // Windows version uses strerror_s
+    char buffer[256];
     if (strerror_s(buffer, sizeof(buffer), err_num) == 0)
     {
         return std::string(buffer);

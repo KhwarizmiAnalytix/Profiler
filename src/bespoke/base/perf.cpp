@@ -149,7 +149,7 @@ uint64_t PerfEvent::ReadCounter() const  // NOLINT
  * ------------
  */
 
-void PerfProfiler::Configure(std::vector<std::string>& event_names)
+void PerfProfiler::Configure(const std::vector<std::string>& event_names)
 {
     // PROFILER_CHECK(
     // event_names.size() <= MAX_EVENTS,
@@ -198,7 +198,7 @@ void PerfProfiler::Disable(perf_counters_t& vals)
 
     /* Always connecting this disable event to the last enable event i.e. using
      * whatever is on the top of the start counter value stack. */
-    perf_counters_t& sv = start_values_.top();
+    const perf_counters_t& sv = start_values_.top();
     for (unsigned i = 0; i < events_.size(); ++i)
     {
         vals[i] = CalcDelta(sv[i], events_[i].ReadCounter());

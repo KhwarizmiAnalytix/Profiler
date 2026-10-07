@@ -223,7 +223,8 @@ struct KinetoThreadLocalState : public ProfilerStateBase
     }
     ~KinetoThreadLocalState() override = default;
 
-    static KinetoThreadLocalState* get(bool global)
+    // Narrows ProfilerStateBase::get to the kineto thread-local state.
+    static KinetoThreadLocalState* get(bool global)  // cppcheck-suppress duplInheritedMember
     {
         auto* state = ProfilerStateBase::get(/*global=*/global);
         // PROFILER_CHECK_DEBUG(

@@ -78,8 +78,9 @@ class type : public modifier<M, type<T, Tag, M...>>...
 {
 public:
     template <typename TT = T, typename = std::enable_if_t<std::is_trivially_constructible<TT>{}>>
-    explicit type(uninitialized_t /*unused*/) noexcept
+    explicit type(uninitialized_t /*unused*/) noexcept  // cppcheck-suppress uninitMemberVar
     {
+        // val is deliberately left uninitialized.
     }
     template <typename type_ = type,
         bool                 = impl::supports_default_construction(static_cast<type_*>(nullptr))>
@@ -786,7 +787,8 @@ public:
     [[nodiscard]]
     constexpr decltype(&(*std::declval<const T&>())) operator->() const
     {
-        return &operator*();
+        // operator* returns a reference to the stored value, not a temporary.
+        return &operator*();  // cppcheck-suppress returnDanglingLifetime
     }
 };
 

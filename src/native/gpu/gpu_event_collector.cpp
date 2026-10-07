@@ -189,8 +189,8 @@ bool gpu_trace_collector::export_xspace(x_space* space,
                 xevent_builder::NanoToPico(static_cast<int64_t>(event->start_time_ns));
             const uint64_t end_ps =
                 xevent_builder::NanoToPico(static_cast<int64_t>(event->end_time_ns));
-            xevent_metadata* metadata = builder.get_or_create_event_metadata(event_name);
-            xevent_builder   xevent =
+            const xevent_metadata* metadata = builder.get_or_create_event_metadata(event_name);
+            xevent_builder         xevent =
                 line.add_event(timespan::from_end_points(begin_ps, end_ps), *metadata);
             xevent.add_stat_value(stream_meta, static_cast<int64_t>(event->stream_id));
             if (event->type == gpu_tracer_event_type::kernel)

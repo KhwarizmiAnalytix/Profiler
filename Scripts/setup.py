@@ -890,120 +890,26 @@ class ProfilerConfiguration:
     def coverage(self, source_path, build_path):
         if self.__value["build"] != "build" or not self.__profiler_flags.is_coverage():
             return 0
-        print_status(
-            "Starting code coverage collection and report generation...", "INFO"
-        )
+        print_status("Starting code coverage collection and report generation...", "INFO")
         try:
             from coverage_tool import get_coverage
         except ImportError:
-            print_status(
-                "coverage-tool is not installed. Install with: pip install coverage-tool",
-                "ERROR",
-            )
+            print_status("coverage-tool is not installed. Install with: pip install coverage-tool", "ERROR")
             return 1
 
-        from coverage_tool import gcc_coverage
-        from coverage_tool.common import get_config
-
-        os.makedirs(build_path, exist_ok=True)
-        output_file = os.path.join(build_path, "coverage_output.log")
-        with open(output_file, "w", encoding="utf-8") as log_file:
-            log_file.write("")
-
-        # coverage-tool (2026.9.14) passes --ignore-errors only on
-        # `lcov --capture`, and filters with `lcov --remove`. Rewrite that
-        # remove into `lcov --extract */Profiler/include/*` so the report
-        # is first-party library sources only (not LLVM libc++, Apple SDK,
-        # or other toolchain headers). Apply the coverage.toml ignore list
-        # to every lcov invocation so lcov 2.x does not fail on
-        # derive_function_end_line inconsistencies.
-        orig_run = gcc_coverage.subprocess.run
-        library_glob = "*/Profiler/include/*"
-
-        def run_filtered_lcov(cmd, *args, **kwargs):
-            if isinstance(cmd, list) and cmd and cmd[0] == "lcov":
-                ignore = ",".join(get_config().get("lcov_ignore_errors") or [])
-                if "--remove" in cmd:
-                    info = cmd[cmd.index("--remove") + 1]
-                    output = cmd[cmd.index("--output-file") + 1]
-                    cmd = [
-                        "lcov",
-                        "--extract",
-                        info,
-                        library_glob,
-                        "--output-file",
-                        output,
-                    ]
-                    print_status(
-                        f"Keeping coverage files matching {library_glob}",
-                        "INFO",
-                    )
-                if ignore and "--ignore-errors" not in cmd:
-                    cmd = [cmd[0], "--ignore-errors", ignore, *cmd[1:]]
-                print_status(f"Running: {' '.join(cmd)}", "INFO")
-            result = orig_run(cmd, *args, **kwargs)
-            stdout = getattr(result, "stdout", "") or ""
-            stderr = getattr(result, "stderr", "") or ""
-            with open(output_file, "a", encoding="utf-8") as log_file:
-                log_file.write(f"$ {' '.join(cmd) if isinstance(cmd, list) else cmd}\n")
-                if stdout:
-                    log_file.write(stdout)
-                    if not stdout.endswith("\n"):
-                        log_file.write("\n")
-                if stderr:
-                    log_file.write(stderr)
-                    if not stderr.endswith("\n"):
-                        log_file.write("\n")
-            if getattr(result, "returncode", 0):
-                self.error_logger.log_error(
-                    " ".join(cmd) if isinstance(cmd, list) else str(cmd),
-                    stderr or stdout,
-                    "Running lcov for coverage collection",
-                )
-                if stderr.strip():
-                    print_status(stderr.strip().splitlines()[-1], "ERROR")
-            return result
-
-        gcc_coverage.subprocess.run = run_filtered_lcov
-        try:
-            coverage_result = get_coverage(
-                # Not "auto": ProfilerCoverage.cmake's profiler_enable_coverage()
-                # instruments GCC *and* Clang identically with gcov-compatible
-                # `--coverage` (see cmake/ProfilerCoverage.cmake) -- it never emits
-                # Clang's native `-fprofile-instr-generate -fcoverage-mapping`.
-                # coverage-tool's "auto" detection maps a Clang toolchain straight
-                # to its LLVM/profraw backend, which then reports "No profraw
-                # generated" because Profiler simply never produces one. The
-                # lcov/gcov backend ("gcc" here is a routing choice in
-                # coverage-tool, not a requirement to actually compile with GCC)
-                # is what matches the coverage data Profiler's CMake produces,
-                # regardless of which compiler built it -- this is also what CI's
-                # coverage job and docs/profiler.md's manual recipe both use.
-                compiler="gcc",
-                build_folder=build_path,
-                source_folder=source_path,
-                output_folder=os.path.join(build_path, "coverage_report"),
-                summary=True,
-                project_root=source_path,
-            )
-        except Exception as e:
-            self.error_logger.log_error("coverage-tool", str(e), "Coverage collection")
-            print_status(f"Unexpected error during coverage collection: {e}", "ERROR")
-            return 1
-        finally:
-            gcc_coverage.subprocess.run = orig_run
+        coverage_result = get_coverage(
+            compiler="auto",
+            build_folder=build_path,
+            source_folder=source_path,
+            output_folder=os.path.join(build_path, "coverage_report"),
+            summary=True,
+            project_root=source_path,
+        )
         if coverage_result == 0:
             print_status("Coverage collection completed successfully", "SUCCESS")
-            print_status(f"Log file: {output_file}", "INFO")
             self.summary_reporter.add_coverage_report(build_path, 0)
             return 0
-        self.error_logger.log_error(
-            "coverage-tool get_coverage",
-            f"exit code {coverage_result}",
-            "Coverage collection",
-        )
         print_status("Coverage collection failed", "ERROR")
-        print_status(f"Log file: {output_file}", "INFO")
         return 1
 
     def __shell_flag(self):

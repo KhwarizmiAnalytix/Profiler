@@ -35,6 +35,7 @@ limitations under the License.
 #include <string.h>
 
 #include <initializer_list>
+#include <numeric>
 #include <string>
 
 #include "common/profiler_macros.h"
@@ -196,10 +197,11 @@ inline std::string append_args(std::string name, std::initializer_list<TraceMeAr
         const auto old_size = name.size();
         auto       new_size =
             old_size + args.size() * 2 + 1;  // +1 for opening '#', +1 per arg for '=' and ','
-        for (const auto& arg : args)
-        {
-            new_size += arg.key.size() + arg.value.size();
-        }
+        new_size += std::accumulate(args.begin(),
+            args.end(),
+            std::size_t{0},
+            [](std::size_t sum, const TraceMeArg& arg)
+            { return sum + arg.key.size() + arg.value.size(); });
         name.resize(new_size);
         char* const begin = name.data();
         char*       out   = begin + old_size;

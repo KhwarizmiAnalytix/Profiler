@@ -34,6 +34,7 @@ limitations under the License.
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
@@ -131,14 +132,15 @@ public:
     std::optional<x_stat_visitor> get_stat(
         int64_t stat_type, const x_stat_metadata& stat_metadata) const
     {
-        for (const xstat& stat : stats_owner_->stats())
+        const auto& stats = stats_owner_->stats();
+        const auto  found = std::find_if(stats.begin(),
+            stats.end(),
+            [&](const xstat& stat) { return stat.metadata_id() == stat_metadata.id(); });
+        if (found == stats.end())
         {
-            if (stat.metadata_id() == stat_metadata.id())
-            {
-                return x_stat_visitor(plane_, &stat, &stat_metadata, stat_type);
-            }
+            return std::nullopt;  // type does not exist in this owner.
         }
-        return std::nullopt;  // type does not exist in this owner.
+        return x_stat_visitor(plane_, &*found, &stat_metadata, stat_type);
     }
 
 protected:
@@ -186,6 +188,8 @@ public:
     PROFILER_API xevent_visitor(
         const xplane_visitor* plane, const xline* line, const xevent* event);
 
+    // Returns the plane by reference. xstats_owner::plane returns a pointer.
+    // cppcheck-suppress duplInheritedMember
     const xplane_visitor& plane() const  // NOLINT(bugprone-derived-method-shadowing-base-method)
     {
         return *plane_;
@@ -337,8 +341,9 @@ public:
     template <typename ForEachEventMetadataFunc>
     void for_each_event_metadata(ForEachEventMetadataFunc&& for_each_event_metadata) const
     {
-        for (const auto& [id, event_metadata] : plane_->event_metadata())
+        for (const auto& [metadata_id, event_metadata] : plane_->event_metadata())
         {
+            (void)metadata_id;
             for_each_event_metadata(xevent_metadata_visitor(this, &event_metadata));
         }
     }
@@ -385,11 +390,9 @@ void xevent_metadata_visitor::for_each_child(ForEachChildFunc&& for_each_child) 
 {
     for (int64_t child_id : metadata()->child_id())
     {
+        // get_event_metadata returns the default instance when the id is absent.
         const auto* event_metadata = plane()->get_event_metadata(child_id);
-        if (event_metadata != nullptr)
-        {
-            for_each_child(xevent_metadata_visitor(plane(), event_metadata));
-        }
+        for_each_child(xevent_metadata_visitor(plane(), event_metadata));
     }
 }
 

@@ -290,7 +290,7 @@ xplane* find_or_add_mutable_plane_with_name(x_space* space, std::string_view nam
 std::vector<xplane*> find_mutable_planes_with_prefix(x_space* space, std::string_view prefix)
 {
     return find_mutable_planes(
-        space, [&](xplane& plane) { return StartsWith(plane.name(), prefix); });
+        space, [&](const xplane& plane) { return StartsWith(plane.name(), prefix); });
 }
 
 const xline* find_line_with_id(const xplane& plane, int64_t id)
@@ -320,12 +320,15 @@ const xline* find_line_with_name(const xplane& plane, std::string_view name)
 
 xstat* find_or_add_mutable_stat(const x_stat_metadata& stat_metadata, xevent* event)
 {
-    for (auto& stat : *event->mutable_stats())
+    auto& stats = *event->mutable_stats();
+    auto  found = std::find_if(stats.begin(),
+        stats.end(),
+        // Returned as a mutable xstat*, so the parameter stays non-const.
+        // cppcheck-suppress constParameterReference
+        [&](xstat& stat) { return stat.metadata_id() == stat_metadata.id(); });
+    if (found != stats.end())
     {
-        if (stat.metadata_id() == stat_metadata.id())
-        {
-            return &stat;
-        }
+        return &*found;
     }
     xstat* stat = event->add_stats();
     stat->set_metadata_id(stat_metadata.id());
@@ -521,18 +524,18 @@ void AddFlowsToXplane(int32_t host_id, bool is_host_plane, bool connect_traceme,
     {
         return;
     }
-    xplane_builder   plane(xplane);
-    x_stat_metadata* correlation_id_stats_metadata =
+    xplane_builder         plane(xplane);
+    const x_stat_metadata* correlation_id_stats_metadata =
         plane.stat_metadata(GetStatTypeStr(StatType::kCorrelationId));
-    x_stat_metadata* producer_type_stats_metadata =
+    const x_stat_metadata* producer_type_stats_metadata =
         plane.stat_metadata(GetStatTypeStr(StatType::kProducerType));
-    x_stat_metadata* consumer_type_stats_metadata =
+    const x_stat_metadata* consumer_type_stats_metadata =
         plane.stat_metadata(GetStatTypeStr(StatType::kConsumerType));
-    x_stat_metadata* producer_id_stats_metadata =
+    const x_stat_metadata* producer_id_stats_metadata =
         plane.stat_metadata(GetStatTypeStr(StatType::kProducerId));
-    x_stat_metadata* consumer_id_stats_metadata =
+    const x_stat_metadata* consumer_id_stats_metadata =
         plane.stat_metadata(GetStatTypeStr(StatType::kConsumerId));
-    x_stat_metadata* flow_stats_metadata =
+    const x_stat_metadata* flow_stats_metadata =
         plane.get_or_create_stat_metadata(GetStatTypeStr(StatType::kFlow));
     XFlow::FlowDirection direction =
         is_host_plane ? XFlow::FlowDirection::kFlowOut : XFlow::FlowDirection::kFlowIn;
@@ -549,7 +552,7 @@ void AddFlowsToXplane(int32_t host_id, bool is_host_plane, bool connect_traceme,
                     std::optional<uint64_t> producer_id;
                     std::optional<uint64_t> consumer_id;
                     event.ForEachStat(
-                        [&](xstat* stat)
+                        [&](const xstat* stat)
                         {
                             if ((correlation_id_stats_metadata != nullptr) &&
                                 stat->metadata_id() == correlation_id_stats_metadata->id())

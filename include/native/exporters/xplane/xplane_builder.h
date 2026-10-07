@@ -34,6 +34,7 @@ limitations under the License.
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
@@ -275,14 +276,11 @@ public:
 
     const xstat* GetStat(const x_stat_metadata& stat_metadata) const
     {
-        for (auto& stat : *stats_owner_->mutable_stats())
-        {
-            if (stat.metadata_id() == stat_metadata.id())
-            {
-                return &stat;
-            }
-        }
-        return nullptr;
+        auto& stats = *stats_owner_->mutable_stats();
+        auto  found = std::find_if(stats.begin(),
+            stats.end(),
+            [&](const xstat& stat) { return stat.metadata_id() == stat_metadata.id(); });
+        return found == stats.end() ? nullptr : &*found;
     }
 
     static uint64_t IntOrUintValue(const xstat& stat)
@@ -303,14 +301,13 @@ private:
 
     xstat* find_or_add_stat(const x_stat_metadata& metadata)
     {
-        for (auto& stat : *stats_owner_->mutable_stats())
-        {
-            if (stat.metadata_id() == metadata.id())
-            {
-                return &stat;
-            }
-        }
-        return add_stat(metadata);
+        auto& stats = *stats_owner_->mutable_stats();
+        auto  found = std::find_if(stats.begin(),
+            stats.end(),
+            // Returned as a mutable xstat*, so the parameter stays non-const.
+            // cppcheck-suppress constParameterReference
+            [&](xstat& stat) { return stat.metadata_id() == metadata.id(); });
+        return found == stats.end() ? add_stat(metadata) : &*found;
     }
 
     static void set_stat_value(bool value, xstat* stat)

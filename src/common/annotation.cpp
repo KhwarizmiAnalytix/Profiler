@@ -150,8 +150,8 @@ annotation::annotation(std::string name, bool is_function, const char* file, int
     // actually observe this scope *before* allocating impl_/its RecordFunction/its
     // native profiler_scope -- an inactive PROFILER_SCOPE call should cost one
     // pointer read plus one lock-free callback-table lookup, not two heap allocations.
-    auto*      session       = profiler::profiler_session::current_session();
-    bool const native_active = session != nullptr && session->is_active();
+    const auto* session       = profiler::profiler_session::current_session();
+    bool const  native_active = session != nullptr && session->is_active();
 
     bool instrumentation_maybe_active = false;
 #if PROFILER_HAS_KINETO || PROFILER_HAS_ITT

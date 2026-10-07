@@ -165,12 +165,12 @@ struct CUDAOrHIPMethods : public ProfilerStubs
     float elapsed(
         const ProfilerVoidEventStub* event_, const ProfilerVoidEventStub* event2_) const override
     {
-        auto event  = (const ProfilerEventStub*)(event_);
-        auto event2 = (const ProfilerEventStub*)(event2_);
-        PROFILER_CUDA_CHECK(cudaEventSynchronize(event->get()));
-        PROFILER_CUDA_CHECK(cudaEventSynchronize(event2->get()));
+        auto* event  = static_cast<CUevent_st*>(event_->get());
+        auto* event2 = static_cast<CUevent_st*>(event2_->get());
+        PROFILER_CUDA_CHECK(cudaEventSynchronize(event));
+        PROFILER_CUDA_CHECK(cudaEventSynchronize(event2));
         float ms = 0;
-        PROFILER_CUDA_CHECK(cudaEventElapsedTime(&ms, event->get(), event2->get()));
+        PROFILER_CUDA_CHECK(cudaEventElapsedTime(&ms, event, event2));
         // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-narrowing-conversions)
         return ms * 1000.0;
     }
@@ -182,16 +182,16 @@ struct CUDAOrHIPMethods : public ProfilerStubs
         // cudaEventSynchronize (design-review.md section 6.6 "query completed
         // events later"). Returns elapsed time if both events are ready, or -1
         // if either is still pending.
-        auto event  = (const ProfilerEventStub*)(event_);
-        auto event2 = (const ProfilerEventStub*)(event2_);
+        auto* event  = static_cast<CUevent_st*>(event_->get());
+        auto* event2 = static_cast<CUevent_st*>(event2_->get());
 
-        cudaError_t err1 = cudaEventQuery(event->get());
+        cudaError_t err1 = cudaEventQuery(event);
         if (err1 != cudaSuccess && err1 != cudaErrorNotReady)
         {
             PROFILER_CUDA_CHECK(err1);
             return -1.0f;
         }
-        cudaError_t err2 = cudaEventQuery(event2->get());
+        cudaError_t err2 = cudaEventQuery(event2);
         if (err2 != cudaSuccess && err2 != cudaErrorNotReady)
         {
             PROFILER_CUDA_CHECK(err2);
@@ -204,7 +204,7 @@ struct CUDAOrHIPMethods : public ProfilerStubs
         }
 
         float ms = 0;
-        if (cudaEventElapsedTime(&ms, event->get(), event2->get()) != cudaSuccess)
+        if (cudaEventElapsedTime(&ms, event, event2) != cudaSuccess)
         {
             return -1.0f;
         }

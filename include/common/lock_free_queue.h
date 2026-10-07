@@ -154,6 +154,9 @@ public:
         delete end_block_;
     }
 
+    blocked_queue_base(const blocked_queue_base&)            = delete;
+    blocked_queue_base& operator=(const blocked_queue_base&) = delete;
+
     // Adds a new element to the back of the queue. Fast and lock-free on the
     // producer thread. Returns false (and counts the drop -- see
     // dropped_count()) instead of growing past max_blocks_ live blocks; capacity

@@ -101,7 +101,7 @@ class PerfProfiler
 {
 public:
     /* Configure all the events and track them as individual PerfEvent */
-    void Configure(std::vector<std::string>& event_names);
+    void Configure(const std::vector<std::string>& event_names);
 
     /* Enable events counting from here */
     void Enable();

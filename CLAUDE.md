@@ -79,6 +79,38 @@ the explicit lists in `Testing/Cxx/CMakeLists.txt` and, where supported,
 Keep consumer tests focused on the public `profiler.h` API. Source lives
 in `include/`, dependencies in `third_party/`; use `PROFILER_*` macros.
 
+## Code coverage
+
+Follow `KhwarizmiAnalytix/Logging`'s coverage setup as the canonical
+pattern across these standalone repos — not the older per-target
+`profiler_enable_coverage(Profiler)` approach this repo used before:
+
+- `cmake/ProfilerCoverage.cmake` mutates `CMAKE_CXX_FLAGS`/`CMAKE_C_FLAGS`/
+  the linker-flag variables directly at directory scope when
+  `PROFILER_ENABLE_COVERAGE` is ON (`include(ProfilerCoverage)` gated in
+  `CMakeLists.txt`, mirroring `Logging/Cmake/coverage.cmake`), so every
+  target configured afterward — library and tests alike — is instrumented
+  automatically, instead of requiring an explicit per-target call. It
+  supports GCC (gcov), Clang (native `-fprofile-instr-generate
+  -fcoverage-mapping`), and MSVC (OpenCppCoverage via PDBs) the same way
+  Logging's module does.
+- `coverage.toml` filters to first-party code by declaring `source_folder
+  = "."` and `modules = ["Profiler"]` (coverage-tool's own module
+  discovery, scoped to this repo's one flat library + test binary) rather
+  than hand-maintaining an exclude list of every toolchain/SDK path
+  (Homebrew LLVM, Xcode, libc++, `_deps`, …). Keep the exclude list to the
+  same minimal shape as Logging's (`third_party`, `Testing`, `/usr/*`).
+- `Scripts/setup.py`'s `coverage()` method calls `coverage_tool.get_coverage(compiler="auto", ...)`
+  plainly, with no custom `lcov`/`gcc_coverage` monkey-patching — that
+  workaround existed only because the old coverage.cmake used gcov-style
+  `--coverage` for Clang too; with Clang's native format restored, "auto"
+  resolves correctly on its own, same as Logging.
+
+If a future `coverage-tool` quirk needs a workaround here, add the fix to
+Logging first (so it stays the shared reference) before porting it to
+this repo, rather than growing this repo's coverage path differently from
+Logging's again.
+
 ## Verification and scope
 
 For non-trivial source or build changes, run affected tests, review the diff,

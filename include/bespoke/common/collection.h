@@ -157,7 +157,7 @@ static_assert(std::is_trivial_v<RawAllocation>, "Non-Trivial member of RawAlloca
 
 template <> struct ExtraFields<EventType::Allocation> : RawAllocation
 {
-    ExtraFields(const RawAllocation& allocation) : RawAllocation(allocation) {}
+    explicit ExtraFields(const RawAllocation& allocation) : RawAllocation(allocation) {}
 
     profiler::device_option device() const
     {

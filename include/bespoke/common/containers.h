@@ -79,7 +79,7 @@ public:
         if constexpr (std::is_trivially_destructible_v<T> &&
                       std::is_trivially_destructible_v<array_t>)
         {
-            ::new ((void*)next_) T{std::forward<Args>(args)...};
+            ::new (static_cast<void*>(next_)) T{std::forward<Args>(args)...};
         }
         else
         {
@@ -150,7 +150,7 @@ public:
         {
             if (!(++current_ % ChunkSize))
             {
-                block_++;
+                ++block_;
             }
             return *this;
         }
@@ -193,7 +193,7 @@ public:
             return a.first->data() + a.second;
         }
 
-        std::forward_list<array_t>::iterator block_;
+        std::forward_list<array_t>::iterator block_{};
         size_t                               current_{0};
         size_t                               size_{0};
     };

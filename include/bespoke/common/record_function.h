@@ -474,7 +474,7 @@ private:
  * addThreadLocalCallback adds a thread local callback to run with
  * RecordFunction, returns handle to use with removeThreadLocalCallback
  */
-PROFILER_API CallbackHandle addThreadLocalCallback(RecordFunctionCallback cb);
+PROFILER_API CallbackHandle addThreadLocalCallback(const RecordFunctionCallback& cb);
 
 /**
  * hasThreadLocalCallbacks returns whether there're callbacks registered
@@ -492,7 +492,7 @@ PROFILER_API void clearThreadLocalCallbacks();
  *
  * only during the program initialization
  */
-PROFILER_API CallbackHandle addGlobalCallback(RecordFunctionCallback cb);
+PROFILER_API CallbackHandle addGlobalCallback(const RecordFunctionCallback& cb);
 
 /**
  * removeCallback removes a callback given the handle returned by

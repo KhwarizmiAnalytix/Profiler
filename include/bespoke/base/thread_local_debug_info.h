@@ -54,6 +54,8 @@ public:
 class PROFILER_API thread_local_debug_info
 {
 public:
+    thread_local_debug_info() = default;
+
     static DebugInfoBase* get(DebugInfoKind kind);
 
     // Get current thread_local_debug_info
@@ -72,9 +74,9 @@ public:
     static std::shared_ptr<DebugInfoBase> _peek(DebugInfoKind kind);
 
 private:
-    std::shared_ptr<DebugInfoBase>           info_;
-    DebugInfoKind                            kind_;
-    std::shared_ptr<thread_local_debug_info> parent_info_;
+    std::shared_ptr<DebugInfoBase>           info_{};
+    DebugInfoKind                            kind_{DebugInfoKind::PRODUCER_INFO};
+    std::shared_ptr<thread_local_debug_info> parent_info_{};
 
     friend class DebugInfoGuard;
 };

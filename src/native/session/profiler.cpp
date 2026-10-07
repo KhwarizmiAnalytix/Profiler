@@ -110,7 +110,7 @@ profiler::profiler_options to_profiler_options(const profiler::session_options& 
 
 profiler_session::profiler_session() : profiler_session(profiler::profiler_options{}) {}
 
-profiler_session::profiler_session(profiler::profiler_options options) : options_(options)
+profiler_session::profiler_session(const profiler::profiler_options& options) : options_(options)
 {
     initialize_components();
 }

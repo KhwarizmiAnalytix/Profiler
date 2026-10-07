@@ -162,7 +162,8 @@ template <typename ValueType, typename HighPrecisionValueType = double>
 class stat_with_percentiles : public stat<ValueType, HighPrecisionValueType>
 {
 public:
-    void update_stat(ValueType v)
+    // Keeps the sample list in step with the base counters.
+    void update_stat(ValueType v)  // cppcheck-suppress duplInheritedMember
     {
         stat<ValueType, HighPrecisionValueType>::update_stat(v);
         values_.push_back(v);
@@ -214,7 +215,8 @@ public:
                                       (static_cast<double>(values[upper]) * weight));
     }
 
-    void output_to_stream(std::ostream* stream) const
+    // Prints the base report and then the percentile samples.
+    void output_to_stream(std::ostream* stream) const  // cppcheck-suppress duplInheritedMember
     {
         stat<ValueType, HighPrecisionValueType>::output_to_stream(stream);
         *stream << " p5=" << percentile(5) << " median=" << percentile(50)

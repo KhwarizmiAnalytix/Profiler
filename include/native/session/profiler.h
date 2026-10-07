@@ -254,7 +254,7 @@ public:
      * @param options Configuration options for the profiler
      */
     PROFILER_API profiler_session();
-    PROFILER_API explicit profiler_session(profiler::profiler_options options);
+    PROFILER_API explicit profiler_session(const profiler::profiler_options& options);
 
     /**
      * @brief Construct from the unified session_options request (common/session.h)

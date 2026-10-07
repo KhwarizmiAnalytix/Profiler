@@ -78,19 +78,19 @@ enum class PROFILER_VISIBILITY_ENUM ActiveProfilerType : std::uint8_t
 
 struct PROFILER_VISIBILITY ExperimentalConfig
 {
-    PROFILER_API          ExperimentalConfig(std::vector<std::string> profiler_metrics = {},
-                 bool                                                 profiler_measure_per_kernel = false,
-                 bool                                                 verbose            = false,
-                 std::vector<std::string>                             performance_events = {},
-                 bool                                                 enable_cuda_sync_events = false,
-                 bool                                                 adjust_profiler_step = false,
-                 bool                                                 disable_external_correlation = false,
-                 bool                                                 profile_all_threads = false,
-                 bool                                                 capture_overload_names = false,
-                 bool                                                 record_python_gc_info = false,
-                 bool                                                 expose_kineto_event_metadata = false,
-                 std::string                                          custom_profiler_config = "",
-                 bool                                                 adjust_timestamps = false);
+    explicit PROFILER_API ExperimentalConfig(std::vector<std::string> profiler_metrics = {},
+        bool                     profiler_measure_per_kernel                           = false,
+        bool                     verbose                                               = false,
+        std::vector<std::string> performance_events                                    = {},
+        bool                     enable_cuda_sync_events                               = false,
+        bool                     adjust_profiler_step                                  = false,
+        bool                     disable_external_correlation                          = false,
+        bool                     profile_all_threads                                   = false,
+        bool                     capture_overload_names                                = false,
+        bool                     record_python_gc_info                                 = false,
+        bool                     expose_kineto_event_metadata                          = false,
+        std::string              custom_profiler_config                                = "",
+        bool                     adjust_timestamps                                     = false);
     PROFILER_API explicit operator bool() const;
 
     std::vector<std::string> profiler_metrics;
