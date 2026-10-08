@@ -255,12 +255,17 @@ profiler_enable_sanitizer(Profiler)
 profiler_keep_static_registrations(Profiler)
 profiler_enable_checks(Profiler)
 
+# Static consumers whole-archive this archive into a shared library
+# (profiler_keep_static_registrations). That link requires PIC objects;
+# a non-PIC static archive fails under ld.gold with "recompile with -fPIC".
+# fmt, kineto, and ittnotify already set this; the Profiler archive must too.
 set_target_properties(
     Profiler
     PROPERTIES CXX_STANDARD ${PROFILER_CXX_STANDARD}
                CXX_STANDARD_REQUIRED ON
                CXX_EXTENSIONS OFF
                EXPORT_NAME Profiler
+               POSITION_INDEPENDENT_CODE ON
 )
 
 if(MSVC)
