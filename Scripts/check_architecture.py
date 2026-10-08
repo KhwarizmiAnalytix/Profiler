@@ -15,12 +15,14 @@ Two independent checks:
    include/bespoke/common is the shared instrumentation surface and is
    allowed (record_function.h is itself a public header).
 
-2. Backend conditionals in common report logic: native/session/
-   profiler_report.{h,cpp} and native/analysis/hotspot_report.{h,cpp} (the
-   "common" report path -- not bespoke/kineto/hotspot_report.*, which is
-   inherently backend-specific and lives under a backend directory, not
-   "common" logic) must not reference PROFILER_HAS_KINETO / PROFILER_HAS_ITT
-   / PROFILER_HAS_CUDA / PROFILER_HAS_HIP.
+2. Backend conditionals in common report logic: include/native/session/
+   profiler_report.h, src/native/session/profiler_report.cpp,
+   include/native/analysis/hotspot_report.h, and
+   src/native/analysis/hotspot_report.cpp (the "common" report path -- not
+   bespoke/kineto/hotspot_report.*, which is inherently backend-specific
+   and lives under a backend directory, not "common" logic) must not
+   reference PROFILER_HAS_KINETO / PROFILER_HAS_ITT / PROFILER_HAS_CUDA /
+   PROFILER_HAS_HIP.
 
 Both properties already hold on the current tree (see
 docs/plans/phase-6-continuous-enforcement.md's baseline audit) -- this
@@ -36,7 +38,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PROFILER_SRC = REPO_ROOT / "include"
+PROFILER_INCLUDE = REPO_ROOT / "include"
+PROFILER_SRC = REPO_ROOT / "src"
 CMAKELISTS = REPO_ROOT / "CMakeLists.txt"
 
 # Directories a public header must never transitively depend on.
@@ -90,7 +93,7 @@ def resolve_include(including_file: Path, quoted_path: str) -> Path | None:
     candidate = (including_file.parent / quoted_path).resolve()
     if candidate.is_file():
         return candidate
-    candidate = (PROFILER_SRC / quoted_path).resolve()
+    candidate = (PROFILER_INCLUDE / quoted_path).resolve()
     if candidate.is_file():
         return candidate
     return None
@@ -100,7 +103,7 @@ def find_backend_leaks(public_headers: list[str]) -> list[str]:
     violations = []
     visited: set[Path] = set()
     queue: list[tuple[Path, list[str]]] = [
-        (PROFILER_SRC / h, [h]) for h in public_headers
+        (PROFILER_INCLUDE / h, [h]) for h in public_headers
     ]
 
     while queue:
@@ -109,7 +112,7 @@ def find_backend_leaks(public_headers: list[str]) -> list[str]:
             continue
         visited.add(current)
 
-        current_rel = current.relative_to(PROFILER_SRC).as_posix()
+        current_rel = current.relative_to(PROFILER_INCLUDE).as_posix()
         if any(current_rel.startswith(p) for p in BACKEND_SPECIFIC_PREFIXES):
             violations.append(
                 f"{chain[0]} transitively includes backend-specific header "
@@ -134,12 +137,18 @@ def find_backend_leaks(public_headers: list[str]) -> list[str]:
     return violations
 
 
+def common_report_path(rel_path: str) -> Path:
+    """Headers live under include/; implementations live under src/."""
+    root = PROFILER_INCLUDE if rel_path.endswith(".h") else PROFILER_SRC
+    return root / rel_path
+
+
 def find_backend_conditionals() -> list[str]:
     violations = []
     for rel_path in COMMON_REPORT_FILES:
-        path = PROFILER_SRC / rel_path
+        path = common_report_path(rel_path)
         if not path.is_file():
-            violations.append(f"{rel_path}: expected file not found")
+            violations.append(f"{rel_path}: expected file not found at {path}")
             continue
         for lineno, line in enumerate(
             path.read_text(encoding="utf-8", errors="replace").splitlines(), start=1
