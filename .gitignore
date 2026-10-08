@@ -1,5 +1,6 @@
 /build/
 /build_*/
+bazel-*
 /build-*/
 /cmake-build-*/
 /install/

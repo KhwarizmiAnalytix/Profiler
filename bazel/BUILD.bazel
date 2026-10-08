@@ -11,6 +11,9 @@ exports_files([
     "common.bzl",
     "profiler.bzl",
     "repository.bzl",
+    "fmt.BUILD",
+    "kineto.BUILD",
+    "ittapi.BUILD",
 ])
 
 # =============================================================================
@@ -20,6 +23,15 @@ exports_files([
 config_setting(
     name = "shared_libs",
     define_values = {"build_shared_libs": "true"},
+)
+
+# =============================================================================
+# Profiling Backend Configuration (mirrors CMake's PROFILER_ENABLE_ITT)
+# =============================================================================
+
+config_setting(
+    name = "enable_itt",
+    define_values = {"enable_itt": "true"},
 )
 
 # =============================================================================

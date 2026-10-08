@@ -14,12 +14,17 @@ def profiler_defines():
     """
     defines = common_defines()
 
-    # Instrumentation backend — standalone build always uses the Kineto path.
-    # Consumers that need ITT instead should override this overlay's defines.
-    defines += [
-        "PROFILER_HAS_KINETO=1",
-        "PROFILER_HAS_ITT=0",
-    ]
+    # Instrumentation backend — mirrors BUILD.bazel's //bazel:enable_itt
+    # select() for srcs/hdrs/deps (CMakeLists.txt's PROFILER_ENABLE_ITT /
+    # PROFILER_ENABLE_KINETO are likewise mutually exclusive, defaulting to
+    # Kineto). Headers like include/bespoke/kineto/kineto_shim.h guard their
+    # libkineto includes behind `#if PROFILER_HAS_KINETO`, so this must track
+    # the same config_setting the dependency/select() above does rather than
+    # being hard-coded to the Kineto path.
+    defines += select({
+        "//bazel:enable_itt": ["PROFILER_HAS_KINETO=0", "PROFILER_HAS_ITT=1"],
+        "//conditions:default": ["PROFILER_HAS_KINETO=1", "PROFILER_HAS_ITT=0"],
+    })
 
     # Native pipeline (traceme/xplane/host_tracer/profiler_session) is always compiled
     # alongside the instrumentation backend — no HAS_* gate.

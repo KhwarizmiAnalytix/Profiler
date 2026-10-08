@@ -1,6 +1,10 @@
 # =============================================================================
 # Profiler library (matches CMakeLists.txt backend splits)
 # =============================================================================
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+load("@rules_pkg//pkg:pkg.bzl", "pkg_tar")
 load("//bazel:profiler.bzl", "profiler_copts", "profiler_defines", "profiler_linkopts")
 
 package(default_visibility = ["//visibility:public"])
@@ -157,4 +161,77 @@ cc_library(
     # .so is linked; CMake's static build has the equivalent fix in
     # cmake/ProfilerLinking.cmake's profiler_keep_static_registrations().
     alwayslink = True,
+)
+
+# =============================================================================
+# Install / export (bazel-side analogue of CMake's curated
+# `install(FILES ...)` header allowlist / `install(TARGETS Profiler ...)`
+# in CMakeLists.txt around lines 382-436). Profiler deliberately installs
+# only a narrow, hand-curated set of public headers -- the transitive
+# #include closure of profiler.h -- rather than every header under
+# include/ (most of include/native and include/bespoke are implementation
+# detail). This list is kept in sync with CMakeLists.txt's
+# _profiler_public_headers.
+# `bazel build //:profiler_pkg_tar` produces a relocatable tarball; `bazel
+# run //:install -- --destdir=/some/prefix` stages the same tree directly
+# on disk.
+# =============================================================================
+
+pkg_files(
+    name = "profiler_installed_hdrs",
+    srcs = [
+        "include/profiler.h",
+        "include/common/align_of.h",
+        "include/common/annotation.h",
+        "include/common/approximate_clock.h",
+        "include/common/capture.h",
+        "include/common/device.h",
+        "include/common/flat_hash.h",
+        "include/common/instrumentation.h",
+        "include/common/no_init.h",
+        "include/common/profiler_export.h",
+        "include/common/profiler_macros.h",
+        "include/common/profiler_strings.h",
+        "include/common/session.h",
+        "include/common/small_vector.h",
+        "include/native/analysis/hotspot_report.h",
+        "include/native/analysis/statistical_analyzer.h",
+        "include/native/core/profiler_interface.h",
+        "include/native/core/profiler_lock.h",
+        "include/native/core/profiler_options.h",
+        "include/native/core/profiler_status.h",
+        "include/native/exporters/xplane/xplane.h",
+        "include/native/memory/memory_tracker.h",
+        "include/native/memory/scoped_memory_debug_annotation.h",
+        "include/native/session/profiler.h",
+        "include/native/session/profiler_report.h",
+        "include/native/tracing/traceme.h",
+        "include/native/tracing/traceme_encode.h",
+        "include/native/tracing/traceme_recorder.h",
+        "include/bespoke/common/record_function.h",
+    ],
+    prefix = "include",
+    strip_prefix = strip_prefix.from_pkg("include"),
+)
+
+pkg_files(
+    name = "profiler_installed_libs",
+    srcs = [":Profiler"],
+    prefix = "lib",
+)
+
+pkg_tar(
+    name = "profiler_pkg_tar",
+    srcs = [
+        ":profiler_installed_hdrs",
+        ":profiler_installed_libs",
+    ],
+)
+
+pkg_install(
+    name = "install",
+    srcs = [
+        ":profiler_installed_hdrs",
+        ":profiler_installed_libs",
+    ],
 )

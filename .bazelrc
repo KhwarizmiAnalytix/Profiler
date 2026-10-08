@@ -1,0 +1,25 @@
+# Keep WORKSPACE mode working alongside Bzlmod (same approach as XSigma,
+# Logging, LinearAlgebra, Serialization).
+# Requires Bazel 7/8 — WORKSPACE-based repos (local_repository / new_local_repository
+# in WORKSPACE.bazel, wiring the fmt/kineto/ittapi submodules under third_party/)
+# are unsupported starting with Bazel 9. See .bazelversion; bump only after
+# migrating WORKSPACE.bazel to bzlmod (MODULE.bazel) equivalents (e.g.
+# local_path_override / a repo rule).
+build --enable_workspace
+
+# Auto-select the build:<os>/test:<os> blocks below for the host platform
+# (linux/macos/windows), so cross-platform flags don't need --config.
+common --enable_platform_specific_config
+
+# C++20 by default (mirrors PROFILER_CXX_STANDARD=20 in CMakeLists.txt).
+# MSVC takes /std:c++20, not -std=c++20 — this applies to every target,
+# including the third-party fmt/kineto/ittapi deps that don't select() their
+# own standard the way bazel/common.bzl's common_copts() does for Profiler's
+# own target.
+build:linux --cxxopt=-std=c++20 --host_cxxopt=-std=c++20
+build:macos --cxxopt=-std=c++20 --host_cxxopt=-std=c++20
+build:windows --cxxopt=/std:c++20 --host_cxxopt=/std:c++20
+
+# Backend selection examples:
+#   bazel build //:Profiler --define=enable_itt=true
+#   bazel build //:Profiler --define=enable_cuda=true

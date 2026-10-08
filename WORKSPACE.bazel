@@ -1,1 +1,32 @@
-workspace(name = "profiler")
+workspace(name = "xsigma_profiler")
+
+# =============================================================================
+# Profiler backend dependencies — vendored submodules under third_party/,
+# pinned via .gitmodules. Hand-written BUILD overlays live in bazel/ (none
+# of these three ship their own usable Bazel build), following the same
+# new_local_repository pattern as the sibling Logging repo's
+# WORKSPACE.bazel (ThirdParty/fmt + ThirdParty/fmt.BUILD).
+# =============================================================================
+
+new_local_repository(
+    name = "fmt",
+    path = "third_party/fmt",
+    build_file = "//bazel:fmt.BUILD",
+)
+
+# Kineto backend (PROFILER_BACKEND=KINETO, this repo's default -- see
+# bazel/BUILD.bazel's enable_itt config_setting, which is off unless
+# --define enable_itt=true is passed). Points at third_party/kineto/libkineto
+# (not third_party/kineto) to match libkineto_defs.bzl's own paths.
+new_local_repository(
+    name = "kineto",
+    path = "third_party/kineto/libkineto",
+    build_file = "//bazel:kineto.BUILD",
+)
+
+# ITT backend (PROFILER_BACKEND=ITT, selected via --define enable_itt=true).
+new_local_repository(
+    name = "ittapi",
+    path = "third_party/ittapi",
+    build_file = "//bazel:ittapi.BUILD",
+)
