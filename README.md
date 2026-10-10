@@ -1,6 +1,8 @@
 # Profiler
 
 [![CI](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/KhwarizmiAnalytix/Profiler/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/KhwarizmiAnalytix/Profiler/branch/main/graph/badge.svg)](https://codecov.io/gh/KhwarizmiAnalytix/Profiler)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Version **1.0.1** · [Changelog](CHANGELOG.md)
 
