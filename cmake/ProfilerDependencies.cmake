@@ -1,3 +1,31 @@
+# Configure vendored dependencies without changing the host's build options.
+function(profiler_add_dependency_subdirectory source_dir binary_dir)
+    foreach(_option IN ITEMS BUILD_TESTING BUILD_EXAMPLES BUILD_BENCHMARKS)
+        get_property(
+            _had_${_option}
+            CACHE ${_option}
+            PROPERTY TYPE
+            SET
+        )
+        if(_had_${_option})
+            get_property(_value_${_option} CACHE ${_option} PROPERTY VALUE)
+            get_property(_type_${_option} CACHE ${_option} PROPERTY TYPE)
+            get_property(_help_${_option} CACHE ${_option} PROPERTY HELPSTRING)
+        endif()
+        set(${_option} OFF)
+    endforeach()
+    add_subdirectory("${source_dir}" "${binary_dir}" ${ARGN})
+    foreach(_option IN ITEMS BUILD_TESTING BUILD_EXAMPLES BUILD_BENCHMARKS)
+        if(_had_${_option})
+            set(${_option} "${_value_${_option}}" CACHE ${_type_${_option}} "${_help_${_option}}"
+                                                        FORCE
+            )
+        else()
+            unset(${_option} CACHE)
+        endif()
+    endforeach()
+endfunction()
+
 # Resolve fmt, Kineto, ITT, and GTest without requiring any particular host build.
 
 set(_PROFILER_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
@@ -36,7 +64,9 @@ function(profiler_setup_fmt)
     set(FMT_DOC OFF CACHE BOOL "" FORCE)
     set(_profiler_fmt_shared "${BUILD_SHARED_LIBS}")
     set(BUILD_SHARED_LIBS OFF)
-    add_subdirectory("${_tp}/fmt" "${CMAKE_BINARY_DIR}/_profiler_fmt" EXCLUDE_FROM_ALL)
+    profiler_add_dependency_subdirectory(
+        "${_tp}/fmt" "${CMAKE_BINARY_DIR}/_profiler_fmt" EXCLUDE_FROM_ALL
+    )
     set(BUILD_SHARED_LIBS "${_profiler_fmt_shared}")
     if(TARGET fmt)
         target_compile_definitions(fmt PUBLIC FMT_USE_CONSTEVAL=0)
@@ -69,7 +99,9 @@ function(profiler_setup_kineto)
 
     set(KINETO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(KINETO_LIBRARY_TYPE "static" CACHE STRING "" FORCE)
-    add_subdirectory("${_kineto_src}" "${CMAKE_BINARY_DIR}/_profiler_kineto" EXCLUDE_FROM_ALL)
+    profiler_add_dependency_subdirectory(
+        "${_kineto_src}" "${CMAKE_BINARY_DIR}/_profiler_kineto" EXCLUDE_FROM_ALL
+    )
     # Kineto defaults to header-only fmt, while Profiler links compiled fmt.
     # Mixing them produces duplicate fmt symbols under MSVC. Use the same
     # compiled target for Kineto's object libraries and their final archive.
@@ -151,7 +183,9 @@ function(profiler_setup_itt)
                 "third_party/ittapi. Initialize it with git submodule update --init --recursive."
         )
     endif()
-    add_subdirectory("${_tp}/ittapi" "${CMAKE_BINARY_DIR}/_profiler_itt" EXCLUDE_FROM_ALL)
+    profiler_add_dependency_subdirectory(
+        "${_tp}/ittapi" "${CMAKE_BINARY_DIR}/_profiler_itt" EXCLUDE_FROM_ALL
+    )
     if(TARGET ittnotify)
         set_property(TARGET ittnotify PROPERTY POSITION_INDEPENDENT_CODE ON)
         if(NOT TARGET Itt::itt)
@@ -194,7 +228,9 @@ function(profiler_setup_gtest)
     set(BUILD_SHARED_LIBS OFF)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-    add_subdirectory("${_tp}/googletest" "${CMAKE_BINARY_DIR}/_profiler_gtest" EXCLUDE_FROM_ALL)
+    profiler_add_dependency_subdirectory(
+        "${_tp}/googletest" "${CMAKE_BINARY_DIR}/_profiler_gtest" EXCLUDE_FROM_ALL
+    )
     set(BUILD_SHARED_LIBS "${_profiler_gtest_shared}")
     if(TARGET gtest AND NOT TARGET GTest::gtest)
         add_library(GTest::gtest ALIAS gtest)
@@ -223,7 +259,9 @@ function(profiler_setup_benchmark)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
     set(BENCHMARK_DOWNLOAD_DEPENDENCIES OFF CACHE BOOL "" FORCE)
-    add_subdirectory("${_tp}/benchmark" "${CMAKE_BINARY_DIR}/_profiler_benchmark" EXCLUDE_FROM_ALL)
+    profiler_add_dependency_subdirectory(
+        "${_tp}/benchmark" "${CMAKE_BINARY_DIR}/_profiler_benchmark" EXCLUDE_FROM_ALL
+    )
     if(TARGET benchmark AND NOT TARGET benchmark::benchmark)
         add_library(benchmark::benchmark ALIAS benchmark)
     endif()

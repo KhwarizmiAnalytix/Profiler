@@ -121,7 +121,7 @@ cmake -S . -B build -DPROFILER_BACKEND=KINETO -DPROFILER_GPU_BACKEND=cuda
 **Compile-time decisions** (not runtime branching):
 - Which instrumentation backend is active (Kineto, ITT, or none)
 - GPU backend (CUDA, HIP, or none)
-- C++20 (fixed requirement)
+- C++20 or C++23 (C++20 by default)
 
 **Runtime configuration**:
 - When to start/stop capture
@@ -155,7 +155,7 @@ full OS×backend×GPU breakdown, the CI job each row maps to, and known gaps
 
 ## Get it
 
-Requires CMake 3.22+, a C++20 compiler, and Git.
+Requires CMake 3.24+, a C++20 compiler, and Git.
 
 ### Clone and build the examples
 
@@ -179,7 +179,7 @@ completed with `git submodule update --init --recursive`. See
 ### Add it to your project
 
 ```cmake
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)
 project(MyApp LANGUAGES CXX C)
 
 include(FetchContent)

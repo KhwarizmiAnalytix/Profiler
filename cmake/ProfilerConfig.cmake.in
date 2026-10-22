@@ -10,6 +10,7 @@
 # own) and the CUDA/HIP toolkit a STATIC consumer must also link -- is
 # handled below and in the optional ProfilerStaticThirdParty.cmake.
 include(CMakeFindDependencyMacro)
+find_dependency(Threads)
 
 if(@PROFILER_HAS_CUDA@)
     find_dependency(CUDAToolkit)

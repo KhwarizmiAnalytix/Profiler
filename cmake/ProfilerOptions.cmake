@@ -39,7 +39,14 @@ if(NOT PROFILER_GPU_BACKEND MATCHES "^(none|cuda|hip)$")
     )
 endif()
 
-option(PROFILER_ENABLE_TESTING "Build Profiler test suite" ON)
+set(_profiler_testing_default ${PROFILER_STANDALONE})
+if(DEFINED BUILD_TESTING)
+    set(_profiler_testing_default ${BUILD_TESTING})
+endif()
+option(PROFILER_ENABLE_TESTING "Build Profiler test suite" ${_profiler_testing_default})
+if(DEFINED BUILD_TESTING AND NOT BUILD_TESTING)
+    set(PROFILER_ENABLE_TESTING OFF)
+endif()
 option(PROFILER_ENABLE_EXAMPLES "Build Profiler example programs" OFF)
 option(PROFILER_ENABLE_BENCHMARKS
        "Build the profiler_benchmark overhead-measurement tool (docs/benchmarking.md)" OFF
@@ -49,7 +56,9 @@ option(PROFILER_ENABLE_INSTALL "Install headers and CMake package" ${PROFILER_ST
 option(PROFILER_REQUIRE_CUDA "Fail configure if CUDA was requested but not found" OFF)
 option(PROFILER_REQUIRE_NVTX "Fail configure if NVTX is missing" OFF)
 option(PROFILER_REQUIRE_HIP "Fail configure if HIP was requested but not found" OFF)
-option(PROFILER_ENABLE_COVERAGE "Instrument this directory scope with coverage flags (GCC/Clang/MSVC)" OFF)
+option(PROFILER_ENABLE_COVERAGE
+       "Instrument this directory scope with coverage flags (GCC/Clang/MSVC)" OFF
+)
 option(PROFILER_ENABLE_CLANG_TIDY "Run clang-tidy on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_CPPCHECK "Run cppcheck on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_IWYU "Run include-what-you-use on Profiler sources during compilation" OFF)
@@ -61,7 +70,11 @@ set(PROFILER_SANITIZER
         "Sanitizer(s) to build with (GCC/Clang), e.g. address, undefined, address,undefined, thread"
 )
 
-set(PROFILER_CXX_STANDARD "20" CACHE STRING "C++ standard")
+set(PROFILER_CXX_STANDARD "20" CACHE STRING "C++ standard: 20 or 23")
+set_property(CACHE PROFILER_CXX_STANDARD PROPERTY STRINGS 20 23)
+if(NOT PROFILER_CXX_STANDARD MATCHES "^(20|23)$")
+    message(FATAL_ERROR "PROFILER_CXX_STANDARD must be one of: 20 23")
+endif()
 
 set(PROFILER_THIRD_PARTY_DIR
     ""

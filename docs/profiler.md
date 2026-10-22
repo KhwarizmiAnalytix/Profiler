@@ -48,9 +48,19 @@ not appear in the native session report. Use Kineto for [HTA](hta.md).
 
 ## Build from source
 
-Requirements: CMake 3.22 or newer, a compiler with C++20 support, C and C++
+Requirements: CMake 3.24 or newer, a compiler with C++20 support, C and C++
 toolchains for dependencies, and Git. A first build may download GoogleTest and
 missing dependency sources.
+
+Compiler checks follow LinearAlgebra's selected-standard policy: C++20 needs
+GCC 10, LLVM Clang 11, AppleClang 13, or MSVC 19.29; C++23 needs GCC 11,
+LLVM Clang 17, AppleClang 15, or MSVC 19.34. The requirement is rechecked on
+every configure and propagated through `Profiler::Profiler`.
+`BUILD_TESTING=OFF` disables Profiler tests even when
+`PROFILER_ENABLE_TESTING=ON`; dependencies preserve the host's testing cache.
+Run `python3 Testing/CMake/check_configurations.py` to check compiler floors
+and host integration.
+
 
 ```bash
 git clone --recurse-submodules https://github.com/KhwarizmiAnalytix/Profiler.git
@@ -170,11 +180,11 @@ A CUDA or HIP static build (`PROFILER_GPU_BACKEND=cuda`/`hip`) is not yet
 | `PROFILER_GPU_BACKEND` | `none` | `none`, `cuda`, `hip` |
 | `PROFILER_REQUIRE_CUDA` | `OFF` | Fail configuration when requested CUDA is unavailable |
 | `PROFILER_REQUIRE_NVTX` | `OFF` | Fail CUDA configuration when NVTX is unavailable |
-| `PROFILER_ENABLE_TESTING` | `ON` | Build `ProfilerCxxTests`; also register enabled example smoke tests |
+| `PROFILER_ENABLE_TESTING` | standalone / host `BUILD_TESTING` | Build `ProfilerCxxTests`; also register enabled example smoke tests |
 | `PROFILER_ENABLE_EXAMPLES` | `OFF` | Build the examples |
 | `PROFILER_ENABLE_INSTALL` | Standalone: `ON`; embedded: `OFF` | Install the library, headers, and CMake config |
 | `PROFILER_ENABLE_LIBTORCH` | `OFF` | Optional LibTorch comparison tests when Torch is found |
-| `PROFILER_CXX_STANDARD` | `20` | C++ language standard; current dependencies require C++20 |
+| `PROFILER_CXX_STANDARD` | `20` | C++ language standard: 20 or 23; propagated to consumers |
 | `PROFILER_THIRD_PARTY_DIR` | Repository submodules or downloads | Directory containing `fmt/`, `kineto/`, `ittapi/` |
 | `PROFILER_ENABLE_COVERAGE` | `OFF` | Instrument `Profiler` with `--coverage` (GCC/Clang); see [code coverage](#code-coverage) |
 | `PROFILER_SANITIZER` | unset | GCC/Clang sanitizer(s) for `Profiler` and `ProfilerCxxTests`; see [sanitizers](#sanitizers) |

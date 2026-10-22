@@ -1,6 +1,6 @@
 # Profiler — standalone CMake package. Any C++ project can consume it, either
 # via find_package(Profiler) or by embedding this tree as a subdirectory.
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(
@@ -11,8 +11,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
         LANGUAGES CXX C
     )
     set(PROFILER_STANDALONE ON)
-    include(CTest)
-    enable_testing()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -20,18 +18,26 @@ else()
     set(PROFILER_STANDALONE OFF)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(ProfilerOptions)
-include(ProfilerDependencies)
+set(PROFILER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(PROFILER_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+include("${PROFILER_SOURCE_DIR}/cmake/ProfilerOptions.cmake")
+include("${PROFILER_SOURCE_DIR}/cmake/ProfilerChecks.cmake")
+profiler_check_compiler()
+if(PROFILER_STANDALONE)
+    include(CTest)
+endif()
+if(PROFILER_ENABLE_TESTING)
+    enable_testing()
+endif()
+include("${PROFILER_SOURCE_DIR}/cmake/ProfilerDependencies.cmake")
 # Coverage gate — appends --coverage / -fprofile-instr-generate directory-wide (every target
 # configured afterward, library and tests alike, is instrumented), unlike the other per-target
 # cmake/Profiler*.cmake modules below.
 if(PROFILER_ENABLE_COVERAGE)
-    include(ProfilerCoverage)
+    include("${PROFILER_SOURCE_DIR}/cmake/ProfilerCoverage.cmake")
 endif()
-include(ProfilerSanitizers)
-include(ProfilerLinking)
-include(ProfilerChecks)
+include("${PROFILER_SOURCE_DIR}/cmake/ProfilerSanitizers.cmake")
+include("${PROFILER_SOURCE_DIR}/cmake/ProfilerLinking.cmake")
 
 set(CMAKE_CXX_STANDARD ${PROFILER_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -54,10 +60,6 @@ set(PROFILER_ENABLE_NATIVE_PROFILER ON CACHE BOOL "Native pipeline is always com
 set(PROFILER_DEPENDENCY_LIBS "")
 set(PROFILER_DEPENDENCY_INCLUDE_DIRS "")
 set(PROFILER_DEPENDENCY_COMPILE_DEFINITIONS "")
-
-set(BUILD_TESTING OFF CACHE BOOL "Disable third-party tests" FORCE)
-set(BUILD_EXAMPLES OFF CACHE BOOL "Disable third-party examples" FORCE)
-set(BUILD_BENCHMARKS OFF CACHE BOOL "Disable third-party benchmarks" FORCE)
 
 set(PROFILER_HAS_CUDA 0)
 set(PROFILER_HAS_NVTX 0)
@@ -240,6 +242,9 @@ endif()
 
 add_library(Profiler ${profiler_sources} ${profiler_headers})
 add_library(Profiler::Profiler ALIAS Profiler)
+target_compile_features(Profiler PUBLIC cxx_std_${PROFILER_CXX_STANDARD})
+find_package(Threads REQUIRED)
+target_link_libraries(Profiler PUBLIC Threads::Threads)
 
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(Profiler PUBLIC PROFILER_SHARED_DEFINE PRIVATE PROFILER_BUILDING_DLL)
@@ -454,14 +459,19 @@ if(PROFILER_ENABLE_INSTALL)
     # targets (find_dependency() in ProfilerConfig.cmake.in re-creates them in the
     # consumer's own scope), so those are propagated by name instead of by installed path.
     if(NOT BUILD_SHARED_LIBS)
-        set(_profiler_static_install_targets fmt)
+        set(_profiler_static_install_targets "")
+        if(TARGET fmt)
+            list(APPEND _profiler_static_install_targets fmt)
+        endif()
         if(TARGET kineto)
             list(APPEND _profiler_static_install_targets kineto)
         endif()
         if(TARGET ittnotify)
             list(APPEND _profiler_static_install_targets ittnotify)
         endif()
-        install(TARGETS ${_profiler_static_install_targets} ARCHIVE DESTINATION lib)
+        if(_profiler_static_install_targets)
+            install(TARGETS ${_profiler_static_install_targets} ARCHIVE DESTINATION lib)
+        endif()
         # One pair of quotes around the whole semicolon-joined list (not one
         # pair per item) -- set_target_properties() takes a single value per
         # property, and a quoted "a;b;c" is the standard way to pass a list
