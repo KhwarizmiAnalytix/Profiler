@@ -465,7 +465,7 @@ PROFILERTEST(PublicApi, capture_event_carries_execution_location_and_kind)
     // A CPU scope recorded on this thread must carry that thread's id, not
     // the field's zero-initialized default.
     EXPECT_NE(found->thread_id, 0U);
-    EXPECT_EQ(found->device_type, profiler::device_enum::CPU);
+    EXPECT_EQ(found->device_type, profiler::profiler_device_enum::CPU);
     EXPECT_TRUE(found->complete);
     // Not every KinetoEvent has a correlation id (only ops that actually
     // correlate to something do); this just proves the field is populated

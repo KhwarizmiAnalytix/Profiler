@@ -25,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "common/device.h"
+#include "common/profiler_device.h"
 #include "common/profiler_export.h"
 
 namespace profiler
@@ -113,7 +113,7 @@ struct capture_event
     // GPU-side event and stay at their construction-time defaults (CPU, -1, 0)
     // for CPU-side events.
     uint64_t    thread_id    = 0;
-    device_enum device_type  = device_enum::CPU;
+    profiler_device_enum device_type  = profiler_device_enum::CPU;
     int         device_index = -1;
     int64_t     resource_id  = 0;
 

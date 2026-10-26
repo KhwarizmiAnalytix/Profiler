@@ -293,7 +293,7 @@ struct KinetoThreadLocalState : public ProfilerStateBase
     {
         for (auto& e : events)
         {
-            if (e->parent_.expired() && e->deviceType() == profiler::device_enum::CPU)
+            if (e->parent_.expired() && e->deviceType() == profiler::profiler_device_enum::CPU)
             {
                 eventTree.push_back(e);
             }

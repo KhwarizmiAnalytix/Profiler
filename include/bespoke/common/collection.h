@@ -40,7 +40,7 @@
 #include "bespoke/common/util.h"
 #include "bespoke/kineto/kineto_shim.h"
 #include "common/profiler_macros.h"
-// #include "common/device.h"
+// #include "common/profiler_device.h"
 #include "common/approximate_clock.h"
 #include "common/flat_hash.h"
 #include "common/strong_type.h"
@@ -148,7 +148,7 @@ struct RawAllocation
     int64_t                 alloc_size_;
     size_t                  total_allocated_;
     size_t                  total_reserved_;
-    profiler::device_enum   device_type_;
+    profiler::profiler_device_enum   device_type_;
     int16_t                 device_index_;
 };
 
@@ -174,7 +174,7 @@ template <> struct ExtraFields<EventType::OutOfMemory>
     int64_t                 alloc_size_;
     size_t                  total_allocated_;
     size_t                  total_reserved_;
-    profiler::device_enum   device_type_;
+    profiler::profiler_device_enum   device_type_;
     int16_t                 device_index_;
 };
 
@@ -251,7 +251,7 @@ struct PROFILER_VISIBILITY Result : public std::enable_shared_from_this<Result>
     uint64_t              correlationID() const;
     int64_t               endTimeNS() const;
     uint64_t              endTID() const;
-    profiler::device_enum deviceType() const;
+    profiler::profiler_device_enum deviceType() const;
 
     int64_t                   start_time_ns_;
     uint64_t                  start_tid_;

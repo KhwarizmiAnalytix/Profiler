@@ -74,7 +74,7 @@ void* allocate_and_report(size_t bytes, size_t* total_allocated)
         static_cast<int64_t>(bytes),
         *total_allocated,
         *total_allocated,
-        static_cast<int16_t>(profiler::device_enum::CPU),
+        static_cast<int16_t>(profiler::profiler_device_enum::CPU),
         /*device_index=*/-1);
 #endif
     return ptr;
@@ -95,7 +95,7 @@ void free_and_report(void* ptr, size_t bytes, size_t* total_allocated)
         -static_cast<int64_t>(bytes),
         *total_allocated,
         *total_allocated,
-        static_cast<int16_t>(profiler::device_enum::CPU),
+        static_cast<int16_t>(profiler::profiler_device_enum::CPU),
         /*device_index=*/-1);
 #else
     if (*total_allocated >= bytes)
@@ -182,7 +182,7 @@ PROFILERTEST(BackendMemory, kineto_profiles_memory)
         profiler::report_out_of_memory(static_cast<int64_t>(kAllocBytes),
             total_allocated,
             total_allocated,
-            static_cast<int16_t>(profiler::device_enum::CPU),
+            static_cast<int16_t>(profiler::profiler_device_enum::CPU),
             /*device_index=*/-1);
     }
 

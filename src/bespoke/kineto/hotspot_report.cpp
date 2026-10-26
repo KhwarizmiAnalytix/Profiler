@@ -51,7 +51,7 @@ int64_t node_total_ns(const experimental_event_t& node)
 time_domain domain_of(const experimental_event_t& node)
 {
     const auto device = node->deviceType();
-    if (device == profiler::device_enum::CUDA || device == profiler::device_enum::HIP)
+    if (device == profiler::profiler_device_enum::CUDA || device == profiler::profiler_device_enum::HIP)
     {
         return time_domain::cuda;
     }

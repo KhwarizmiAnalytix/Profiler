@@ -41,7 +41,7 @@ void report_memory_usage(void* ptr,
 
     device_option device{};
     device.index_ = device_index;
-    device.type_  = static_cast<device_enum>(device_type);
+    device.type_  = static_cast<profiler_device_enum>(device_type);
     state->reportMemoryUsage(ptr, alloc_size, total_allocated, total_reserved, device);
 #else
     (void)ptr;
@@ -68,7 +68,7 @@ void report_out_of_memory(int64_t alloc_size,
 
     device_option device{};
     device.index_ = device_index;
-    device.type_  = static_cast<device_enum>(device_type);
+    device.type_  = static_cast<profiler_device_enum>(device_type);
     state->reportOutOfMemory(alloc_size, total_allocated, total_reserved, device);
 #else
     (void)alloc_size;

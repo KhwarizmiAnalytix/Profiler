@@ -72,7 +72,7 @@ public:
 
     /**
      * @brief Sets the target device type for profiling
-     * @param device_enum The device type to profile
+     * @param profiler_device_enum The device type to profile
      */
     void set_device_type(device_type_enum device_type) { device_type_ = device_type; }
 

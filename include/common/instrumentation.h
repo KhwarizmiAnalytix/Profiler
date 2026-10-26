@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "common/device.h"
+#include "common/profiler_device.h"
 #include "common/profiler_export.h"
 #include "common/profiler_macros.h"
 
@@ -69,7 +69,7 @@ namespace profiler
  * @param total_allocated Running total of bytes currently allocated.
  * @param total_reserved Running total of bytes reserved by the allocator's
  *        pool, including currently-unused blocks.
- * @param device_type One of profiler::device_enum's underlying values (CPU,
+ * @param device_type One of profiler::profiler_device_enum's underlying values (CPU,
  *        CUDA, HIP, PrivateUse1).
  * @param device_index Device ordinal, or -1 if not applicable.
  */

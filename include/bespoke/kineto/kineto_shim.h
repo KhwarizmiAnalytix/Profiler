@@ -167,7 +167,7 @@ PROFILER_API void logInvariantViolation(const std::string& assertion,
 namespace profiler_impl
 {
 // TODO: Profiler-specific function commented out
-profiler::device_enum deviceTypeFromActivity(
+profiler::profiler_device_enum deviceTypeFromActivity(
     profiler::profiler_impl::impl::kineto::activity_type_t activity_type);
 
 PROFILER_API void addMetadataJson(const std::string& key, const std::string& value);

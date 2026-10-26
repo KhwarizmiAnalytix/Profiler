@@ -68,7 +68,7 @@ struct PROFILER_VISIBILITY KinetoEvent
     PROFILER_API bool     isHiddenEvent() const;
     PROFILER_API uint8_t  scope() const;
     PROFILER_API std::string name() const;
-    PROFILER_API profiler::device_enum deviceType() const;
+    PROFILER_API profiler::profiler_device_enum deviceType() const;
     PROFILER_API int                   deviceIndex() const;
     PROFILER_API int64_t               nBytes() const;
     PROFILER_API uint64_t              startNs() const;

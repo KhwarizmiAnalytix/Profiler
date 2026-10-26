@@ -152,7 +152,7 @@ PROFILERTEST(GpuRealHardware, kernel_and_transfers_captured)
     bool found_any_gpu_event = false;
     for (const auto& evt : events)
     {
-        if (evt.device_type != profiler::device_enum::CPU)
+        if (evt.device_type != profiler::profiler_device_enum::CPU)
         {
             found_any_gpu_event = true;
             break;
@@ -262,7 +262,7 @@ PROFILERTEST(GpuRealHardware, concurrent_streams_not_nested)
     std::set<int64_t>                           seen_resource_ids;
     for (const auto& evt : events)
     {
-        if (evt.device_type != profiler::device_enum::CPU && evt.resource_id >= 0)
+        if (evt.device_type != profiler::profiler_device_enum::CPU && evt.resource_id >= 0)
         {
             gpu_events.push_back(&evt);
             seen_resource_ids.insert(evt.resource_id);
@@ -348,7 +348,7 @@ PROFILERTEST(GpuRealHardware, device_fill_captured)
     bool found_gpu_event = false;
     for (const auto& evt : events)
     {
-        if (evt.device_type != profiler::device_enum::CPU)
+        if (evt.device_type != profiler::profiler_device_enum::CPU)
         {
             found_gpu_event = true;
             break;
@@ -431,7 +431,7 @@ PROFILERTEST(GpuRealHardware, cpu_overlap_with_gpu_work_attributed)
     bool found_gpu_event = false;
     for (const auto& evt : events)
     {
-        if (evt.device_type == profiler::device_enum::CPU)
+        if (evt.device_type == profiler::profiler_device_enum::CPU)
         {
             found_cpu_event = true;
         }
@@ -711,7 +711,7 @@ PROFILERTEST(GpuRealHardware, capture_populates_clock_uncertainty_for_gpu_events
     bool found_gpu_event_with_uncertainty = false;
     for (const auto& evt : events)
     {
-        if (evt.device_type == profiler::device_enum::CUDA)
+        if (evt.device_type == profiler::profiler_device_enum::CUDA)
         {
             // A genuinely-calibrated device has non-negative uncertainty; a
             // real (non-buggy) calibration on healthy hardware should not

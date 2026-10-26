@@ -26,7 +26,7 @@
 
 #include "bespoke/base/thread_local_debug_info.h"
 #include "bespoke/common/record_function.h"
-#include "common/device.h"
+#include "common/profiler_device.h"
 #include "common/profiler_export.h"
 
 namespace profiler::profiler_impl::impl

@@ -21,7 +21,7 @@
 #include <cstdint>
 #include <functional>
 
-// #include "common/device.h"
+// #include "common/profiler_device.h"
 
 namespace profiler::profiler_impl::impl
 {

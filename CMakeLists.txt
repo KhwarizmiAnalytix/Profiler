@@ -395,7 +395,7 @@ if(PROFILER_ENABLE_INSTALL)
         common/annotation.h
         common/approximate_clock.h
         common/capture.h
-        common/device.h
+        common/profiler_device.h
         common/flat_hash.h
         common/instrumentation.h
         common/no_init.h

@@ -466,7 +466,7 @@ void logInvariantViolation(const std::string& assertion,
 
 namespace profiler_impl
 {
-profiler::device_enum deviceTypeFromActivity(
+profiler::profiler_device_enum deviceTypeFromActivity(
     profiler::profiler_impl::impl::kineto::activity_type_t activity_type)
 {
 #if PROFILER_HAS_KINETO
@@ -475,9 +475,9 @@ profiler::device_enum deviceTypeFromActivity(
     // ever active in a build (see PROFILER_HAS_CUDA/PROFILER_HAS_HIP in
     // CMakeLists.txt), so the tag is a compile-time choice, not a runtime one.
 #if PROFILER_HAS_HIP
-    constexpr profiler::device_enum kGpuDeviceType = profiler::device_enum::HIP;
+    constexpr profiler::profiler_device_enum kGpuDeviceType = profiler::profiler_device_enum::HIP;
 #else
-    constexpr profiler::device_enum kGpuDeviceType = profiler::device_enum::CUDA;
+    constexpr profiler::profiler_device_enum kGpuDeviceType = profiler::profiler_device_enum::CUDA;
 #endif
     // fallthrough
     switch (activity_type)
@@ -505,11 +505,11 @@ profiler::device_enum deviceTypeFromActivity(
     case libkineto::ActivityType::PRIVATEUSE1_DRIVER:
     case libkineto::ActivityType::OVERHEAD:
     default:
-        return profiler::device_enum::CPU;
+        return profiler::profiler_device_enum::CPU;
     }
 #else
     (void)activity_type;
-    return profiler::device_enum::CPU;
+    return profiler::profiler_device_enum::CPU;
 #endif  // PROFILER_HAS_KINETO
 }
 

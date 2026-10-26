@@ -323,7 +323,7 @@ uint64_t Result::endTID() const
         ATTRIBUTE(FunctionOp, e.end_tid_), [&](const auto&) -> uint64_t { return start_tid_; }));
 }
 
-profiler::device_enum Result::deviceType() const
+profiler::profiler_device_enum Result::deviceType() const
 {
     using profiler::profiler_impl::deviceTypeFromActivity;
     return visit(profiler::overloaded(ATTRIBUTE(Allocation, e.device_type_),
@@ -331,9 +331,9 @@ profiler::device_enum Result::deviceType() const
 #if PROFILER_HAS_KINETO
         ATTRIBUTE(Kineto, deviceTypeFromActivity(e.activity_type_)),
 #else
-        [](const ExtraFields<EventType::Kineto>&) { return profiler::device_enum::CPU; },
+        [](const ExtraFields<EventType::Kineto>&) { return profiler::profiler_device_enum::CPU; },
 #endif
-        [&](const auto&) { return profiler::device_enum::CPU; }));
+        [&](const auto&) { return profiler::profiler_device_enum::CPU; }));
 }
 #undef ATTRIBUTE
 

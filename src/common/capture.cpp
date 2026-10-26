@@ -319,7 +319,7 @@ std::unique_ptr<capture_result> capture::stop()
             // "Measurement" field group) for CUDA device-side events, from a
             // per-device calibration computed once and cached for the process
             // (common/clock_calibration.h).
-            if (copied.device_type == device_enum::CUDA)
+            if (copied.device_type == profiler_device_enum::CUDA)
             {
                 copied.clock_uncertainty_ns = static_cast<int64_t>(
                     cached_cuda_device_calibration(copied.device_index).uncertainty_ns);

@@ -23,7 +23,7 @@
 namespace profiler
 {
 
-enum class device_enum : std::uint8_t
+enum class profiler_device_enum : std::uint8_t
 {
     CPU         = 0,
     CUDA        = 1,
@@ -35,9 +35,9 @@ struct device_option
 {
     using int_t        = int16_t;
     int_t       index_ = -1;
-    device_enum type_{};
+    profiler_device_enum type_{};
 
-    device_enum type() const noexcept { return type_; }
+    profiler_device_enum type() const noexcept { return type_; }
     int_t       index() const noexcept { return index_; }
 
     bool operator==(const device_option& other) const noexcept

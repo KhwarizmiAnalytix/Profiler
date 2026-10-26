@@ -185,7 +185,7 @@ pkg_files(
         "include/common/annotation.h",
         "include/common/approximate_clock.h",
         "include/common/capture.h",
-        "include/common/device.h",
+        "include/common/profiler_device.h",
         "include/common/flat_hash.h",
         "include/common/instrumentation.h",
         "include/common/no_init.h",
