@@ -655,9 +655,8 @@ jobs:
     # across all three OSes. Native-only backend (PROFILER_BACKEND=NONE)
     # keeps each leg fast -- this job is about proving the launcher wiring
     # configures/builds cleanly, not about re-running the KINETO/ITT matrix.
-    # Lightweight scope: ccache and sccache only (no buildcache, which needs
-    # a separate pinned installer); icecc has no Windows port, so it is only
-    # exercised on Linux/macOS.
+    # BuildCache runs in buildcache.yml. Icecc has no Windows port, so it is
+    # exercised on Linux/macOS only.
     name: cache-icecc (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
