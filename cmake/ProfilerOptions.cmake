@@ -62,6 +62,8 @@ option(PROFILER_ENABLE_COVERAGE
 option(PROFILER_ENABLE_CLANG_TIDY "Run clang-tidy on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_CPPCHECK "Run cppcheck on Profiler sources during compilation" OFF)
 option(PROFILER_ENABLE_IWYU "Run include-what-you-use on Profiler sources during compilation" OFF)
+option(PROFILER_ENABLE_VALGRIND "Execute Profiler test suite with Valgrind" OFF)
+mark_as_advanced(PROFILER_ENABLE_VALGRIND)
 
 set(PROFILER_SANITIZER
     ""

@@ -19,6 +19,8 @@ Usage:
     python Scripts/setup.py config.build.test.gcc.release
 """
 
+import glob
+import importlib.util
 import os
 import platform
 import re
@@ -140,6 +142,29 @@ class SummaryReporter:
                 "message": f"Failed to parse cppcheck results: {e}",
             }
 
+    def add_valgrind_report(self, build_path: str, exit_code: int):
+        valgrind_logs = glob.glob(os.path.join(build_path, "Testing", "Temporary", "MemoryChecker.*.log"))
+        if not valgrind_logs:
+            self.reports["valgrind"] = {"status": "not_run", "message": "Valgrind was not executed or no logs found"}
+            return
+        try:
+            memory_leaks = 0
+            memory_errors = 0
+            for log_file in valgrind_logs:
+                with open(log_file, encoding="utf-8") as f:
+                    content = f.read()
+                memory_leaks += sum(int(m) for m in re.findall(r"definitely lost: (\d+)", content) if int(m) > 0)
+                memory_errors += sum(int(m) for m in re.findall(r"ERROR SUMMARY: (\d+) errors", content) if int(m) > 0)
+            self.reports["valgrind"] = {
+                "status": "completed",
+                "exit_code": exit_code,
+                "memory_leaks": memory_leaks,
+                "memory_errors": memory_errors,
+                "log_files": valgrind_logs,
+            }
+        except Exception as e:
+            self.reports["valgrind"] = {"status": "error", "message": f"Failed to parse valgrind results: {e}"}
+
     def add_coverage_report(self, build_path: str, exit_code: int):
         """Parse the coverage-tool JSON report and extract summary metrics."""
         import json
@@ -238,6 +263,17 @@ class SummaryReporter:
                     if count > 0:
                         print_status(f"  - {issue_type}: {count}", "INFO")
                 print_status(f"  Log file: {report['log_file']}", "INFO")
+
+        elif tool == "valgrind":
+            leaks = report["memory_leaks"]
+            errors = report["memory_errors"]
+            if leaks == 0 and errors == 0:
+                print_status(f"{tool_name}: No memory issues found", "SUCCESS")
+            else:
+                if leaks > 0:
+                    print_status(f"{tool_name}: Found {leaks} memory leaks", "ERROR")
+                if errors > 0:
+                    print_status(f"{tool_name}: Found {errors} memory errors", "ERROR")
 
         elif tool == "coverage":
             print_status("\n" + "=" * 80, "INFO")
@@ -406,6 +442,7 @@ class ProfilerFlags:
             "iwyu",
             "benchmark",
             "spell",
+            "valgrind",
         ]
         self.__description = [
             "build shared (default) or static libraries",
@@ -426,6 +463,7 @@ class ProfilerFlags:
             "run include-what-you-use on Profiler sources (PROFILER_ENABLE_IWYU)",
             "build the overhead-measurement benchmark tool (PROFILER_ENABLE_BENCHMARKS)",
             "run codespell spell-checker on source files after the build",
+            "run the test suite under Valgrind memcheck (PROFILER_ENABLE_VALGRIND)",
         ]
 
     def __build_cmake_flag(self):
@@ -447,6 +485,7 @@ class ProfilerFlags:
             "clangtidy": "PROFILER_ENABLE_CLANG_TIDY",
             "iwyu": "PROFILER_ENABLE_IWYU",
             "benchmark": "PROFILER_ENABLE_BENCHMARKS",
+            "valgrind": "PROFILER_ENABLE_VALGRIND",
         }
 
     def __fill_option_flags(self, arg_list):
@@ -548,21 +587,24 @@ class ProfilerFlags:
             )
             self.__value["test"] = self.ON
 
-        if self.__value.get("coverage") == self.ON:
-            try:
-                import coverage_tool  # noqa: F401
-            except ImportError:
-                print_status(
-                    "coverage-tool is not installed. Install with: pip install coverage-tool",
-                    "ERROR",
-                )
-                sys.exit(1)
+        if (
+            self.__value.get("coverage") == self.ON
+            and importlib.util.find_spec("coverage_tool") is None
+        ):
+            print_status(
+                "coverage-tool is not installed. Install with: pip install coverage-tool",
+                "ERROR",
+            )
+            sys.exit(1)
 
         if "thread" in self.__sanitizer_types and len(self.__sanitizer_types) > 1:
             print_status(
                 "ThreadSanitizer cannot combine with other sanitizers; use a separate build directory.",
                 "WARNING",
             )
+
+        if self.__value.get("sanitizer") and self.__value.get("valgrind") == self.ON:
+            print_status("Both sanitizer and valgrind enabled - consider using only one.", "WARNING")
 
     @staticmethod
     def find_case_insensitive(element, lst):
@@ -574,9 +616,13 @@ class ProfilerFlags:
         del (
             system
         )  # unused; kept for parity with the CMake-driven build-type selection below
-        if self.__value.get("sanitizer") or self.__value.get("coverage") == self.ON:
+        if (
+            self.__value.get("sanitizer")
+            or self.__value.get("coverage") == self.ON
+            or self.__value.get("valgrind") == self.ON
+        ):
             print_status(
-                "Enabling debug build for sanitizer or coverage analysis", "INFO"
+                "Enabling debug build for sanitizer, valgrind, or coverage analysis", "INFO"
             )
             build_type = "Debug"
         else:
@@ -598,6 +644,9 @@ class ProfilerFlags:
 
     def is_coverage(self):
         return self.__value["coverage"] == self.ON
+
+    def is_valgrind(self):
+        return self.__value["valgrind"] == self.ON
 
     def is_cppcheck(self):
         return self.__value["cppcheck"] == self.ON
@@ -877,6 +926,10 @@ class ProfilerConfiguration:
     def test(self, source_path, build_path):
         if self.__value["test"] != "test":
             return 0
+        if self.__profiler_flags.is_valgrind():
+            exit_code = test_helper.run_valgrind_test(source_path, build_path, self.__shell_flag())
+            self.summary_reporter.add_valgrind_report(build_path, exit_code)
+            return exit_code
         return test_helper.run_ctest(
             self.__value["builder"],
             self.__value["build_enum"],
