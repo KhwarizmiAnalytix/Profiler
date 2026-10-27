@@ -566,6 +566,5 @@ $<$<BOOL:${_profiler_static_third_party_includes}>:set_property(TARGET Profiler:
 endif()
 
 message(STATUS "Profiler: backend=${PROFILER_BACKEND} gpu=${PROFILER_GPU_BACKEND} "
-               "cuda=${PROFILER_HAS_CUDA} nvtx=${PROFILER_HAS_NVTX} "
                "standalone=${PROFILER_STANDALONE}"
 )
