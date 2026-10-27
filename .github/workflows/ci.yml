@@ -648,3 +648,98 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build-tsan --output-on-failure --timeout 180
+
+  cache-icecc:
+    # Exercises PROFILER_ENABLE_CACHE/PROFILER_CACHE_BACKEND and
+    # PROFILER_ENABLE_ICECC (cmake/cache.cmake, cmake/helper_macros.cmake)
+    # across all three OSes. Native-only backend (PROFILER_BACKEND=NONE)
+    # keeps each leg fast -- this job is about proving the launcher wiring
+    # configures/builds cleanly, not about re-running the KINETO/ITT matrix.
+    # Lightweight scope: ccache and sccache only (no buildcache, which needs
+    # a separate pinned installer); icecc has no Windows port, so it is only
+    # exercised on Linux/macOS.
+    name: cache-icecc (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-ccache
+            os: ubuntu-latest
+            backend: ccache
+          - name: linux-sccache
+            os: ubuntu-latest
+            backend: sccache
+          - name: linux-icecc
+            os: ubuntu-latest
+            icecc: true
+          - name: macos-ccache
+            os: macos-latest
+            backend: ccache
+          - name: macos-sccache
+            os: macos-latest
+            backend: sccache
+          - name: macos-icecc
+            os: macos-latest
+            icecc: true
+          - name: windows-ccache
+            os: windows-latest
+            backend: ccache
+          - name: windows-sccache
+            os: windows-latest
+            backend: sccache
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize submodules
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+
+      - name: Install ccache/icecc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ccache icecc
+
+      - name: Install ccache/icecream (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ccache icecream
+
+      - name: Install ccache (Windows)
+        if: runner.os == 'Windows'
+        run: choco install -y ccache
+
+      - name: Set up sccache
+        if: matrix.backend == 'sccache'
+        uses: mozilla-actions/sccache-action@v0.0.9
+        with:
+          version: v0.12.0
+          disable_annotations: 'true'
+
+      - name: Configure
+        shell: bash
+        run: |
+          extra=()
+          if [[ -n "${{ matrix.backend }}" ]]; then
+            extra+=(-DPROFILER_ENABLE_CACHE=ON -DPROFILER_CACHE_BACKEND=${{ matrix.backend }})
+          fi
+          if [[ "${{ matrix.icecc }}" == "true" ]]; then
+            extra+=(-DPROFILER_ENABLE_ICECC=ON)
+          fi
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPROFILER_BACKEND=NONE \
+            -DPROFILER_GPU_BACKEND=none \
+            -DPROFILER_ENABLE_TESTING=ON \
+            "${extra[@]}"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --timeout 180

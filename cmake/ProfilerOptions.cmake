@@ -65,6 +65,16 @@ option(PROFILER_ENABLE_IWYU "Run include-what-you-use on Profiler sources during
 option(PROFILER_ENABLE_VALGRIND "Execute Profiler test suite with Valgrind" OFF)
 mark_as_advanced(PROFILER_ENABLE_VALGRIND)
 
+option(PROFILER_ENABLE_ICECC "Use Icecream (icecc) distributed compiler for Profiler" OFF)
+mark_as_advanced(PROFILER_ENABLE_ICECC)
+option(PROFILER_ENABLE_CACHE "Enable compiler caching for the Profiler target" ON)
+mark_as_advanced(PROFILER_ENABLE_CACHE)
+set(PROFILER_CACHE_BACKEND "none"
+    CACHE STRING "Compiler cache backend: none, ccache, sccache, or buildcache"
+)
+set_property(CACHE PROFILER_CACHE_BACKEND PROPERTY STRINGS none ccache sccache buildcache)
+mark_as_advanced(PROFILER_CACHE_BACKEND)
+
 set(PROFILER_SANITIZER
     ""
     CACHE
