@@ -713,8 +713,14 @@ class ProfilerConfiguration:
         elif self.__is_clang_compiler(arg):
             self.__set_clang_compiler(arg)
         elif arg == "clang-cl":
-            self.__value["cmake_cxx_compiler"] = "-DCMAKE_GENERATOR_TOOLSET=ClangCL"
-            self.__value["cmake_c_compiler"] = ""
+            # CMAKE_GENERATOR_TOOLSET=ClangCL only works with VS generators.
+            # With Ninja (the default), pass the compiler directly.
+            if self.__value.get("cmake_generator", "Ninja") == "Ninja":
+                self.__value["cmake_cxx_compiler"] = "-DCMAKE_CXX_COMPILER=clang-cl"
+                self.__value["cmake_c_compiler"] = "-DCMAKE_C_COMPILER=clang-cl"
+            else:
+                self.__value["cmake_cxx_compiler"] = "-DCMAKE_GENERATOR_TOOLSET=ClangCL"
+                self.__value["cmake_c_compiler"] = ""
             self.__compiler_user_specified = True
         elif self.__is_gcc_compiler(arg):
             self.__set_gcc_compiler(arg)
