@@ -24,7 +24,6 @@ import importlib.util
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -40,12 +39,13 @@ try:
 except ImportError:  # Windows CLI smoke and some CI jobs skip pip install
 
     class Fore:  # pylint: disable=too-few-public-methods
-        CYAN = GREEN = YELLOW = RED = WHITE = ""
+        BLUE = CYAN = GREEN = YELLOW = RED = WHITE = ""
 
     class Style:  # pylint: disable=too-few-public-methods
         RESET_ALL = ""
 
 
+from helpers import cli as cli_helper
 from helpers import (
     build as build_helper,
     config as config_helper,
@@ -143,9 +143,14 @@ class SummaryReporter:
             }
 
     def add_valgrind_report(self, build_path: str, exit_code: int):
-        valgrind_logs = glob.glob(os.path.join(build_path, "Testing", "Temporary", "MemoryChecker.*.log"))
+        valgrind_logs = glob.glob(
+            os.path.join(build_path, "Testing", "Temporary", "MemoryChecker.*.log")
+        )
         if not valgrind_logs:
-            self.reports["valgrind"] = {"status": "not_run", "message": "Valgrind was not executed or no logs found"}
+            self.reports["valgrind"] = {
+                "status": "not_run",
+                "message": "Valgrind was not executed or no logs found",
+            }
             return
         try:
             memory_leaks = 0
@@ -153,8 +158,16 @@ class SummaryReporter:
             for log_file in valgrind_logs:
                 with open(log_file, encoding="utf-8") as f:
                     content = f.read()
-                memory_leaks += sum(int(m) for m in re.findall(r"definitely lost: (\d+)", content) if int(m) > 0)
-                memory_errors += sum(int(m) for m in re.findall(r"ERROR SUMMARY: (\d+) errors", content) if int(m) > 0)
+                memory_leaks += sum(
+                    int(m)
+                    for m in re.findall(r"definitely lost: (\d+)", content)
+                    if int(m) > 0
+                )
+                memory_errors += sum(
+                    int(m)
+                    for m in re.findall(r"ERROR SUMMARY: (\d+) errors", content)
+                    if int(m) > 0
+                )
             self.reports["valgrind"] = {
                 "status": "completed",
                 "exit_code": exit_code,
@@ -163,7 +176,10 @@ class SummaryReporter:
                 "log_files": valgrind_logs,
             }
         except Exception as e:
-            self.reports["valgrind"] = {"status": "error", "message": f"Failed to parse valgrind results: {e}"}
+            self.reports["valgrind"] = {
+                "status": "error",
+                "message": f"Failed to parse valgrind results: {e}",
+            }
 
     def add_coverage_report(self, build_path: str, exit_code: int):
         """Parse the coverage-tool JSON report and extract summary metrics."""
@@ -417,6 +433,14 @@ class ProfilerFlags:
     ON = "ON"
 
     def __init__(self, arg_list):
+        self.requested_build_type = next(
+            (
+                cli_helper.canonical_build_type(arg)
+                for arg in reversed(arg_list)
+                if arg in ("debug", "release", "relwithdebinfo", "minsizerel")
+            ),
+            None,
+        )
         self.__initialize_flags()
         if arg_list:
             self.__build_cmake_flag()
@@ -443,6 +467,9 @@ class ProfilerFlags:
             "benchmark",
             "spell",
             "valgrind",
+            "cache",
+            "cache_type",
+            "icecc",
         ]
         self.__description = [
             "build shared (default) or static libraries",
@@ -453,10 +480,9 @@ class ProfilerFlags:
             "fail configure if CUDA was requested but not found",
             "fail configure if NVTX is missing",
             "enable code coverage instrumentation",
-            "build with sanitizer support: --sanitizer.address, .undefined, .thread, .memory, .leak "
-            "(combinable, e.g. --sanitizer.address --sanitizer.undefined)",
+            "build with sanitizer support: --sanitizer.address, .undefined, .thread, .memory, .leak (combinable, e.g. --sanitizer.address --sanitizer.undefined)",
             "C++ standard: cxx11, cxx14, cxx17, cxx20, cxx23",
-            "instrumentation backend: --backend.kineto (default) or --backend.itt",
+            "instrumentation backend: --backend.kineto (default), --backend.itt, --backend.none",
             "GPU backend: --gpu.none (default), --gpu.cuda, --gpu.hip, or --gpu.metal",
             "enable cppcheck static analysis",
             "run clang-tidy on Profiler sources during compilation (PROFILER_ENABLE_CLANG_TIDY)",
@@ -464,6 +490,9 @@ class ProfilerFlags:
             "build the overhead-measurement benchmark tool (PROFILER_ENABLE_BENCHMARKS)",
             "run codespell spell-checker on source files after the build",
             "run the test suite under Valgrind memcheck (PROFILER_ENABLE_VALGRIND)",
+            "enable compiler cache (cache token disables the default)",
+            "compiler cache backend: none, ccache, sccache, buildcache",
+            "enable Icecream distributed compilation",
         ]
 
     def __build_cmake_flag(self):
@@ -487,6 +516,13 @@ class ProfilerFlags:
             "benchmark": "PROFILER_ENABLE_BENCHMARKS",
             "valgrind": "PROFILER_ENABLE_VALGRIND",
         }
+        self.__name.update(
+            {
+                "cache": "PROFILER_ENABLE_CACHE",
+                "cache_type": "PROFILER_CACHE_BACKEND",
+                "icecc": "PROFILER_ENABLE_ICECC",
+            }
+        )
 
     def __fill_option_flags(self, arg_list):
         debug_print("Fill option flags")
@@ -511,15 +547,23 @@ class ProfilerFlags:
             }
         )
         self.__sanitizer_types: list[str] = []
+        self.__value.update({"cache": "ON", "cache_type": "none", "icecc": "OFF"})
 
     def __process_arg_list(self, arg_list):
         sanitizer_list = ["address", "undefined", "thread", "memory", "leak"]
         cxx_std_list = ["cxx11", "cxx14", "cxx17", "cxx20", "cxx23"]
-        backend_list = ["kineto", "itt"]
+        backend_list = ["kineto", "itt", "none"]
         gpu_backend_list = ["none", "cuda", "hip", "metal"]
 
         self.builder_suffix = ""
         for arg in arg_list:
+            if arg in ("ccache", "sccache", "buildcache", "none"):
+                self.__value["cache_type"] = arg
+                self.builder_suffix += f"_{arg}"
+                continue
+            if arg == "cache":
+                self.__value["cache"] = self.OFF
+                continue
             if arg == "static":
                 self.__value["static"] = self.OFF
                 self.builder_suffix += "_static"
@@ -604,7 +648,10 @@ class ProfilerFlags:
             )
 
         if self.__value.get("sanitizer") and self.__value.get("valgrind") == self.ON:
-            print_status("Both sanitizer and valgrind enabled - consider using only one.", "WARNING")
+            print_status(
+                "Both sanitizer and valgrind enabled - consider using only one.",
+                "WARNING",
+            )
 
     @staticmethod
     def find_case_insensitive(element, lst):
@@ -616,17 +663,18 @@ class ProfilerFlags:
         del (
             system
         )  # unused; kept for parity with the CMake-driven build-type selection below
-        if (
+        if not self.requested_build_type and (
             self.__value.get("sanitizer")
             or self.__value.get("coverage") == self.ON
             or self.__value.get("valgrind") == self.ON
         ):
             print_status(
-                "Enabling debug build for sanitizer, valgrind, or coverage analysis", "INFO"
+                "Enabling debug build for sanitizer, valgrind, or coverage analysis",
+                "INFO",
             )
             build_type = "Debug"
         else:
-            build_type = str(build_enum).capitalize()
+            build_type = cli_helper.canonical_build_type(build_enum)
 
         for key, value in self.__value.items():
             if key in self.__name:
@@ -666,6 +714,7 @@ class ProfilerFlags:
 
 class ProfilerConfiguration:
     def __init__(self, args_list):
+        self.source_path = Path(__file__).resolve().parents[1]
         missing_deps = check_dependencies()
         if missing_deps:
             print_status("Missing required dependencies:", "ERROR")
@@ -674,12 +723,23 @@ class ProfilerConfiguration:
             print_status("Please install missing dependencies and try again.", "ERROR")
             sys.exit(1)
 
-        self.error_logger = ErrorLogger()
+        self.error_logger = ErrorLogger(str(self.source_path / "logs"))
         self.summary_reporter = SummaryReporter()
 
         self.__initialize_values()
         self.__profiler_flags = ProfilerFlags(args_list)
+        self.__set_ninja_flags()
         self.__fill_compilation_flags(args_list)
+        self.__value["build_enum"] = self.__profiler_flags.create_cmake_flags(
+            [], self.__value["build_enum"], self.__value["system"]
+        )
+        if self.__compiler_user_specified:
+            compiler = self.__value["cmake_cxx_compiler"].split("=", 1)[-1]
+            self.__value["build_folder"] += "_" + re.sub(
+                r"[^a-zA-Z0-9+-]", "_", Path(compiler).name
+            )
+        if self.__value["build_enum"] != "Release":
+            self.__value["build_folder"] += "_" + self.__value["build_enum"].lower()
 
     def __initialize_values(self):
         default_cxx_compiler = "clang++"
@@ -713,14 +773,8 @@ class ProfilerConfiguration:
         elif self.__is_clang_compiler(arg):
             self.__set_clang_compiler(arg)
         elif arg == "clang-cl":
-            # CMAKE_GENERATOR_TOOLSET=ClangCL only works with VS generators.
-            # With Ninja (the default), pass the compiler directly.
-            if self.__value.get("cmake_generator", "Ninja") == "Ninja":
-                self.__value["cmake_cxx_compiler"] = "-DCMAKE_CXX_COMPILER=clang-cl"
-                self.__value["cmake_c_compiler"] = "-DCMAKE_C_COMPILER=clang-cl"
-            else:
-                self.__value["cmake_cxx_compiler"] = "-DCMAKE_GENERATOR_TOOLSET=ClangCL"
-                self.__value["cmake_c_compiler"] = ""
+            self.__value["cmake_cxx_compiler"] = "-DCMAKE_CXX_COMPILER=clang-cl"
+            self.__value["cmake_c_compiler"] = "-DCMAKE_C_COMPILER=clang-cl"
             self.__compiler_user_specified = True
         elif self.__is_gcc_compiler(arg):
             self.__set_gcc_compiler(arg)
@@ -728,9 +782,11 @@ class ProfilerConfiguration:
             self.__set_visual_studio(arg)
         elif arg in ["config", "build", "test"]:
             self.__value[arg] = arg
-        elif arg in ["release", "debug", "relwithdebinfo"]:
+        elif arg in ["release", "debug", "relwithdebinfo", "minsizerel"]:
             self.__value["build_enum"] = (
-                arg.capitalize() if arg != "relwithdebinfo" else "RelWithDebInfo"
+                cli_helper.canonical_build_type(arg)
+                if arg != "relwithdebinfo"
+                else "RelWithDebInfo"
             )
         elif arg in ["vv", "v"]:
             self.__set_verbose_flags()
@@ -933,7 +989,9 @@ class ProfilerConfiguration:
         if self.__value["test"] != "test":
             return 0
         if self.__profiler_flags.is_valgrind():
-            exit_code = test_helper.run_valgrind_test(source_path, build_path, self.__shell_flag())
+            exit_code = test_helper.run_valgrind_test(
+                source_path, build_path, self.__shell_flag()
+            )
             self.summary_reporter.add_valgrind_report(build_path, exit_code)
             return exit_code
         return test_helper.run_ctest(
@@ -949,11 +1007,16 @@ class ProfilerConfiguration:
     def coverage(self, source_path, build_path):
         if self.__value["build"] != "build" or not self.__profiler_flags.is_coverage():
             return 0
-        print_status("Starting code coverage collection and report generation...", "INFO")
+        print_status(
+            "Starting code coverage collection and report generation...", "INFO"
+        )
         try:
             from coverage_tool import get_coverage
         except ImportError:
-            print_status("coverage-tool is not installed. Install with: pip install coverage-tool", "ERROR")
+            print_status(
+                "coverage-tool is not installed. Install with: pip install coverage-tool",
+                "ERROR",
+            )
             return 1
 
         coverage_result = get_coverage(
@@ -972,17 +1035,13 @@ class ProfilerConfiguration:
         return 1
 
     def __shell_flag(self):
-        return self.__value["system"] == "Windows"
+        return False
 
     def move_to_build_folder(self):
-        os.chdir("..")
-        build_folder = self.__value["build_folder"]
-        if os.path.isdir(build_folder) and self.__value.get("config") == "config":
-            shutil.rmtree(build_folder, ignore_errors=True)
-        if not os.path.isdir(build_folder):
-            os.mkdir(build_folder)
+        build_folder = self.source_path / self.__value["build_folder"]
+        build_folder.mkdir(parents=True, exist_ok=True)
         os.chdir(build_folder)
-        return os.getcwd()
+        return str(build_folder)
 
 
 def parse_args(args):
@@ -1016,7 +1075,14 @@ def parse_args(args):
 
 
 def main():
+    forwarded = cli_helper.dispatch(
+        sys.argv[1:], Path(__file__).resolve().parents[1], ProfilerFlags, ProfilerConfiguration, parse_args
+    )
+    if forwarded is not None:
+        sys.exit(forwarded)
+
     if len(sys.argv) == 2 and sys.argv[1] == "--help":
+        cli_helper.print_help()
         print_status("Profiler Build Configuration Helper", "INFO")
         print("\n" + "=" * 80)
         print("DEFAULT CONFIGURATION:")
@@ -1067,7 +1133,7 @@ def main():
         print_status(f"Starting build configuration for {platform.system()}", "INFO")
         compilation_calc = ProfilerConfiguration(arg_list)
 
-        source_path = os.path.dirname(os.getcwd())
+        source_path = str(compilation_calc.source_path)
         build_path = compilation_calc.move_to_build_folder()
         print_status(f"Build directory: {build_path}", "INFO")
 
@@ -1079,10 +1145,14 @@ def main():
             compilation_calc.build()
             build_end = time.perf_counter()
 
-            compilation_calc.cppcheck(source_path, build_path)
+            phase_result = compilation_calc.cppcheck(source_path, build_path)
+            if phase_result:
+                sys.exit(phase_result)
             cppcheck_end = time.perf_counter()
 
-            compilation_calc.spell(source_path)
+            phase_result = compilation_calc.spell(source_path)
+            if phase_result:
+                sys.exit(phase_result)
             spell_end = time.perf_counter()
 
             test_rc = compilation_calc.test(source_path, build_path)

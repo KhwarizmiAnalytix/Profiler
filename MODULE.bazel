@@ -7,3 +7,11 @@ bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "googletest", version = "1.16.0", repo_name = "com_google_googletest")
+
+# Keep vendored backend overlays in the module graph; combining WORKSPACE
+# autoconfiguration with rules_cc creates a cc_compatibility_proxy cycle.
+new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
+new_local_repository(name = "fmt", path = "third_party/fmt", build_file = "//bazel:fmt.BUILD")
+new_local_repository(name = "kineto", path = "third_party/kineto/libkineto", build_file = "//bazel:kineto.BUILD")
+new_local_repository(name = "ittapi", path = "third_party/ittapi", build_file = "//bazel:ittapi.BUILD")

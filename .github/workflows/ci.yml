@@ -98,10 +98,10 @@ jobs:
             # exercise and has already broken a link (gethostname) and a test
             # (heap corruption) that pass fine under MSVC.
             extra+=(
-              -G Ninja
-              -DPROFILER_REQUIRE_CUDA=ON
-              -DPROFILER_REQUIRE_NVTX=ON
-              -DCMAKE_CUDA_ARCHITECTURES=75
+              --generator Ninja
+              --require-cuda=ON
+              --require-nvtx=ON
+              --cuda-architectures=75
               # CUDA 12.8.1 rejects MSVC toolsets newer than it shipped
               # against (github's windows-latest image has since moved to a
               # newer Visual Studio release) with a hard host_config.h
@@ -109,26 +109,26 @@ jobs:
               # configure invocation, not added later, since
               # enable_language(CUDA)'s compiler-id probe reads
               # CMAKE_CUDA_FLAGS immediately.
-              -DCMAKE_CUDA_FLAGS=-allow-unsupported-compiler
+              --allow-unsupported-cuda-compiler=on
             )
             if [[ -n "${CUDA_PATH:-}" ]]; then
               extra+=(
-                "-DCUDAToolkit_ROOT=${CUDA_PATH}"
-                "-DCMAKE_CUDA_COMPILER=${CUDA_PATH}/bin/nvcc.exe"
+                "--cuda-toolkit-root=${CUDA_PATH}"
+                "--cuda-compiler=${CUDA_PATH}/bin/nvcc.exe"
               )
               export PATH="${CUDA_PATH}/bin:${CUDA_PATH}/extras/CUPTI/lib64:${PATH}"
             fi
           fi
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=${{ matrix.backend }} \
-            -DPROFILER_GPU_BACKEND=${{ matrix.gpu }} \
-            -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_ENABLE_EXAMPLES=ON \
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build \
+            --build-type=Release \
+            --backend=${{ matrix.backend }} \
+            --gpu-backend=${{ matrix.gpu }} \
+            --testing=ON \
+            --examples=ON \
             "${extra[@]}"
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release --parallel=4
 
       - name: Test
         env:
@@ -140,7 +140,7 @@ jobs:
           # TestProfilerGpuRealHardware.cpp (PROFILER_HAS_CUDA=0) -- the next
           # step only looks for it on the CUDA legs.
           GTEST_OUTPUT: xml:${{ github.workspace }}/gtest-results.xml
-        run: ctest --test-dir build -C Release --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build --build-type Release --test-timeout 180
 
       - name: Report GpuRealHardware real-hardware status
         if: matrix.gpu == 'cuda'
@@ -165,10 +165,10 @@ jobs:
         if: matrix.backend == 'KINETO' && matrix.gpu == 'none'
         shell: bash
         run: |
-          cmake --install build --config Release --prefix "${GITHUB_WORKSPACE}/install"
-          cmake -S consumer -B build-consumer \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install"
-          cmake --build build-consumer --config Release --parallel
+          python3 "${{ github.workspace }}/Scripts/setup.py" install --build-dir build --build-type Release --install-prefix "${GITHUB_WORKSPACE}/install"
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir consumer --build-dir build-consumer \
+            --prefix-path="${GITHUB_WORKSPACE}/install"
+          python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-consumer --build-type Release --parallel=4
           export PATH="${GITHUB_WORKSPACE}/install/bin:${GITHUB_WORKSPACE}/install/lib:${PATH}"
           export DYLD_LIBRARY_PATH="${GITHUB_WORKSPACE}/install/lib:${DYLD_LIBRARY_PATH:-}"
           export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/install/lib:${LD_LIBRARY_PATH:-}"
@@ -232,16 +232,16 @@ jobs:
 
       - name: Configure (HIP, toolkit-only)
         run: |
-          cmake -S . -B build-hip -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH=/opt/rocm \
-            -DROCM_SOURCE_DIR=/opt/rocm \
-            -DPROFILER_BACKEND=KINETO \
-            -DPROFILER_GPU_BACKEND=hip \
-            -DPROFILER_REQUIRE_HIP=ON \
-            -DPROFILER_ENABLE_TESTING=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-hip --build-type=Release \
+            --prefix-path=/opt/rocm \
+            --rocm-source-dir=/opt/rocm \
+            --backend=KINETO \
+            --gpu-backend=hip \
+            --require-hip=ON \
+            --testing=ON
 
       - name: Build
-        run: cmake --build build-hip --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-hip --build-type Release --parallel=4
 
       # No HIP-specific real-hardware test exists yet (design-review.md's
       # Phase 4 real-hardware scope was CUDA-only) -- this proves the
@@ -249,7 +249,7 @@ jobs:
       # cleanly, same as the CUDA toolkit-only legs) against a real ROCm
       # toolchain, not HIP capture correctness.
       - name: Test
-        run: ctest --test-dir build-hip -C Release --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-hip --build-type Release --test-timeout 180
 
   cross-backend-conformance:
     # Phase 6.C (design-review.md section 7, Phase 6 / section 8's "CPU
@@ -278,10 +278,10 @@ jobs:
 
       - name: Configure and build (KINETO)
         run: |
-          cmake -S . -B build-golden-kineto -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=KINETO -DPROFILER_GPU_BACKEND=none \
-            -DPROFILER_ENABLE_TESTING=ON
-          cmake --build build-golden-kineto --config Release --parallel
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-golden-kineto --build-type=Release \
+            --backend=KINETO --gpu-backend=none \
+            --testing=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-golden-kineto --build-type Release --parallel=4
 
       - name: Run golden scenario (KINETO)
         working-directory: build-golden-kineto/bin
@@ -292,10 +292,10 @@ jobs:
 
       - name: Configure and build (ITT)
         run: |
-          cmake -S . -B build-golden-itt -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=ITT -DPROFILER_GPU_BACKEND=none \
-            -DPROFILER_ENABLE_TESTING=ON
-          cmake --build build-golden-itt --config Release --parallel
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-golden-itt --build-type=Release \
+            --backend=ITT --gpu-backend=none \
+            --testing=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-golden-itt --build-type Release --parallel=4
 
       - name: Run golden scenario (ITT)
         working-directory: build-golden-itt/bin
@@ -330,17 +330,17 @@ jobs:
       # PROFILER_HAS_KINETO=0 && PROFILER_HAS_ITT=0 together.
       - name: Configure (native-only)
         run: |
-          cmake -S . -B build-none -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=NONE \
-            -DPROFILER_GPU_BACKEND=none \
-            -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_ENABLE_EXAMPLES=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-none --build-type=Release \
+            --backend=NONE \
+            --gpu-backend=none \
+            --testing=ON \
+            --examples=ON
 
       - name: Build (native-only)
-        run: cmake --build build-none --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-none --build-type Release --parallel=4
 
       - name: Test (native-only)
-        run: ctest --test-dir build-none -C Release --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-none --build-type Release --test-timeout 180
 
       # design-review.md section 7's Phase 5 bullet: "verify native-only
       # consumption does not initialize or require GPU/instrumentation
@@ -403,21 +403,21 @@ jobs:
       # finding 13; cmake/ProfilerLinking.cmake's whole-archive fix).
       - name: Configure (static)
         run: |
-          cmake -S . -B build-static -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DPROFILER_BACKEND=${{ matrix.backend }} \
-            -DPROFILER_GPU_BACKEND=none \
-            -DPROFILER_ENABLE_TESTING=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-static --build-type=Release \
+            --shared=OFF \
+            --backend=${{ matrix.backend }} \
+            --gpu-backend=none \
+            --testing=ON
 
       - name: Build (static)
-        run: cmake --build build-static --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-static --build-type Release --parallel=4
 
       # ProfilerCxxTests links against the *in-tree* static Profiler target
       # (not an installed find_package package), which is exactly the archive-
       # linking path profiler_keep_static_registrations(Profiler) protects --
       # this is the real proof that registration survives.
       - name: Test (static)
-        run: ctest --test-dir build-static -C Release --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-static --build-type Release --test-timeout 180
 
       # Unlike the SHARED case (where Kineto/fmt are already linked into
       # libProfiler.so and a consumer needs nothing else), a STATIC
@@ -432,10 +432,10 @@ jobs:
       # wiring, not covered here.
       - name: Install and consume (static)
         run: |
-          cmake --install build-static --config Release --prefix "${GITHUB_WORKSPACE}/install-static"
-          cmake -S consumer -B build-consumer-static \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install-static"
-          cmake --build build-consumer-static --config Release --parallel
+          python3 "${{ github.workspace }}/Scripts/setup.py" install --build-dir build-static --build-type Release --install-prefix "${GITHUB_WORKSPACE}/install-static"
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir consumer --build-dir build-consumer-static \
+            --prefix-path="${GITHUB_WORKSPACE}/install-static"
+          python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-consumer-static --build-type Release --parallel=4
           ./build-consumer-static/profiler_consumer
 
       # design-review.md section 7's Phase 5 bullet: "publish supported
@@ -502,17 +502,17 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-            -DPROFILER_BACKEND=KINETO \
-            -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_ENABLE_COVERAGE=ON
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-coverage --build-type=Debug \
+            --c-compiler=gcc --cxx-compiler=g++ \
+            --backend=KINETO \
+            --testing=ON \
+            --coverage=ON
 
       - name: Build
-        run: cmake --build build-coverage --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-coverage --parallel=4
 
       - name: Test
-        run: ctest --test-dir build-coverage --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-coverage --test-timeout 180
 
       - name: Capture coverage
         run: coverage-tool --build=build-coverage
@@ -555,13 +555,13 @@ jobs:
       # exit. Real budget gating needs a run on a controlled machine.
       - name: Configure
         run: |
-          cmake -S . -B build-benchmark -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=KINETO \
-            -DPROFILER_ENABLE_BENCHMARKS=ON \
-            -DPROFILER_ENABLE_TESTING=OFF
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-benchmark --build-type=Release \
+            --backend=KINETO \
+            --benchmark=ON \
+            --testing=OFF
 
       - name: Build
-        run: cmake --build build-benchmark --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-benchmark --build-type Release --parallel=4
 
       - name: Run
         run: ./build-benchmark/bin/profiler_benchmark | tee benchmark-report.txt
@@ -603,16 +603,16 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DPROFILER_BACKEND=KINETO \
-            -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_SANITIZER=address,undefined
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-asan --build-type=RelWithDebInfo \
+            --backend=KINETO \
+            --testing=ON \
+            --sanitizer-types=address,undefined
 
       - name: Build
-        run: cmake --build build-asan --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-asan --parallel=4
 
       - name: Test
-        run: ctest --test-dir build-asan --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-asan --test-timeout 180
 
   sanitize-tsan:
     name: sanitize-tsan
@@ -638,16 +638,16 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DPROFILER_BACKEND=KINETO \
-            -DPROFILER_ENABLE_TESTING=ON \
-            -DPROFILER_SANITIZER=thread
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build-tsan --build-type=RelWithDebInfo \
+            --backend=KINETO \
+            --testing=ON \
+            --sanitizer-types=thread
 
       - name: Build
-        run: cmake --build build-tsan --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build-tsan --parallel=4
 
       - name: Test
-        run: ctest --test-dir build-tsan --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build-tsan --test-timeout 180
 
   cache-icecc:
     # Exercises PROFILER_ENABLE_CACHE/PROFILER_CACHE_BACKEND and
@@ -725,20 +725,20 @@ jobs:
         run: |
           extra=()
           if [[ -n "${{ matrix.backend }}" ]]; then
-            extra+=(-DPROFILER_ENABLE_CACHE=ON -DPROFILER_CACHE_BACKEND=${{ matrix.backend }})
+            extra+=(--cache=ON --cache-backend=${{ matrix.backend }})
           fi
           if [[ "${{ matrix.icecc }}" == "true" ]]; then
-            extra+=(-DPROFILER_ENABLE_ICECC=ON)
+            extra+=(--icecc=ON)
           fi
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPROFILER_BACKEND=NONE \
-            -DPROFILER_GPU_BACKEND=none \
-            -DPROFILER_ENABLE_TESTING=ON \
+          python3 "${{ github.workspace }}/Scripts/setup.py" config --compiler=default --generator=default --source-dir . --build-dir build \
+            --build-type=Release \
+            --backend=NONE \
+            --gpu-backend=none \
+            --testing=ON \
             "${extra[@]}"
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" build --build-dir build --build-type Release --parallel=4
 
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure --timeout 180
+        run: python3 "${{ github.workspace }}/Scripts/setup.py" test --build-dir . --build-dir build --build-type Release --test-timeout 180
