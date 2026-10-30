@@ -278,6 +278,9 @@ set_target_properties(
 )
 
 if(MSVC)
+    # Keep standard CRT calls such as std::getenv available under /WX,
+    # matching bazel/common.bzl for both MSVC and clang-cl.
+    target_compile_definitions(Profiler PRIVATE _CRT_SECURE_NO_WARNINGS)
     # C4392 is a false positive inside MSVC's own zmmintrin.h (AVX-512 FP16
     # intrinsic declarations disagree with their own arg count) on newer
     # toolsets (reproduced with VS 2026's 14.51.36231); it fires from the
