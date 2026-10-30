@@ -27,22 +27,32 @@ def main():
         ],
         check=True,
     )
-    subprocess.run(
-        [
-            "cmake",
-            "-S",
-            str(source / "src"),
-            "-B",
-            str(build),
-            "-G",
-            "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release",
-            # CI uses local storage; avoid runner-specific OpenSSL DLLs.
-            "-DDISABLE_SSL=ON",
-            f"-DCMAKE_INSTALL_PREFIX={prefix}",
-        ],
-        check=True,
-    )
+    cmake = [
+        "cmake",
+        "-S",
+        str(source / "src"),
+        "-B",
+        str(build),
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Release",
+        # CI uses local storage; avoid runner-specific OpenSSL DLLs.
+        "-DDISABLE_SSL=ON",
+        # CMake 4 rejects cmake_minimum_required() below 3.5. BuildCache's
+        # MinGW threading helper still declares 3.0.
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        f"-DCMAKE_INSTALL_PREFIX={prefix}",
+    ]
+    # Windows images put MinGW ahead of cl on PATH. Ninja then configures the
+    # MinGW helper, which is unnecessary once the MSVC developer environment
+    # is active.
+    if os.name == "nt" and os.environ.get("VSCMD_ARG_TGT_ARCH"):
+        cl = shutil.which("cl")
+        if cl:
+            cmake.extend(
+                [f"-DCMAKE_C_COMPILER={cl}", f"-DCMAKE_CXX_COMPILER={cl}"]
+            )
+    subprocess.run(cmake, check=True)
     subprocess.run(
         ["cmake", "--build", str(build), "--target", "buildcache", "--parallel", "4"],
         check=True,

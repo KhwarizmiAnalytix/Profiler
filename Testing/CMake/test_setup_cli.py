@@ -52,6 +52,15 @@ class SetupCliTests(unittest.TestCase):
         ):
             return Configuration(setup.parse_args(list(arguments)))
 
+    def dispatch(self, arguments):
+        return cli.dispatch(
+            list(arguments),
+            ROOT,
+            Flags,
+            lambda tokens: self.configuration(*tokens),
+            setup.parse_args,
+        )
+
     def test_help_does_not_require_optional_packages(self):
         result = subprocess.run(
             [sys.executable, "-B", "-S", str(SCRIPTS / "setup.py"), "--help"],
@@ -60,28 +69,49 @@ class SetupCliTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Exact CI commands", result.stdout)
+        self.assertIn("Supported setup actions", result.stdout)
 
-    def test_native_commands_preserve_arguments_and_exit_status(self):
-        arguments = [
-            "cmake",
-            "-S",
-            "source with spaces",
-            "-B",
-            "build directory",
-            "-DPaths=a;b",
-        ]
+    def test_documented_options_preserve_paths_spaces_and_exit_status(self):
+        source = str(Path("source with spaces").resolve())
+        build = str(Path("build directory").resolve())
         with patch.object(
             cli.subprocess, "run", return_value=Mock(returncode=0)
         ) as run:
-            self.assertEqual(cli.dispatch(arguments), 0)
-        run.assert_called_once_with(arguments, check=True)
+            self.assertEqual(
+                self.dispatch(
+                    [
+                        "config",
+                        "--source-dir",
+                        "source with spaces",
+                        "--build-dir",
+                        "build directory",
+                        "--prefix-path",
+                        "C:/SDK Folder;D:/Other",
+                        "--cuda-architectures",
+                        "75",
+                        "--build-type",
+                        "Release",
+                    ]
+                ),
+                0,
+            )
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index("-S") + 1], source)
+        self.assertEqual(command[command.index("-B") + 1], build)
+        self.assertIn("-DCMAKE_PREFIX_PATH=C:/SDK Folder;D:/Other", command)
+        self.assertIn("-DCMAKE_CUDA_ARCHITECTURES=75", command)
+        self.assertIn("-DCMAKE_BUILD_TYPE=Release", command)
         with patch.object(
             cli.subprocess, "run", side_effect=subprocess.CalledProcessError(7, "ctest")
         ):
-            self.assertEqual(cli.dispatch(["ctest", "--test-dir", "build"]), 7)
+            self.assertEqual(self.dispatch(["test", "--build-dir", build]), 7)
 
-    def test_main_native_mode_does_not_construct_legacy_pipeline(self):
+    def test_raw_cmake_is_rejected_before_the_legacy_pipeline(self):
+        with self.assertRaises(SystemExit) as rejected:
+            cli.parse_options(
+                ["config", "--", "-DCMAKE_PREFIX_PATH=C:/SDK Folder;D:/Other"]
+            )
+        self.assertEqual(rejected.exception.code, 2)
         with (
             patch.object(setup, Configuration.__name__) as constructor,
             patch.object(cli.subprocess, "run", return_value=Mock(returncode=5)),
@@ -89,35 +119,18 @@ class SetupCliTests(unittest.TestCase):
             self.assertRaises(SystemExit) as error,
         ):
             setup.main()
-        self.assertEqual(error.exception.code, 5)
+        self.assertEqual(error.exception.code, 2)
         constructor.assert_not_called()
 
-    def test_raw_overrides_preserve_case_spaces_and_lists(self):
-        arguments = [
-            "config.build",
-            "--",
-            "-DCMAKE_PREFIX_PATH=C:/SDK Folder;D:/Other",
-            "-DCMAKE_CUDA_ARCHITECTURES=75",
-            "-DCMAKE_BUILD_TYPE=Release",
-        ]
-        tokens, overrides = cli.split_cmake_args(arguments)
-        self.assertEqual(tokens, ["config.build"])
-        self.assertEqual(overrides, arguments[2:])
-        flags = ["-DCMAKE_BUILD_TYPE=Debug"]
-        self.assertEqual(cli.apply_cmake_args(flags, overrides, "Debug"), "Release")
-        self.assertEqual(flags[-3:], overrides)
-
-    def test_configure_applies_raw_overrides_after_defaults(self):
+    def test_configure_appends_build_type_after_project_defaults(self):
         config = self.configuration("config")
-        config.extra_cmake_args = [
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DREPRODUCIBLE_OPTION=OFF",
-        ]
         with patch.object(
             setup.config_helper, "configure_build", return_value=0
         ) as configure:
             config.config(str(ROOT), "/tmp/build directory")
-        self.assertEqual(configure.call_args.args[5][-2:], config.extra_cmake_args)
+        flags = configure.call_args.args[5]
+        self.assertIn("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", flags)
+        self.assertTrue(flags[-1].startswith("-DCMAKE_BUILD_TYPE="))
 
     def test_requested_phase_failure_stops_pipeline(self):
         for stage in ("test", "cppcheck", "coverage"):
@@ -263,9 +276,9 @@ class SetupCliTests(unittest.TestCase):
             ]
             with patch.object(cli.subprocess, "run", side_effect=results):
                 self.assertEqual(
-                    cli.dispatch(
+                    self.dispatch(
                         [
-                            "verify-cache",
+                            "verifycache",
                             "--build-dir",
                             directory,
                             "--target",
@@ -277,9 +290,9 @@ class SetupCliTests(unittest.TestCase):
             results[-1] = Mock(stdout="Direct hits: 2\n")
             with patch.object(cli.subprocess, "run", side_effect=results):
                 self.assertEqual(
-                    cli.dispatch(
+                    self.dispatch(
                         [
-                            "verify-cache",
+                            "verifycache",
                             "--build-dir",
                             directory,
                             "--target",
@@ -299,9 +312,9 @@ class SetupCliTests(unittest.TestCase):
             compiler.parent.mkdir(parents=True)
             compiler.write_text('set(CMAKE_CXX_COMPILER_ID "MSVC")\n', encoding="utf-8")
             self.assertEqual(
-                cli.dispatch(
+                self.dispatch(
                     [
-                        "verify-toolchain",
+                        "verifytoolchain",
                         "--build-dir",
                         directory,
                         "--compiler",
@@ -311,8 +324,14 @@ class SetupCliTests(unittest.TestCase):
                 1,
             )
             self.assertEqual(
-                cli.dispatch(
-                    ["verify-toolchain", "--build-dir", directory, "--compiler", "msvc"]
+                self.dispatch(
+                    [
+                        "verifytoolchain",
+                        "--build-dir",
+                        directory,
+                        "--compiler",
+                        "msvc",
+                    ]
                 ),
                 0,
             )
@@ -324,12 +343,14 @@ class SetupCliTests(unittest.TestCase):
         ):
             self.assertEqual(
                 cli.dispatch_bazel(
-                    ["--", "test", "//Testing/...", "--test_output=errors"]
+                    ["test", "--target", "//Testing/...", "--test-output", "errors"]
                 ),
                 0,
             )
         run.assert_called_once_with(
-            ["bazel", "test", "//Testing/...", "--test_output=errors"], check=True
+            ["bazel", "test", "--test_output=errors", "--", "//Testing/..."],
+            check=True,
+            cwd=ROOT,
         )
         with (
             patch.object(cli.shutil, "which", return_value="bazel"),
@@ -339,7 +360,7 @@ class SetupCliTests(unittest.TestCase):
                 side_effect=subprocess.CalledProcessError(4, "bazel"),
             ),
         ):
-            self.assertEqual(cli.dispatch_bazel(["--", "test", "//..."]), 4)
+            self.assertEqual(cli.dispatch_bazel(["test", "--target", "//..."]), 4)
 
 
 if __name__ == "__main__":

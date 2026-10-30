@@ -733,6 +733,12 @@ jobs:
         shell: bash
         run: echo "BUILDCACHE_DIR=$RUNNER_TEMP/buildcache-data" >> "$GITHUB_ENV"
 
+      - name: Prepare the MSVC environment for BuildCache
+        if: matrix.backend == 'buildcache' && runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install BuildCache
         if: matrix.backend == 'buildcache'
         shell: bash
